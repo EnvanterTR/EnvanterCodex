@@ -1114,6 +1114,7 @@ public sealed class SoftwareLicense
     public string? ProductVersion { get; set; }
     public string LicenseType { get; set; } = "Subscription";
     public string? LicenseReference { get; set; }
+    public string? ProtectedLicenseKey { get; set; }
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string? PurchaseOrderReference { get; set; }

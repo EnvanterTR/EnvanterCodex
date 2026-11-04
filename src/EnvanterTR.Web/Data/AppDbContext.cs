@@ -839,6 +839,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.ProductVersion).HasMaxLength(120);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseReference).HasMaxLength(160);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.ProtectedLicenseKey).HasMaxLength(12000);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Supplier).HasMaxLength(200);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.PurchaseOrderReference).HasMaxLength(120);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Currency).HasMaxLength(3).IsRequired();

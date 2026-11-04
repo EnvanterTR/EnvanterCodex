@@ -4322,6 +4322,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<string>("ProtectedLicenseKey")
+                        .HasMaxLength(12000)
+                        .HasColumnType("character varying(12000)");
+
                     b.Property<string>("LicenseType")
                         .IsRequired()
                         .HasMaxLength(32)

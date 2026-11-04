@@ -223,8 +223,12 @@ const softwareLicenseRows = [{
   id: softwareLicenseId, name: 'Synthetic License Import Baseline', publisher: 'Synthetic Publisher', productVersion: '1',
   licenseType: 'Subscription', licenseReference: 'QA-LICENSE-BASELINE', supplier: 'Synthetic Supplier', seats: 3, assigned: 0,
   unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
-  notes: null, isArchived: false
+  notes: null, isArchived: false, hasLicenseKey: false
 }];
+const softwareLicenseKeys = new Map();
+const softwareLicenseKeyWrites = [];
+const syntheticAppearanceWrites = [];
+let syntheticAppearance = { theme: 'system', language: 'tr' };
 let softwareLicenseCurrentEula = null;
 const softwareLicenseAssignments = [];
 const softwareLicenseAssignmentWrites = [];
@@ -979,11 +983,11 @@ const server = createServer(async (request, response) => {
       const status = url.searchParams.get('status') || 'active';
       const items = softwareLicenseRows.filter(item => (status === 'all' || (status === 'archived' ? item.isArchived : !item.isArchived))
         && (!q || [item.name, item.publisher, item.supplier, item.licenseReference].some(value => value?.toLocaleLowerCase().includes(q))));
-      result = { items, total: items.length, page: 1, pageSize: 25 };
+      result = { items: items.map(item => ({ ...item, hasLicenseKey: softwareLicenseKeys.has(item.id) })), total: items.length, page: 1, pageSize: 25 };
     }
     else if (softwareLicenseRows.some(item => url.pathname === `/api/software-licenses/${item.id}`)) {
       const licenseId = url.pathname.split('/').at(-1), license = softwareLicenseRows.find(item => item.id === licenseId);
-      result = { license: { ...license }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
+      result = { license: { ...license, hasLicenseKey: softwareLicenseKeys.has(licenseId) }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
         attachments: licenseId === softwareLicenseId ? softwareLicenseAttachments.map(item => ({ ...item })) : [],
         currentEula: licenseId === softwareLicenseId && softwareLicenseCurrentEula ? { ...softwareLicenseCurrentEula } : null };
     }
@@ -1391,6 +1395,42 @@ const server = createServer(async (request, response) => {
     assert.ok(role, 'Activation must target the current company custom role.');
     role.isActive = body.isActive; companyRoleWrites.push(record);
     json(response, 200, { roleKey: role.roleKey, isActive: role.isActive }); return;
+  }
+  if (request.method === 'PUT' && url.pathname === '/api/appearance/preferences') {
+    assert.ok(['system', 'light', 'dark'].includes(body?.theme));
+    assert.ok(['tr', 'en', 'ru', 'uk', 'mk'].includes(body?.language));
+    syntheticAppearance = { ...body };
+    syntheticAppearanceWrites.push(record);
+    json(response, 200, syntheticAppearance); return;
+  }
+  const softwareLicenseKeyRoute = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)\/key(?:\/(reveal))?$/i);
+  if (softwareLicenseKeyRoute && request.method === 'PUT' && !softwareLicenseKeyRoute[2]) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Saving a software license key must send CSRF.');
+    assert.equal(typeof body?.key, 'string');
+    assert.ok(body.key.length > 0 && body.key.length <= 2048);
+    const license = softwareLicenseRows.find(item => item.id === softwareLicenseKeyRoute[1]);
+    assert.ok(license, 'A software license key must belong to an existing synthetic license.');
+    softwareLicenseKeys.set(softwareLicenseKeyRoute[1], body.key);
+    license.hasLicenseKey = true;
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(204); response.end(); return;
+  }
+  if (softwareLicenseKeyRoute && request.method === 'POST' && softwareLicenseKeyRoute[2] === 'reveal') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Revealing a software license key must send CSRF.');
+    const key = softwareLicenseKeys.get(softwareLicenseKeyRoute[1]);
+    assert.ok(key, 'Only a stored synthetic key may be revealed.');
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store, private' });
+    response.end(JSON.stringify({ key })); return;
+  }
+  if (softwareLicenseKeyRoute && request.method === 'DELETE' && !softwareLicenseKeyRoute[2]) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Removing a software license key must send CSRF.');
+    const license = softwareLicenseRows.find(item => item.id === softwareLicenseKeyRoute[1]);
+    assert.ok(license, 'A software license key must belong to an existing synthetic license.');
+    softwareLicenseKeys.delete(softwareLicenseKeyRoute[1]);
+    license.hasLicenseKey = false;
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && url.pathname === '/api/software-licenses') {
     assert.equal(typeof body?.name, 'string', 'A new license must submit its name.');
@@ -3645,6 +3685,90 @@ try {
   await page.locator('#licenseRows').getByText(editedLicenseName).waitFor();
   assert.ok(requests.some(item => item.path === '/api/software-licenses' && item.query.q === 'QA-LICENSE-CRUD-001'),
     'The license list search must find the newly persisted record through the API.');
+  await page.locator('#licenseSearch').fill('');
+  await licenseList.locator(`tr[data-id="${softwareLicenseId}"]`).waitFor({ state: 'visible' });
+  const licenseKeyLocaleCases = [
+    ['en', 'License key', 'Product key'], ['ru', 'Ключ лицензии', 'Ключ продукта'],
+    ['uk', 'Ліцензійний ключ', 'Ключ продукту'], ['mk', 'Клуч за лиценца', 'Клуч на производот'], ['tr', 'Lisans anahtarı', 'Ürün anahtarı']
+  ];
+  for (const [language, expectedHeading, expectedLabel] of licenseKeyLocaleCases) {
+    await page.locator('#appearanceButton').click();
+    await page.locator('#languagePreference').selectOption(language);
+    const appearanceSaveResponse = page.waitForResponse(response => response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/appearance/preferences');
+    await page.locator('#appearanceSave').click();
+    assert.equal((await appearanceSaveResponse).status(), 200, `Saving ${language} appearance preference must succeed.`);
+    await page.locator('#appearanceDialog').waitFor({ state: 'hidden' });
+    await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+    await licenseDetail.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#licenseKeySection h3').innerText(), expectedHeading, `${language} license-key heading must be translated.`);
+    assert.equal(await page.locator('#licenseKeySection label span').innerText(), expectedLabel, `${language} product-key label must be translated.`);
+    await page.locator('#closeLicenseDetail').click();
+    await licenseDetail.waitFor({ state: 'hidden' });
+  }
+  assert.deepEqual(syntheticAppearanceWrites.slice(-5).map(write => write.body.language), ['en', 'ru', 'uk', 'mk', 'tr'],
+    'The five-language acceptance must save each selected locale through the preference endpoint.');
+
+  await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  const licenseKeySection = page.locator('#licenseKeySection');
+  const licenseKeyInput = page.locator('#licenseKeyInput');
+  const syntheticProductKey = 'SYNTHETIC-KEY-UI-ONLY-7C51';
+  assert.equal(await licenseKeySection.isVisible(), true, 'A writable company user must see the key controls.');
+  assert.equal(await page.locator('#licenseKeyState').innerText(), 'Anahtar kaydı yok.');
+  assert.equal(await page.locator('#licenseKeyReveal').isHidden(), true);
+  const keyWriteCountBeforeSave = softwareLicenseKeyWrites.length;
+  await page.locator('#licenseKeySave').click();
+  assert.equal(softwareLicenseKeyWrites.length, keyWriteCountBeforeSave, 'An empty key must not produce an API write.');
+  await licenseKeyInput.fill(syntheticProductKey);
+  const licenseKeySaveResponse = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key`);
+  await page.locator('#licenseKeySave').click();
+  assert.equal((await licenseKeySaveResponse).status(), 204);
+  await page.waitForFunction(() => document.querySelector('#licenseKeyState')?.textContent === 'Anahtar kayıtlı.');
+  assert.equal(await licenseKeyInput.inputValue(), '', 'Saving must clear the secret from the input.');
+  assert.equal(await page.locator('#licenseKeyReveal').isVisible(), true);
+  assert.equal((await page.locator('#licenseDetailFields').innerText()).includes(syntheticProductKey), false,
+    'License detail fields must never render the key.');
+  assert.equal((await page.locator('#licenseKeySection').innerText()).includes(syntheticProductKey), false,
+    'License key panel must not reveal the secret until explicitly requested.');
+  assert.equal(softwareLicenseKeys.get(softwareLicenseId), syntheticProductKey);
+  assert.deepEqual(softwareLicenseKeyWrites.at(-1).body, { key: syntheticProductKey });
+  assert.equal(softwareLicenseKeyWrites.at(-1).csrf, 'synthetic-asset-csrf');
+  const revealResponsePromise = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key/reveal`);
+  await page.locator('#licenseKeyReveal').click();
+  const revealResponse = await revealResponsePromise;
+  assert.equal(revealResponse.status(), 200);
+  assert.match(revealResponse.headers()['cache-control'] || '', /no-store/i);
+  await page.waitForFunction(value => document.querySelector('#licenseKeyInput')?.value === value, syntheticProductKey);
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'text');
+  await page.locator('#licenseKeyVisibility').click();
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'password', 'The visibility control must hide a revealed key.');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#licenseKeyInput')?.value === '');
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'password');
+  await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  assert.equal(await licenseKeyInput.inputValue(), '', 'Reopening detail must not restore the plaintext key.');
+  page.once('dialog', dialog => dialog.accept());
+  const licenseKeyClearResponse = page.waitForResponse(response => response.request().method() === 'DELETE'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key`);
+  await page.locator('#licenseKeyClear').click();
+  assert.equal((await licenseKeyClearResponse).status(), 204);
+  await page.waitForFunction(() => document.querySelector('#licenseKeyState')?.textContent === 'Anahtar kaydı yok.');
+  assert.equal(softwareLicenseKeys.has(softwareLicenseId), false);
+  assert.equal(softwareLicenseRows.find(item => item.id === softwareLicenseId).hasLicenseKey, false);
+  assert.equal(await page.locator('#licenseKeyReveal').isHidden(), true);
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  assert.deepEqual(softwareLicenseKeyWrites.map(write => [write.method, write.path]), [
+    ['PUT', `/api/software-licenses/${softwareLicenseId}/key`],
+    ['POST', `/api/software-licenses/${softwareLicenseId}/key/reveal`],
+    ['DELETE', `/api/software-licenses/${softwareLicenseId}/key`]
+  ]);
+  console.log('PASS: software license key UI saves only nonempty values with CSRF, reveals with no-store, toggles visibility, clears on close, removes with confirmation, never renders in detail, and all five locale labels render.');
   assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 4,
     'Only the explicitly confirmed license creation, update, archive, and restore may write.');
   console.log('PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive/restore confirmation, active/archive filters, archived action locks, persisted list/detail refresh, and search.');

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T18:28:14.000Z",
+  "measuredAt": "2026-11-04T20:32:57Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "0f03f1b",
+    "commit": "97b06a2",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -77,22 +77,22 @@
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2260,
+      "staticControls": 2265,
       "pageRoutes": 65,
       "menuGroups": 10,
       "links": 53,
-      "buttons": 954,
+      "buttons": 958,
       "forms": 113,
-      "inputs": 626,
+      "inputs": 627,
       "selects": 204,
       "textareas": 42,
       "modals": 109,
       "tabs": 5,
       "tables": 79,
-      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
-      "measuredBaseCommit": "0f03f1b",
+      "measuredCommit": "97b06a2",
+      "measuredBaseCommit": "97b06a2",
       "workingTreeModified": true,
-      "note": "WP-097 annual-rate model create/edit inputs and depreciation report column are inventoried; Generate-UiInventory --check passed on the working tree."
+      "note": "WP-099 software-license-key controls added; node tools/Generate-UiInventory.mjs --check passed on the current working tree."
     },
     "gitDiffCheck": {
       "status": "PASS",
@@ -165,27 +165,27 @@
       "invalid": 0,
       "classification": {
         "notRun": 75,
-        "partial": 11,
-        "implemented": 29
+        "partial": 10,
+        "implemented": 30
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "a0b7674",
+      "measuredCommit": "97b06a2",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-097",
-      "measuredBaseCommit": "172d9af",
+      "latestStatusWp": "WP-099",
+      "measuredBaseCommit": "97b06a2",
       "workingTreeModified": true,
-      "note": "115 A–O rows remain uniquely mapped. WP-097 supplies the missing model annual-rate create/edit/report/CSV UI evidence; A05 is VAR. Counts are evidence classifications, not product completion."
+      "note": "115 A–O rows remain uniquely mapped. WP-099 adds protected license-key storage/access; C01 is VAR. Counts classify evidence only, not product completion."
     },
     "sourceMigrationInventory": {
       "status": "PASS",
-      "count": 126,
+      "count": 127,
       "first": "20261002192729_InitialSchema",
-      "last": "20261104171011_AddAssetModelAnnualDepreciationRate",
+      "last": "20261104190000_AddProtectedSoftwareLicenseKeys",
       "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
-      "measuredBaseCommit": "0f03f1b",
+      "measuredBaseCommit": "97b06a2",
       "workingTreeModified": true,
       "databaseConnected": false,
-      "note": "The source tree has 126 distinct migration IDs; the most recently measured live/backup history has 122 and has not been compared by exact ID. The new annual-rate migration is source-only and was not applied."
+      "note": "The source tree has 127 distinct migration IDs; the most recently measured live/backup history has 122 and has not been compared by exact ID. WP-099 migration is source-only and was not applied."
     },
     "f2HostedBrowserAcceptance": {
       "status": "PASS",
@@ -236,7 +236,7 @@
       "migrationIdentityParity": "NOT_CHECKED",
       "deployedSha": "NOT_EXPOSED_BY_CHECK",
       "overallReadiness": "NOT_READY_CHECKOUT_UNAVAILABLE",
-      "note": "Live check is read-only. Source/deployed migration counts differ by two; exact ID parity, 3 November backup restore and rollback rehearsal were not performed. No deployment or database writes."
+      "note": "Historical read-only check at observedAt; at that time the compared source branch count was 124 and live count was 122. WP-099 later brings the current source tree to 127; no fresh live check or migration-ID parity comparison was performed. No deployment or database writes."
     },
     "accessoryAssignmentAcceptance": {
       "status": "PASS",
@@ -527,7 +527,7 @@
     },
     "wp097AnnualDepreciationRateUiAcceptance": {
       "status": "PASS",
-      "measuredAt": "2026-11-04T18:28:14.000Z",
+      "measuredAt": "2026-11-04T18:28:14Z",
       "measuredSourceBaseCommit": "0f03f1b",
       "staticVerifier": {
         "status": "PASS",
@@ -566,6 +566,77 @@
       "paymentTouched": false,
       "classification": "A05 is VAR; A–O evidence counts are 75 not run, 11 partial, 29 implemented; not a completion percentage.",
       "remaining": "F1 release gate remains open: current backup archive/hash and exact live/source migration ID parity have not been freshly verified."
+    },
+    "wp099SoftwareLicenseKeyAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T20:32:57Z",
+      "measuredSourceBaseCommit": "97b06a2",
+      "workingTreeModifiedDuringVerification": true,
+      "isolatedPostgres": {
+        "isolatedDatabase": true,
+        "failed": 0,
+        "passed": 1,
+        "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+        "status": "PASS",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped'",
+        "productionWrites": false,
+        "test": "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "assertions": [
+          "ciphertext stored with enc:v1 prefix",
+          "authorized set/reveal/replace/clear",
+          "tenant and license-bound decryption rejection",
+          "role and CSRF rejection",
+          "plaintext excluded from list/detail/export/audit",
+          "Unicode 2,048-character round-trip within protected storage limit"
+        ]
+      },
+      "hostedChromium": {
+        "syntheticApi": true,
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "status": "PASS",
+        "fullAssetDetailActionsModule": true,
+        "assertions": [
+          "five-language copy",
+          "key save/reveal and visibility toggle",
+          "secret cleared when detail closes",
+          "confirmed removal"
+        ],
+        "productionWrites": false
+      },
+      "releaseBuild": {
+        "warnings": 0,
+        "status": "PASS",
+        "command": "Docker .NET SDK 10.0: dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+        "errors": 0
+      },
+      "efModelSnapshot": {
+        "status": "PASS",
+        "command": "dotnet ef migrations has-pending-model-changes",
+        "output": "No changes have been made to the model since the last migration."
+      },
+      "syntaxAndDiff": {
+        "gitDiffCheck": true,
+        "nodeCheck": true,
+        "status": "PASS"
+      },
+      "uiInventory": {
+        "staticControls": 2265,
+        "routes": 65,
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "migration": {
+        "exactIdParityCompared": false,
+        "lastObservedLiveCount": 122,
+        "appliedToProduction": false,
+        "id": "20261104190000_AddProtectedSoftwareLicenseKeys",
+        "sourceCount": 127
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "remaining": "F1 backup restore/hash and exact live/source migration-ID parity remain open; no migration or deploy is authorized by this package.",
+      "uiInventoryStatus": "PASS"
     }
   },
   "historicalBaseline": {
