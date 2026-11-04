@@ -734,18 +734,19 @@ try {
   const inviteDialog = page.locator('#memberInviteDialog');
   await inviteDialog.waitFor({ state: 'visible' });
   await page.locator('#memberInviteCompany').selectOption(companyId);
-  await inviteDialog.locator('[name="fullName"]').fill('Synthetic Invited Viewer');
-  await inviteDialog.locator('[name="email"]').fill('qa-invitee@example.invalid');
-  await inviteDialog.locator('[name="roleKey"]').selectOption('viewer');
+  await inviteDialog.locator('[name="fullName"]').fill('Synthetic Invited Finance');
+  await inviteDialog.locator('[name="email"]').fill('qa-finance@example.invalid');
+  assert.equal(await inviteDialog.locator('[name="roleKey"] option[value="finance"]').innerText(), 'Muhasebe (salt okunur)');
+  await inviteDialog.locator('[name="roleKey"]').selectOption('finance');
   const invitationSaved = page.waitForResponse(response => response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/platform/members/invite' && response.status() === 200);
   await page.locator('#submitMemberInvite').click();
   await invitationSaved;
-  await page.locator('#membersTable').getByText('qa-invitee@example.invalid').waitFor({ state: 'visible' });
+  await page.locator('#membersTable').getByText('qa-finance@example.invalid').waitFor({ state: 'visible' });
   assert.equal(writes.length, securityWritesBeforeCancel + 5,
     'Exactly four confirmed account-security actions plus the invitation must write after the canceled action.');
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/members/invite',
-    body: { companyId, fullName: 'Synthetic Invited Viewer', email: 'qa-invitee@example.invalid', roleKey: 'viewer' }, csrf: csrfToken });
+    body: { companyId, fullName: 'Synthetic Invited Finance', email: 'qa-finance@example.invalid', roleKey: 'finance' }, csrf: csrfToken });
   const planListLoaded = page.waitForResponse(response => response.request().method() === 'GET'
     && new URL(response.url()).pathname === '/api/platform/plans');
   await page.locator('#nav [data-view="plans"]').click();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T13:26:34Z",
+  "measuredAt": "2026-11-04T13:33:05Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -387,6 +387,21 @@
       "liveCompanyAcceptance": false,
       "note": "F04 classified VAR for code/API role support. Invitation control mappings and import role validation are statically verified; live company acceptance remains part of F7.",
       "measuredSourceCommit": "a0b7674"
+    },
+    "wp087PlatformAdminInviteUi": {
+      "status": "PASS",
+      "command": "docker build --tag envantertr-hosted-checkout-browser-acceptance:local --file deploy/testing/Dockerfile.hosted-checkout-browser .; docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/platform-admin-members.mjs",
+      "browser": "Chromium",
+      "assertions": [
+        "Finance role option renders the label Muhasebe (salt okunur)",
+        "Synthetic invitation POST contains roleKey=finance",
+        "New synthetic member appears in the platform members table"
+      ],
+      "syntheticApi": true,
+      "productionWrites": false,
+      "liveCompanyAcceptance": false,
+      "runnerCleanup": "Temporary Docker test container removed with --rm",
+      "note": "This is one targeted F5 user-interface slice; it does not measure the full 2,255-control/65-route matrix or the F5 pass threshold."
     }
   },
   "historicalBaseline": {
