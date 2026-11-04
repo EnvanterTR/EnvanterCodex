@@ -1,5 +1,9 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-078 — DONE
+
+E01 arıza/bakım/onarım: `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` izole PostgreSQL'de 1/1 PASS; `maintenanceType`, `startedOn`, `completedOn`, `cost=1200`, `currency=TRY` API'den okundu. CSRF/rol/tenant, tarih sınırları, varlık durumu ve geçmiş doğrulandı. `Verify-MaintenancePlanUi.mjs`, `Verify-MaintenanceAttachmentsUi.mjs`, `git diff --check` PASS. Test DB/network kaldırıldı; üretim DB/deploy/migration/ödeme/Coolify değişmedi. Test commit `ddc47fed1ec0c2c62dc40c23c79f1d05be009288`. Gerçek Chromium bakım formu gönderimi F5'te ayrıca doğrulanmalı. Sonraki WP: E02 fiziksel sayım/audit kabul ölçümü.
+
 ## WP-077 — DONE
 
 D05 ortak stok CRUD/zimmet/stok/minimum uyarısı: D01–D04 önceki kabul kanıtlarına yeni, geri alınabilir arşiv yaşam döngüsü eklendi. `Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss` izole PostgreSQL'de 1/1 PASS: aksesuar/sarf/bileşen arşivleme, başka şirket kaydında 404, varsayılan listeden saklama, `includeArchived` ile erişim, geri yükleme ve üç hareket geçmişini koruma. `node tools/Verify-StockArchiveUi.mjs` ile `Verify-AccessoryInventoryUi.mjs`, `Verify-ConsumableInventoryUi.mjs`, `Verify-ComponentInventoryUi.mjs` PASS. Yeni `IsArchived` alanları için migration test DB'de uygulandı. Gerçek Chromium arşiv/geri yükleme tıklaması denenmedi; F5'te doğrula. Commit `99245393f4ba74437e3019f363575d1945a72a1b`. Canlı DB/deploy/Coolify/ödeme değişmedi. Sonraki WP: E01 arıza/bakım/onarım kabul ölçümü.
