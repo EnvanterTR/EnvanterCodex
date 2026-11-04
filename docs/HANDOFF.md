@@ -1,5 +1,9 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-079 — DONE
+
+E02 fiziksel denetim: üç izole PostgreSQL kabul testi 3/3 PASS: denetim kaydı/bulgu/sonraki tarih/geçmiş/rapor-CSV; gecikmiş-yaklaşan-planlanmamış kuyruk, arama ve sayfalama; plan oluşturma/temizleme. Şirket/rol/CSRF ve tarih sınırları PASS. `Verify-AuditScheduleUi.mjs`, `git diff --check` PASS. Geçici DB/network kaldırıldı; canlı DB/deploy/migration/ödeme/Coolify değişmedi. E02 `VAR`; gerçek Chromium form gönderimi F5'te ayrıca doğrulanacak. Sonraki WP: E03 bakım geçmişi ve dosya ekleri.
+
 ## WP-078 — DONE
 
 E01 arıza/bakım/onarım: `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` izole PostgreSQL'de 1/1 PASS; `maintenanceType`, `startedOn`, `completedOn`, `cost=1200`, `currency=TRY` API'den okundu. CSRF/rol/tenant, tarih sınırları, varlık durumu ve geçmiş doğrulandı. `Verify-MaintenancePlanUi.mjs`, `Verify-MaintenanceAttachmentsUi.mjs`, `git diff --check` PASS. Test DB/network kaldırıldı; üretim DB/deploy/migration/ödeme/Coolify değişmedi. Test commit `ddc47fed1ec0c2c62dc40c23c79f1d05be009288`. Gerçek Chromium bakım formu gönderimi F5'te ayrıca doğrulanmalı. Sonraki WP: E02 fiziksel sayım/audit kabul ölçümü.
