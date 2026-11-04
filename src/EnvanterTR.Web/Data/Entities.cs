@@ -382,6 +382,7 @@ public sealed class AssetModel
     public DateOnly? EndOfLifeOn { get; set; }
     public string? PhotoFileName { get; set; }
     public int? DepreciationMonths { get; set; }
+    public decimal? DepreciationAnnualRatePercent { get; set; }
     public decimal? DepreciationMinimum { get; set; }
     public string DepreciationMinimumType { get; set; } = "amount";
     public string DepreciationMethod { get; set; } = "linear";

@@ -192,6 +192,7 @@ public static class AssetEndpoints
                             .Select(unit => unit.Name).FirstOrDefault()).FirstOrDefault()),
                     x.PurchaseDate, x.PurchaseCost, x.Currency, x.InsuranceProvider, x.InsurancePolicyNumber, x.InsuranceExpiresAt,
                     DepreciationMonths = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMonths).FirstOrDefault(),
+                    DepreciationAnnualRatePercent = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationAnnualRatePercent).FirstOrDefault(),
                     DepreciationMinimum = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimum).FirstOrDefault(),
                     DepreciationMinimumType = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimumType).FirstOrDefault(),
                     DepreciationMethod = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMethod).FirstOrDefault() })
@@ -200,7 +201,7 @@ public static class AssetEndpoints
                 InsuranceProvider = row.InsuranceProvider, InsurancePolicyNumber = row.InsurancePolicyNumber,
                 InsuranceExpiresAt = row.InsuranceExpiresAt,
                 CurrentValue = DepreciationReportEndpoints.CalculateListValue(row.PurchaseDate, row.PurchaseCost,
-                    row.DepreciationMonths, row.DepreciationMinimum, row.DepreciationMinimumType, row.DepreciationMethod, asOf) }).ToList();
+                    row.DepreciationMonths, row.DepreciationAnnualRatePercent, row.DepreciationMinimum, row.DepreciationMinimumType, row.DepreciationMethod, asOf) }).ToList();
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -2033,7 +2034,7 @@ public static class AssetEndpoints
                 .ToListAsync(cancellationToken);
             var model = asset.ModelId is Guid modelId
                 ? await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == modelId)
-                    .Select(x => new { x.Name, x.ModelNumber, x.DepreciationMonths, x.DepreciationMinimum,
+                    .Select(x => new { x.Name, x.ModelNumber, x.DepreciationMonths, x.DepreciationAnnualRatePercent, x.DepreciationMinimum,
                         x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken)
                 : null;
             var references = new
@@ -2043,6 +2044,7 @@ public static class AssetEndpoints
                 model = model?.Name,
                 modelNumber = model?.ModelNumber,
                 depreciationMonths = model?.DepreciationMonths,
+                depreciationAnnualRatePercent = model?.DepreciationAnnualRatePercent,
                 depreciationMinimum = model?.DepreciationMinimum,
                 depreciationMinimumType = model?.DepreciationMinimumType,
                 depreciationMethod = model?.DepreciationMethod,
@@ -2061,16 +2063,19 @@ public static class AssetEndpoints
             };
             var asOf = DateOnly.FromDateTime(DateTime.UtcNow);
             var ageMonths = DepreciationReportEndpoints.CalculateElapsedMonths(asset.PurchaseDate, asOf);
-            var remainingMonths = ageMonths is int elapsedMonths && references.depreciationMonths is int usefulLifeMonths
+            var policyMonths = references.depreciationMonths ?? (references.depreciationAnnualRatePercent is decimal rate
+                ? (int)Math.Ceiling(1200m / rate) : (int?)null);
+            var remainingMonths = ageMonths is int elapsedMonths && policyMonths is int usefulLifeMonths
                 ? Math.Max(0, usefulLifeMonths - elapsedMonths)
                 : (int?)null;
             var valuation = new
             {
                 ageMonths,
+                depreciationAnnualRatePercent = references.depreciationAnnualRatePercent,
                 depreciationMonths = references.depreciationMonths,
                 remainingMonths,
                 currentValue = DepreciationReportEndpoints.CalculateListValue(asset.PurchaseDate, asset.PurchaseCost,
-                    references.depreciationMonths, references.depreciationMinimum, references.depreciationMinimumType,
+                    references.depreciationMonths, references.depreciationAnnualRatePercent, references.depreciationMinimum, references.depreciationMinimumType,
                     references.depreciationMethod, asOf)
             };
             var purchaseOrders = db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId)
@@ -3583,7 +3588,7 @@ public static class AssetEndpoints
                             AttachmentCount = allowedLocations == null || db.Assets.Any(asset => asset.CompanyId == companyId &&
                                 asset.ModelId == x.Id && asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))
                                 ? db.AssetModelAttachments.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) : 0,
-                            x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
+                            x.DepreciationMonths, x.DepreciationAnnualRatePercent, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id &&
                                 a.DeletedAt == null && (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))) }).ToListAsync(cancellationToken));
                 case "accessory-models":
@@ -3614,7 +3619,7 @@ public static class AssetEndpoints
                 "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id &&
                         (allowedLocations == null || db.Assets.Any(asset => asset.CompanyId == companyId && asset.ModelId == x.Id &&
                             asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))))
-                    .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.EndOfLifeOn, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
+                    .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.EndOfLifeOn, x.DepreciationMonths, x.DepreciationAnnualRatePercent, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
                 "accessory-models" => await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name, x.BrandId, HasPhoto = x.PhotoFileName != null }).SingleOrDefaultAsync(cancellationToken),
                 _ => null
@@ -3640,9 +3645,11 @@ public static class AssetEndpoints
                 new[] { request.Website, request.SupportUrl, request.WarrantyUrl, request.SupportPhone, request.SupportEmail }.Any(value => value?.Length > 300))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brand"] = ["Marka iletişim alanlarından biri izin verilen uzunluğu aşıyor."] });
             if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && !ValidateDepreciation(request.DepreciationMonths,
-                    request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, out var depreciationErrors))
+                    request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod,
+                    request.DepreciationAnnualRatePercent, out var depreciationErrors))
                 return Results.ValidationProblem(depreciationErrors);
-            if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && request.DepreciationMonths is not null &&
+            if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) &&
+                (request.DepreciationMonths is not null || request.DepreciationAnnualRatePercent is not null) &&
                 user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
             if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && request.EndOfLifeOn is not null &&
                 user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
@@ -3651,7 +3658,8 @@ public static class AssetEndpoints
                 "categories" => AddCategory(db, companyId, name),
                 "brands" => AddBrand(db, companyId, name, request),
                 "models" => AddModel(db, companyId, name, request.BrandId, request.CategoryId,
-                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, request.ModelNumber, request.EndOfLifeOn),
+                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod,
+                    request.ModelNumber, request.EndOfLifeOn, request.DepreciationAnnualRatePercent),
                 "accessory-models" => AddAccessoryModel(db, companyId, name, request.BrandId.GetValueOrDefault()),
                 _ => null
             };
@@ -3667,21 +3675,24 @@ public static class AssetEndpoints
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (await IsLocationScopeRestrictedAsync(user, db, companyId, cancellationToken)) return Results.Forbid();
-            if (!ValidateDepreciation(request.Months, request.Minimum, request.MinimumType, request.Method, out var errors))
+            if (!ValidateDepreciation(request.Months, request.Minimum, request.MinimumType, request.Method, request.AnnualRatePercent, out var errors))
                 return Results.ValidationProblem(errors);
             var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (model is null) return Results.NotFound();
             model.DepreciationMonths = request.Months;
-            model.DepreciationMinimum = request.Months is null ? null : request.Minimum;
+            model.DepreciationAnnualRatePercent = request.AnnualRatePercent;
+            model.DepreciationMinimum = request.Months is null && request.AnnualRatePercent is null ? null : request.Minimum;
             model.DepreciationMinimumType = request.MinimumType is "percent" ? "percent" : "amount";
             model.DepreciationMethod = request.Method ?? "linear";
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
                 ActorUserId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) ? actorId : null,
                 TargetType = "AssetModel", TargetId = id, Action = "DepreciationPolicyChanged",
-                Details = model.DepreciationMonths is null ? "Model amortismanı kapatıldı." :
-                    $"{model.DepreciationMonths} ay, {model.DepreciationMinimumType} taban değer, {model.DepreciationMethod} yöntemi." });
+                Details = model.DepreciationMonths is null && model.DepreciationAnnualRatePercent is null ? "Model amortismanı kapatıldı." :
+                    model.DepreciationAnnualRatePercent is decimal rate
+                        ? $"Yıllık %{rate:0.##}, {model.DepreciationMinimumType} taban değer, {model.DepreciationMethod} yöntemi."
+                        : $"{model.DepreciationMonths} ay, {model.DepreciationMinimumType} taban değer, {model.DepreciationMethod} yöntemi." });
             await db.SaveChangesAsync(cancellationToken);
-            return Results.Ok(new { model.Id, model.DepreciationMonths, model.DepreciationMinimum,
+            return Results.Ok(new { model.Id, model.DepreciationMonths, model.DepreciationAnnualRatePercent, model.DepreciationMinimum,
                 model.DepreciationMinimumType, model.DepreciationMethod });
         }).RequireAuthorization("settings.manage");
 
@@ -4050,15 +4061,18 @@ public static class AssetEndpoints
     }
 
     private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, Guid? categoryId, int? depreciationMonths,
-        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod, string? modelNumber, DateOnly? endOfLifeOn)
+        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod, string? modelNumber, DateOnly? endOfLifeOn,
+        decimal? depreciationAnnualRatePercent)
     {
         var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId, CategoryId = categoryId,
             ModelNumber = Clean(modelNumber), EndOfLifeOn = endOfLifeOn,
-            DepreciationMonths = depreciationMonths, DepreciationMinimum = depreciationMonths is null ? null : depreciationMinimum,
+            DepreciationMonths = depreciationMonths, DepreciationAnnualRatePercent = depreciationAnnualRatePercent,
+            DepreciationMinimum = depreciationMonths is null && depreciationAnnualRatePercent is null ? null : depreciationMinimum,
             DepreciationMinimumType = depreciationMinimumType is "percent" ? "percent" : "amount",
             DepreciationMethod = depreciationMethod ?? "linear" };
         db.AssetModels.Add(row);
-        return new { row.Id, row.Name, row.ModelNumber, row.EndOfLifeOn, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
+        return new { row.Id, row.Name, row.ModelNumber, row.EndOfLifeOn, row.BrandId, row.CategoryId, row.DepreciationMonths,
+            row.DepreciationAnnualRatePercent, row.DepreciationMinimum,
             row.DepreciationMinimumType, row.DepreciationMethod };
     }
 
@@ -4072,11 +4086,20 @@ public static class AssetEndpoints
     private static string? CleanLookupField(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool ValidateDepreciation(int? months, decimal? minimum, string? minimumType, string? method,
+        decimal? annualRatePercent,
         out Dictionary<string, string[]> errors)
     {
         errors = new Dictionary<string, string[]>();
         if (months is < 1 or > 3600) errors["months"] = ["Amortisman süresi 1 ile 3600 ay arasında olmalıdır."];
-        if (months is null && minimum is not null) errors["minimum"] = ["Taban değer için amortisman süresi de tanımlanmalıdır."];
+        if (months is null && annualRatePercent is null && minimum is not null) errors["minimum"] = ["Taban değer için amortisman politikası da tanımlanmalıdır."];
+        if (months is not null && annualRatePercent is not null)
+            errors["annualRatePercent"] = ["Süre (ay) ile yıllık oran aynı anda girilemez; bir amortisman yöntemi seçin."];
+        if (annualRatePercent is < 0.34m or > 100m)
+            errors["annualRatePercent"] = ["Yıllık amortisman oranı %0,34 ile %100 arasında olmalıdır."];
+        if (annualRatePercent is decimal rate && decimal.Round(rate, 2) != rate)
+            errors["annualRatePercent"] = ["Yıllık amortisman oranı en fazla iki ondalık basamak içerebilir."];
+        if (annualRatePercent is not null && method is not null and not "linear")
+            errors["method"] = ["Yıllık oran yalnızca doğrusal amortisman yöntemiyle kullanılabilir."];
         if (minimum is < 0) errors["minimum"] = ["Taban değer negatif olamaz."];
         if (minimumType is not null and not ("amount" or "percent")) errors["minimumType"] = ["Taban değer türü amount veya percent olmalıdır."];
         if (minimumType == "percent" && minimum is > 100) errors["minimum"] = ["Yüzde taban değer 100'ü aşamaz."];

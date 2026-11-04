@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T13:35:17Z",
+  "measuredAt": "2026-11-04T17:31:45.763Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "a0b7674",
+    "commit": "40cbe9d",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -468,6 +468,62 @@
       "productionWrites": false,
       "deployPerformed": false,
       "paymentTouched": false
+    },
+    "wp096AnnualDepreciationRateAcceptance": {
+      "status": "PASS",
+      "measuredSourceBaseCommit": "40cbe9d",
+      "workingTreeModifiedDuringVerification": true,
+      "redBaseline": {
+        "status": "FAIL_AS_EXPECTED",
+        "observation": "Model POST rejected a floor value without configured months; annual rate was not supported."
+      },
+      "isolatedPostgres": {
+        "status": "PASS",
+        "passed": 1,
+        "failed": 0,
+        "test": "Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report'",
+        "scope": [
+          "model create/list/detail",
+          "company boundary",
+          "asset current value",
+          "JSON report and CSV",
+          "policy update and clear",
+          "mixed-policy and out-of-range rejection"
+        ],
+        "expectedExample": {
+          "annualRatePercent": 25,
+          "usefulLifeMonths": 48,
+          "purchaseCost": 1000,
+          "salvageFloor": 200,
+          "monthlyDepreciation": 16.67,
+          "bookValueAfter12Months": 800
+        },
+        "productionWrites": false,
+        "runnerCleanup": "Temporary PostgreSQL container and internal network removed"
+      },
+      "releaseBuild": {
+        "status": "PASS",
+        "warnings": 0,
+        "errors": 0,
+        "command": "dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release"
+      },
+      "efModelSnapshot": {
+        "status": "PASS",
+        "command": "dotnet ef migrations has-pending-model-changes",
+        "output": "No changes have been made to the model since the last migration."
+      },
+      "migration": {
+        "id": "20261104171011_AddAssetModelAnnualDepreciationRate",
+        "sourceMigrationCount": 126,
+        "appliedToProduction": false,
+        "exactLiveIdParityCompared": false,
+        "productionWrites": false
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "remaining": "WP-097 model create/edit and depreciation report UI acceptance; A05 remains partial until then."
     }
   },
   "historicalBaseline": {

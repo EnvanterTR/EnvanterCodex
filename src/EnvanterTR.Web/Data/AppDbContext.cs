@@ -351,12 +351,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetModel>().Property(x => x.ModelNumber).HasMaxLength(120);
         modelBuilder.Entity<AssetModel>().Property(x => x.EndOfLifeOn);
         modelBuilder.Entity<AssetModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
+        modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationAnnualRatePercent).HasPrecision(5, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMethod).HasMaxLength(16).IsRequired();
         modelBuilder.Entity<AssetModel>().ToTable("AssetModels", table =>
         {
             table.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationAnnualRatePercent", "\"DepreciationAnnualRatePercent\" IS NULL OR \"DepreciationAnnualRatePercent\" BETWEEN 0.34 AND 100.00");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationPolicyExclusive", "\"DepreciationMonths\" IS NULL OR \"DepreciationAnnualRatePercent\" IS NULL");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");

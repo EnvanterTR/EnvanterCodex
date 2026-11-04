@@ -1450,6 +1450,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("DepreciationAnnualRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<string>("DepreciationMethod")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1492,6 +1496,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.ToTable("AssetModels", null, t =>
                         {
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationAnnualRatePercent", "\"DepreciationAnnualRatePercent\" IS NULL OR \"DepreciationAnnualRatePercent\" BETWEEN 0.34 AND 100.00");
+
                             t.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");
 
                             t.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
@@ -1499,6 +1505,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
 
                             t.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
+
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationPolicyExclusive", "\"DepreciationMonths\" IS NULL OR \"DepreciationAnnualRatePercent\" IS NULL");
                         });
                 });
 

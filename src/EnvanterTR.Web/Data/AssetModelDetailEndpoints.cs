@@ -43,6 +43,7 @@ public static class AssetModelDetailEndpoints
                         .Select(c => c.Name).FirstOrDefault(),
                     HasPhoto = x.PhotoFileName != null,
                     x.DepreciationMonths,
+                    x.DepreciationAnnualRatePercent,
                     x.DepreciationMinimum,
                     x.DepreciationMinimumType,
                     x.DepreciationMethod

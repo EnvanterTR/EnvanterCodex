@@ -18260,6 +18260,126 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var modelName = $"RATE-MODEL-{_userId:N}";
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = modelName,
+                depreciationAnnualRatePercent = 25m,
+                depreciationMinimum = 200m,
+                depreciationMinimumType = "amount",
+                depreciationMethod = "linear"
+            }), requestToken, antiforgeryCookie);
+        var createBody = await create.Content.ReadAsStringAsync();
+        Assert.True(create.StatusCode == HttpStatusCode.Created,
+            $"Expected 201 but got {(int)create.StatusCode}: {createBody}");
+        using var created = JsonDocument.Parse(createBody);
+        var modelId = created.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(25m, created.RootElement.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+
+        using (var modelList = await SendAsAdminAsync("/api/lookups/models"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelList.StatusCode);
+            using var listBody = JsonDocument.Parse(await modelList.Content.ReadAsStringAsync());
+            var listed = Assert.Single(listBody.RootElement.EnumerateArray(), item => item.GetProperty("id").GetGuid() == modelId);
+            Assert.Equal(25m, listed.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+        }
+
+        using (var modelDetails = await SendAsAdminAsync($"/api/models/{modelId}/details"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelDetails.StatusCode);
+            using var detailsPayload = JsonDocument.Parse(await modelDetails.Content.ReadAsStringAsync());
+            Assert.Equal(25m, detailsPayload.RootElement.GetProperty("model").GetProperty("depreciationAnnualRatePercent").GetDecimal());
+        }
+
+        var categoryId = await GetOwnCategoryIdAsync();
+        var purchaseDate = new DateOnly(2025, 1, 1);
+        var assetId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Assets.Add(new Asset
+            {
+                Id = assetId, CompanyId = _companyId, AssetTag = $"RATE-{_userId:N}", Name = "Annual rate asset",
+                CategoryId = categoryId, ModelId = modelId, PurchaseDate = purchaseDate, PurchaseCost = 1000m, Currency = "TRY"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var report = await SendAsAdminAsync("/api/reports/depreciation?asOf=2026-01-01&page=1&pageSize=10"))
+        {
+            var reportBody = await report.Content.ReadAsStringAsync();
+            Assert.True(report.StatusCode == HttpStatusCode.OK,
+                $"Expected 200 but got {(int)report.StatusCode}: {reportBody}");
+            using var payload = JsonDocument.Parse(reportBody);
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(), row =>
+                row.GetProperty("name").GetString() == "Annual rate asset");
+            Assert.Equal(25m, item.GetProperty("annualDepreciationRatePercent").GetDecimal());
+            Assert.Equal(48, item.GetProperty("months").GetInt32());
+            Assert.Equal(16.67m, item.GetProperty("monthlyDepreciation").GetDecimal());
+            Assert.Equal(800m, item.GetProperty("bookValue").GetDecimal());
+            Assert.Equal(200m, item.GetProperty("accumulatedDepreciation").GetDecimal());
+        }
+
+        using (var assetDetails = await SendAsAdminAsync($"/api/assets/{assetId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, assetDetails.StatusCode);
+            using var assetPayload = JsonDocument.Parse(await assetDetails.Content.ReadAsStringAsync());
+            Assert.Equal(25m, assetPayload.RootElement.GetProperty("valuation").GetProperty("depreciationAnnualRatePercent").GetDecimal());
+            Assert.InRange(assetPayload.RootElement.GetProperty("valuation").GetProperty("currentValue").GetDecimal(), 200m, 1000m);
+        }
+
+        using var export = await SendAsAdminAsync("/api/reports/depreciation/export.csv?asOf=2026-01-01");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        var csv = await export.Content.ReadAsStringAsync();
+        Assert.Contains("Yıllık amortisman (%)", csv, StringComparison.Ordinal);
+        Assert.Contains("25.00", csv, StringComparison.Ordinal);
+
+        using var update = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}/depreciation", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { months = (int?)null, minimum = 200m, minimumType = "amount", method = "linear", annualRatePercent = 20m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using (var updatedPayload = JsonDocument.Parse(await update.Content.ReadAsStringAsync()))
+            Assert.Equal(20m, updatedPayload.RootElement.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+
+        using var clear = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}/depreciation", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { months = (int?)null, minimum = (decimal?)null, minimumType = "amount", method = "linear", annualRatePercent = (decimal?)null }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
+        using (var clearedPayload = JsonDocument.Parse(await clear.Content.ReadAsStringAsync()))
+            Assert.True(clearedPayload.RootElement.GetProperty("depreciationAnnualRatePercent").ValueKind == JsonValueKind.Null);
+
+        using var conflictingPolicy = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"RATE-CONFLICT-{_userId:N}", depreciationMonths = 12, depreciationAnnualRatePercent = 25m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, conflictingPolicy.StatusCode);
+
+        using var outOfRangeRate = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"RATE-LOW-{_userId:N}", depreciationAnnualRatePercent = 0.33m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRangeRate.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using var crossTenant = await SendAsAdminAsync($"/api/lookups/models/{modelId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+    }
+
+    [Fact]
     public async Task Asset_model_end_of_life_is_company_scoped_and_round_trips_through_catalog_and_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
