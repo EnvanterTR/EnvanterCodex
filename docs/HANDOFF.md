@@ -12,7 +12,9 @@ A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersi
 
 **WP-091 sonucu:** F5 statik envanter kaynakla güncellendi: 2.256 statik öğe ve 65 rota işaretçisi; `node tools/Generate-UiInventory.mjs --check` PASS. Güncel hosted Chromium acceptance runner (checkout+şirket/platform arayüz testleri ve ayrı ürün galerisi testi) exit 0 ile tamamlandı; tüm çalıştırılan senaryolar PASS, FAIL 0, BLOCKED 0. Runner toplam PASS adedi üretmediği için agregat PASS sayısı raporlanmadı. Sentetik API'li Chromium kanıtı canlı şirket kabulü değildir ve 2.256 öğenin tamamını kapsamaz; F5'in kategori başına ≥95% koşulu açık.
 
-**Sıradaki WP-092:** Coolify'deki mevcut günlük PostgreSQL görevinin çalıştırma ayrıntılarından 3 Kasım dump dosyasının gerçekten bulunduğunu ve SHA-256 manifestini salt okunur doğrula. Bu Compose uygulamasının Files Beta ekranı `public-site` konteynerini gösteriyor; DB volume'ünü listelemiyor. Doğru DB konteyneri/deposu üzerinden dosya ve hash doğrulanmadan hiçbir indirme/restore yapma. Sonra yalnız izole, ağsız/portsuz/mountsuz konteynere restore et; canlı DB ve migration'a dokunma.
+**WP-092 sonucu: BLOCKED, 3/3 deneme.** Günlük PostgreSQL görevi `Success` ve kaynak kodundaki beklenen dump/hash yolu bulundu; ancak Coolify'de 3 Kasım dump/hash dosyasını salt okunur görme imkânı bu oturumda doğrulanmadı. Üç farklı `cua.getTab` çağrısı aynı `browser.user is unavailable` hatası verdi. Bu, yedeğin başka saklama alanında olmadığı anlamına gelmez. Restore yapılmadı; canlı veritabanına, migration'a, ortama veya yayına dokunulmadı.
+
+**Sıradaki WP-093:** F0/A01'de henüz kanıtlanmamış varlık klonlama ve toplu silme davranışlarını izole kabul testleriyle ölç. Önce mevcut API, UI ve test kapsamını bul; gerekiyorsa önce kırmızı kabul testi yaz. Testler klon alan/ilişki kurallarını, toplu silme onayı/iptalini, rol/CSRF/tenant sınırını, atomikliği ve audit kaydını doğrulamalı. Üretim ve canlı veriye dokunma. Bitti tanımını LEDGER'a işe başlamadan kaydet.
 
 
 # Güncel devam noktası — 4 Kasım 2026
