@@ -636,7 +636,10 @@
       "deployPerformed": false,
       "paymentTouched": false,
       "remaining": "F1 backup restore/hash and exact live/source migration-ID parity remain open; no migration or deploy is authorized by this package.",
-      "uiInventoryStatus": "PASS"
+      "uiInventoryStatus": "PASS",
+      "committedSourceCommit": "5b4e495",
+      "committedSourceBranch": "codex/f2-cloud-seat-limits-20261104",
+      "pushed": false
     }
   },
   "historicalBaseline": {

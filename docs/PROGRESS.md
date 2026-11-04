@@ -212,4 +212,5 @@ Bu kayıt, `docs/ACTIVE-WEB-V1-GOAL.md` ve depo kökündeki kullanıcı hedefiyl
 - Kanıt: `Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped` izole PostgreSQL 1/1 PASS; hosted Chromium `asset-detail-actions.mjs` PASS; Release build 0 uyarı/0 hata; EF model snapshot parity PASS; JS syntax ve `git diff --check` PASS.
 - Güvenlik sınırı: şifreli alan `CompanyId` ve lisans kimliğine bağlı; sır list/detail/export/audit'e çıkmıyor; reveal no-store ve denetleniyor. Kapanışta UI değeri temizleniyor. Beş dil kabul edildi.
 - Şema: `20261104190000_AddProtectedSoftwareLicenseKeys`; kaynak migration sayısı 127. Son bilinen canlı sayısı 122; exact-ID karşılaştırması yapılmadı ve migration uygulanmadı.
+- Commit: `5b4e495` on `codex/f2-cloud-seat-limits-20261104`, local only; not pushed.
 - Sıradaki: F1 backup restore/hash ve canlı/source migration-ID parity kanıtı için güvenli, salt okunur sunucu komut erişimi edin; bu kanıtlar olmadan migration veya yayın yapma. F1 dışındaki V1 kapılarını mevcut durum tablosundaki kanıta göre sırayla sürdür.
