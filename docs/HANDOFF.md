@@ -8,7 +8,9 @@ Güncel salt-okunur canlı kontrol (4 Kasım 13:35 UTC): `https://envantertr.com
 
 A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F5/F6/F7 kapıları açık; F4 kabul testleri geçti; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
 
-**Sıradaki WP-089:** F1: 3 Kasım yedeğinin varlığını ve geçici klonda restore edilebildiğini kanıtla; canlı DB’ye yazma ve migration çalıştırma. PASS/FAIL/BLOCKED sayılarıyla raporla. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
+**WP-089 sonucu:** F1 yedek araştırması bu turda ilerletildi ama restore kapısı BLOCKED. Yerel worktree'de `deploy/local/backups` yok. Coolify'deki `EnvanterTR > Backups` sayfası yalnız Storage backups için `Schedules 0`, `Enabled 0`, `Total executions 0` ve `No scheduled backups` gösteriyor. Bu, 3 Kasım yedeğinin o ekranda bulunmadığını gösterir; başka sunucu/volume yedek deposunda yedek bulunmadığını kanıtlamaz. `Restore-CoolifyBackupToIsolatedDocker.ps1` çalıştırılmadı; yedek/checksum klona kopyalanmadı. Üretim DB'si, deployment, migration, environment, domain ve ödeme ayarları değişmedi.
+
+**Sıradaki WP-090:** 3 Kasım yedeğinin gerçek saklama konumunu salt okunur belirle (Coolify database resource/backup provider veya yetkili yedek deposu). Dosya ve SHA-256 manifest bulunmadan kopyalama/restore yapma. Bulunursa yalnız `Restore-CoolifyBackupToIsolatedDocker.ps1` ile önceden incelenmiş ağsız/portsuz/mountsuz izole konteynere restore et. Üretim DB'sine yazma ve migration çalıştırma.
 # Güncel devam noktası — 4 Kasım 2026
 
 ## WP-082 — DONE
