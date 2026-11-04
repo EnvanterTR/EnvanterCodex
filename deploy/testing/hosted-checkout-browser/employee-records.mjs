@@ -32,6 +32,7 @@ let syntheticRole = 'admin';
 let privateNotes = '';
 let employeeDocuments = [];
 const handoverDocuments = [];
+const handoverEmailAttempts = [];
 let employeeImportPreview = null;
 const employeePhotos = new Map();
 const floorOneId = '66666666-6666-4666-8666-666666666661';
@@ -106,6 +107,19 @@ const server = createServer(async (request, response) => {
   requests.push({ method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), csrf: request.headers['x-csrf-token'], body,
     contentType: request.headers['content-type'], upload: uploadedFile && { filename: uploadedFile.filename, contentType: uploadedFile.contentType, bytes: uploadedFile.bytes } });
 
+  const handoverEmailPostMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
+  if (request.method === 'POST' && handoverEmailPostMatch) {
+    if (request.headers['x-csrf-token'] !== csrfToken) return json(response, 400, { message: 'CSRF required' });
+    const document = handoverDocuments.find(item => item.employeeId === handoverEmailPostMatch[1] && item.id === handoverEmailPostMatch[2]);
+    if (!document?.isFullySigned) return json(response, 409, { message: 'Signed document required' });
+    assert.equal(body.expectedRecipient, 'qa.employee@example.test');
+    assert.equal(body.snapshotSha256, document.snapshotSha256);
+    assert.ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey), 'Handover email must use a fresh idempotency key.');
+    assert.equal(body.resendOfAttemptId, null);
+    handoverEmailAttempts.push({ ...body, employeeId: handoverEmailPostMatch[1], documentId: handoverEmailPostMatch[2] });
+    return json(response, 200, { message: 'PDF e-postayla gönderildi.' });
+  }
+
   if (request.method === 'GET') {
     if (url.pathname === '/api/status') return json(response, 200, { status: 'ready', migrationCount: 96, pendingMigrationCount: 0 });
     if (url.pathname === '/api/setup/status') return json(response, 200, { setupRequired: false });
@@ -155,7 +169,13 @@ const server = createServer(async (request, response) => {
     }
     const handoverCollectionMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents$/i);
     const handoverDetailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)$/i);
+    const handoverEmailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
     if (handoverCollectionMatch) return json(response, 200, handoverDocuments.filter(item => item.employeeId === handoverCollectionMatch[1]).map(({ snapshot, ...item }) => item));
+    if (handoverEmailMatch) {
+      const document = handoverDocuments.find(item => item.employeeId === handoverEmailMatch[1] && item.id === handoverEmailMatch[2]);
+      if (!document) return json(response, 404, { message: 'Handover document not found' });
+      return json(response, 200, { ready: true, recipient: 'qa.employee@example.test', snapshotSha256: document.snapshotSha256, latestAttempt: null });
+    }
     if (handoverDetailMatch) {
       const handover = handoverDocuments.find(item => item.employeeId === handoverDetailMatch[1] && item.id === handoverDetailMatch[2]);
       return handover ? json(response, 200, handover) : json(response, 404, { message: 'Handover document not found' });
@@ -739,6 +759,15 @@ try {
   assert.match(await printPopup.locator('body').innerText(), /qa\.employee@example\.test/);
   assert.match(await printPopup.locator('body').innerText(), /0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/);
   assert.equal(await printPopup.locator('.sign img').count(), 2, 'The printable PDF source must contain both captured signatures.');
+  const handoverQr = printPopup.locator('img.handover-document-qr');
+  await handoverQr.waitFor({ state: 'visible' });
+  assert.match(await handoverQr.getAttribute('src'), /^data:image\/svg\+xml;charset=utf-8,/,
+    'The signed handover PDF must contain an embedded, scannable QR image.');
+  const expectedHandoverPdfUrl = `http://127.0.0.1:${server.address().port}/api/employees/${employeeId}/handover-documents/${handoverDocuments[0].id}/pdf`;
+  assert.equal(await handoverQr.getAttribute('data-handover-qr-target'), expectedHandoverPdfUrl,
+    'The QR target must open this authenticated handover PDF endpoint in the same company app.');
+  assert.match(await printPopup.locator('.handover-qr-help').innerText(), /oturum açmanızı gerektirir/,
+    'The print document must explain that the company session is required to open its QR link.');
   assert.match(await printPopup.locator('.foot').innerText(), /nitelikli elektronik imza|qualified electronic signature/i,
     'The print form must explain the legal scope of a drawn signature.');
   const pdfBytes = await printPopup.pdf({ format: 'A4', printBackground: true });
@@ -766,7 +795,19 @@ try {
   const archivedPdfBytes = await archivedPrint.pdf({ format: 'A4' });
   assert.ok(archivedPdfBytes.subarray(0, 5).equals(Buffer.from('%PDF-')) && archivedPdfBytes.length > 1_000,
     'An archived signed document must remain exportable as a non-empty PDF.');
+  assert.equal(await archivedPrint.locator('.handover-document-qr').count(), 1, 'The archived PDF must preserve its QR code.');
   await archivedPrint.close();
+  const emailButton = handoverDialog.locator('#employeeHandoverHistory').getByRole('button', { name: 'E-postayla gönder' });
+  await emailButton.click();
+  const handoverEmailConfirm = page.locator('#employeeActionDialog');
+  await handoverEmailConfirm.waitFor({ state: 'visible' });
+  assert.match(await handoverEmailConfirm.locator('#employeeActionSummary').innerText(), /qa\.employee@example\.test/,
+    'Email confirmation must show the configured recipient before sending.');
+  await handoverEmailConfirm.locator('#employeeActionSubmit').click();
+  await page.locator('#toast').getByText('PDF e-postayla gönderildi.').waitFor();
+  assert.equal(handoverEmailAttempts.length, 1, 'A single explicit confirmation must create one handover email request.');
+  const handoverEmailRequest = requests.find(item => item.method === 'POST' && item.path === `/api/employees/${employeeId}/handover-documents/${handoverDocuments[0].id}/email`);
+  assert.equal(handoverEmailRequest?.csrf, csrfToken, 'Handover PDF email delivery must use CSRF protection.');
   await handoverDialog.getByRole('button', { name: 'Kapat' }).click();
   await handoverDialog.waitFor({ state: 'hidden' });
 
