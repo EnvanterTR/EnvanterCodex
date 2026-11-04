@@ -1,1188 +1,215 @@
 {
-  "schemaVersion": 1,
-  "measuredAt": "2026-11-02T21:03:48Z",
+  "schemaVersion": 2,
+  "measuredAt": "2026-11-04T00:51:13Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "commit": "eb5b93a",
-    "workingTreeHasPreexistingChanges": true
+    "branch": "codex/f2-cloud-seat-limits-20261104",
+    "commit": "1b2a8554923687b052b3b2b293622c8eda285580",
+    "workingTreeCleanAtRun": true
   },
-  "baseline": {
+  "currentVerification": {
     "releaseBuild": {
       "status": "PASS",
       "warnings": 0,
       "errors": 0,
-      "evidence": "Docker SDK container; EnvanterTR.Web.csproj Release build"
-    },
-    "testProjects": 1,
-    "postgresSecurityAcceptance": {
-      "status": "PASS",
-      "passed": 244,
-      "failed": 0,
-      "duration": "40m 12s",
-      "isolatedDatabase": true,
-      "productionWrites": false
-    },
-    "hostedChromiumAcceptance": {
-      "status": "PASS",
-      "exitCode": 0,
-      "fullSuite": true,
-      "productionWrites": false,
-      "testedSidebarDestinations": 53
+      "command": "Docker .NET SDK 10.0: dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+      "measuredCommit": "1b2a8554923687b052b3b2b293622c8eda285580"
     },
     "sourceVerifiers": {
       "status": "PASS",
-      "passed": 83,
+      "passed": 84,
       "failed": 0,
-      "total": 83,
-      "failures": []
+      "total": 84,
+      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972",
+      "note": "The only later commit change before the Release build was docs/HANDOFF.md; application and verifier content is unchanged."
+    },
+    "targetedPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Cloud_company_invites_obey_plan_seat_caps_while_local_caps_remain_enforced",
+        "Platform_plan_catalog_requires_reason_and_audits_pricing_changes_before_publishing"
+      ],
+      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972",
+      "runnerCleanup": "Temporary database container and network removed"
     },
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2240,
-      "pageRoutes": 66,
+      "staticControls": 2253,
+      "pageRoutes": 65,
       "menuGroups": 10,
-      "links": 52,
-      "buttons": 950,
-      "forms": 111,
-      "inputs": 616,
-      "selects": 202,
-      "textareas": 41,
-      "modals": 107,
+      "links": 53,
+      "buttons": 952,
+      "forms": 113,
+      "inputs": 621,
+      "selects": 204,
+      "textareas": 42,
+      "modals": 109,
       "tabs": 5,
-      "tables": 80
+      "tables": 79,
+      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972"
     },
-    "migrationSourceCount": 121,
-    "liveReadOnly": {
-      "apex": "HTTP 200 ready",
-      "firm": "HTTP 200 ready",
-      "publicPlans": 8,
-      "checkout": "unavailable",
-      "applicationReportedMigrations": 122,
-      "sourceLiveMigrationDifference": 1,
-      "checkedBy": "node tools/Check-CoolifyProduction.mjs",
-      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "deploymentHistory": "Coolify latest successful deployment 2026-11-01 08:42 UTC",
-      "liveCommitMigrationCount": 122,
-      "liveCommitLatestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "liveCommitOnlyMigrations": [
-        "20261020174959_AddSubscriptionCoupons",
-        "20261023190000_AddExistingCompanyCheckoutContext",
-        "20261024010000_AddPlatformImpersonationSessions",
-        "20261024212238_AddRecoverableCompanyDeletion",
-        "20261026083058_AddHandoverEmailAttempts"
-      ],
-      "worktreeOnlyMigrations": [
-        "20261101212918_AddCheckoutWebhookReceipts",
-        "20261101214246_AddCompanyPayments",
-        "20261101220912_AddCompanyInvoices",
-        "20261101230628_AddPlatformAnnouncements"
-      ]
+    "gitDiffCheck": {
+      "status": "PASS",
+      "command": "git diff --check"
     },
-    "sourceLineage": {
-      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "mergeBaseWithFeatureHead": "36c5937440229b6105c3c8b5f9e86cafa655e2c0",
-      "originMainMergeBaseWithDeployedSha": "4d55270827be312775ebffe60c5a6d74011d7802",
-      "originMainOnlyCommits": 74,
-      "featureBranchOnlyCommits": 13,
-      "featureBranch": "feat/platform-checkout-readiness-20261020",
-      "worktreeDirty": true,
-      "mergeOrDeployPerformed": false
+    "lastFullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "passed": 297,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "evidenceCommit": "7446037f249487581f3acbe655b05c95ca92b29f",
+      "note": "Broad historical suite; not rerun on current branch. Current WP-034 has a separate 2/2 targeted acceptance result above."
+    }
+  },
+  "historicalBaseline": {
+    "measuredAt": "2026-11-02T21:03:48Z",
+    "source": {
+      "repository": "EnvanterTR/EnvanterCodex",
+      "branch": "feat/platform-checkout-readiness-20261020",
+      "commit": "eb5b93a",
+      "workingTreeHasPreexistingChanges": true
     },
-    "liveDerivedReleaseCandidate": {
+    "results": {
       "releaseBuild": {
-        "errors": 0,
-        "warnings": 0,
-        "status": "PASS"
-      },
-      "postgresSecurityAcceptance": {
-        "failed": 0,
-        "duration": "1.9849 hours",
-        "cleanup": "Compose containers, network, and volume removed",
-        "isolatedDatabase": true,
         "status": "PASS",
-        "productionWrites": false,
-        "passed": 413
+        "warnings": 0,
+        "errors": 0,
+        "evidence": "Docker SDK container; EnvanterTR.Web.csproj Release build"
       },
-      "evidence": "tests/reports/live-derived-candidate-security-20261102.md",
-      "branch": "release/v1-candidate-20261102",
-      "uiInventory": {
-        "forms": 117,
-        "tabs": 5,
-        "links": 58,
-        "textareas": 45,
-        "staticControls": 2304,
-        "inputs": 627,
-        "selects": 206,
-        "buttons": 976,
-        "modals": 110,
-        "pageRoutes": 71,
-        "status": "CURRENT",
-        "tables": 79,
-        "menuGroups": 10
+      "testProjects": 1,
+      "postgresSecurityAcceptance": {
+        "status": "PASS",
+        "passed": 244,
+        "failed": 0,
+        "duration": "40m 12s",
+        "isolatedDatabase": true,
+        "productionWrites": false
       },
       "hostedChromiumAcceptance": {
-        "note": "Full hosted Chromium acceptance runner completed on this candidate; exit code 0; synthetic API fixtures; no production writes.",
         "status": "PASS",
         "exitCode": 0,
         "fullSuite": true,
         "productionWrites": false,
-        "evidence": "tests/reports/live-derived-candidate-hosted-chromium-20261102.md"
+        "testedSidebarDestinations": 53
       },
-      "migrationIdSetMatchesBase": true,
       "sourceVerifiers": {
-        "passed": 85,
+        "status": "PASS",
+        "passed": 83,
         "failed": 0,
-        "total": 85,
-        "status": "PASS"
+        "total": 83,
+        "failures": []
       },
-      "commit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-      "migrationCount": 122,
-      "baseDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "productionDeployment": false
-    }
-  },
-  "catalog": [
-    {
-      "id": "A01",
-      "group": "A",
-      "requirement": "Varlık: oluştur/oku/güncelle/sil, klonla, toplu güncelle, toplu sil, arşivle, iade, zimmet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A02",
-      "group": "A",
-      "requirement": "Model: marka + model + kategori + üretici + model no + ömür sonu (EOL)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A03",
-      "group": "A",
-      "requirement": "Durum etiketi: Dağıtılabilir / Dağıtımda / Arşivlendi / Arızalı (renk kodlu)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: durum etiketi düzenleme/renk, geçiş matrisi, arşiv sınırı ve yenilenen seçiciler PASS."
-    },
-    {
-      "id": "A04",
-      "group": "A",
-      "requirement": "Kategori, üretici, tedarikçi, departman, lokasyon, grup",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A05",
-      "group": "A",
-      "requirement": "Değer, satın alma, garanti, sigorta, amortisman (%)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A06",
-      "group": "A",
-      "requirement": "Dinamik özel alanlar: metin, açılır liste, onay kutusu, tarih",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A07",
-      "group": "A",
-      "requirement": "Varlık fotoğrafı, dosya eki",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A08",
-      "group": "A",
-      "requirement": "Varlık geçmişi (zaman çizelgesi)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: varlık geçmişi not kaydı ve timeline yenilemesi PASS."
-    },
-    {
-      "id": "B01",
-      "group": "B",
-      "requirement": "Giriş/çıkış (checkin/checkout): kullanıcıya, lokasyona, varlığa",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B02",
-      "group": "B",
-      "requirement": "Zimmet zaman çizelgesi; kimde ne kadar kaldı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B03",
-      "group": "B",
-      "requirement": "Toplu zimmet / toplu iade",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: çoklu atama ve iade akışları PASS; kapsamın tamamı tekil doğrulanmadı."
-    },
-    {
-      "id": "B04",
-      "group": "B",
-      "requirement": "Zimmet formu: PDF + dijital imza + e-posta + QR",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B05",
-      "group": "B",
-      "requirement": "Bekleyen talepler; rezervasyon (gelecek tarihli)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: gelecek tarihli rezervasyon oluşturma/onay/ret/iptal PASS."
-    },
-    {
-      "id": "C01",
-      "group": "C",
-      "requirement": "Ad, koltuk, kalan, bitiş, anahtar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C02",
-      "group": "C",
-      "requirement": "Koltuk atama / geri alma",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: lisans tekli/toplu atama, iptal ve EULA akışları PASS."
-    },
-    {
-      "id": "C03",
-      "group": "C",
-      "requirement": "Lisans dosyası yükleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C04",
-      "group": "C",
-      "requirement": "Süre yaklaşan uyarılar (30/15/7/3/1 gün)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C05",
-      "group": "C",
-      "requirement": "Maliyet takibi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D01",
-      "group": "D",
-      "requirement": "Aksesuar (klavye, mouse, kablo): zimmetlenir",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D02",
-      "group": "D",
-      "requirement": "Sarf (toner, pil, kağıt): tükenir, minimum stok",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D03",
-      "group": "D",
-      "requirement": "Bileşen (RAM, SSD): varlığa takılır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D04",
-      "group": "D",
-      "requirement": "Kit: laptop + çanta + mouse = hazır set",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D05",
-      "group": "D",
-      "requirement": "Hepsi: ekle/düzenle/sil + zimmet + stok + minimum stok uyarısı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E01",
-      "group": "E",
-      "requirement": "Arıza, bakım, onarım: tip + başlangıç + bitiş + maliyet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E02",
-      "group": "E",
-      "requirement": "Fiziksel sayım (audit); son/gelecek denetim",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E03",
-      "group": "E",
-      "requirement": "Bakım geçmişi, dosya eki",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F01",
-      "group": "F",
-      "requirement": "Ekle/düzenle/sil, profil fotoğrafı, departman, lokasyon, yönetici",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F02",
-      "group": "F",
-      "requirement": "Toplu içe aktarma (CSV)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F03",
-      "group": "F",
-      "requirement": "Devre dışı bırakınca otomatik iade",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F04",
-      "group": "F",
-      "requirement": "Roller: Süper Admin, Şirket Yöneticisi, Editör, Okuyucu, Sınırlı, Muhasebe",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G01",
-      "group": "G",
-      "requirement": "Dosya yükleme (varlık, kullanıcı, lisans)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G02",
-      "group": "G",
-      "requirement": "Etkinlik günlüğü (audit)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G03",
-      "group": "G",
-      "requirement": "Raporlar: varlık, lisans, aksesuar, bakım, denetim, maliyet, zimmet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G04",
-      "group": "G",
-      "requirement": "İçe/dışa aktarma (Excel/CSV)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G05",
-      "group": "G",
-      "requirement": "LDAP / AD / SAML / SSO / Google OAuth (2FA ayrıca H10'da)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G06",
-      "group": "G",
-      "requirement": "REST API + API anahtarı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G07",
-      "group": "G",
-      "requirement": "Ayarlar: logo, para birimi, tarih, barkod",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G08",
-      "group": "G",
-      "requirement": "Bildirimler (e-posta)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G09",
-      "group": "G",
-      "requirement": "Yedekleme (SQL + Excel/CSV/JSON)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H01",
-      "group": "H",
-      "requirement": "Gerçek çok kiracılık + mimari düzeyde kiracılar arası sızıntı engeli",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H02",
-      "group": "H",
-      "requirement": "Sınırsız şirket + paket bazlı kullanıcı (0–200 / 200–500 / 500+)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H03",
-      "group": "H",
-      "requirement": "Whitelabel (logo, renk, favicon)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H04",
-      "group": "H",
-      "requirement": "Modern tek sayfa deneyimi, sağ tık menüsü, Ctrl+K komut paleti, kısayollar, hover kart",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: Ctrl+K ve tüm 53 yan menü hedefi PASS; hover/sağ tık/kısayol kapsamı tam değil."
-    },
-    {
-      "id": "H05",
-      "group": "H",
-      "requirement": "Barkod/QR/kamera (kamera ile okuma, USB okuyucu, etiket tasarımı)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: gerçek QR/Code128 video kare çözümü ve kamera hata durumları PASS."
-    },
-    {
-      "id": "H06",
-      "group": "H",
-      "requirement": "Dijital imza + anında PDF rapor",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H07",
-      "group": "H",
-      "requirement": "Tek tıkla tam sistem yedeği (SQL, Excel, CSV, JSON)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H08",
-      "group": "H",
-      "requirement": "Iyzico abonelik + webhook + anında şirket kurulumu (KİLİTLİ, F14)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H09",
-      "group": "H",
-      "requirement": "Canlı dashboard grafikleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H10",
-      "group": "H",
-      "requirement": "2FA (TOTP), KVKK uyumu için teknik kontrol listesi, otomatik yedekleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H11",
-      "group": "H",
-      "requirement": "Optimistik arayüz; saten parlak modern tasarım; koyu/açık tema",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H12",
-      "group": "H",
-      "requirement": "5 dil: Türkçe (ana dil), İngilizce, Makedonca, Rusça, Ukraynaca (teknik terimler İngilizce kalabilir)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I01",
-      "group": "I",
-      "requirement": "2FA zorunlu (Google/Microsoft Authenticator); IP beyaz liste (opsiyonel); ayrıntılı oturum kayıtları (IP, cihaz, tarayıcı, konum); 5 hatalı denemede 5 dakika kilit; kritik işlemlerde MFA yeniden doğrulama; oturum 8 saat (beni hatırla 30 gün)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I02",
-      "group": "I",
-      "requirement": "toplam şirket (aktif+pasif+demo), aylık gelir (MRR ₺), yeni kayıtlar, 7 gün içinde bitecek abonelikler, başarısız ödemeler (acil), aktif kullanıcı sayısı, sistem sağlığı (CPU/RAM/Disk/DB), bugünkü girişler",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I03",
-      "group": "I",
-      "requirement": "12 aylık gelir trendi (çizgi), şirket büyümesi (çubuk), plan dağılımı (pasta), en çok kullanılan modül (bar), coğrafi dağılım (harita)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I04",
-      "group": "I",
-      "requirement": "son 10 kayıt, son 10 ödeme, yaklaşan yenilemeler",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I05",
-      "group": "I",
-      "requirement": "ödemesi 3+ gün gecikmiş (kırmızı), lisansı 7 gün içinde bitecek (turuncu), bugün kayıt olup işlem yapmayan (mavi), kapasite limitine yaklaşan (sarı)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I06",
-      "group": "I",
-      "requirement": "kolonlar (logo, firma, subdomain, plan, kullanıcı sayısı, durum, kayıt tarihi, aylık ücret, bitiş tarihi); arama, filtre (plan/durum/tarih), sıralama, sayfalama (50/100/250), toplu işlem (askıya al/sil/duyuru/plan değiştir), CSV/Excel dışa aktarma",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I07",
-      "group": "I",
-      "requirement": "(1) Genel: künye, subdomain, logo, plan, yetkili, vergi, MRR, LTV; (2) Kullanıcılar: liste, şifre sıfırla, rol değiştir, devre dışı, sil; (3) Abonelik: plan, aylık ücret, sonraki ödeme, geçmiş (PDF), manuel fatura, uzat (1/3/12 ay bedava), plan değiştir, askıya al, aktifleştir, iptal, iade; (4) Kullanım: varlık, kullanıcı, lisans, disk, API, kapasite (%); (5) İletişim: mesaj, bildirim, geçmiş; (6) Log: giriş/çıkış, API, kritik işlem; (7) Tehlikeli: sil (30 gün geri alınabilir), sıfırla, tüm verileri indir",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I08",
-      "group": "I",
-      "requirement": "\"Panele Gir\" düğmesi; parolasız giriş; sarı banner (\"ABC Ltd. paneline taklit modunda giriş – Çıkış\"); Süper Admin adına log; çıkışta süper admin paneline dönüş; müşteriye bildirim gitmez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I09",
-      "group": "I",
-      "requirement": "4 düzenlenebilir plan, fiyat geçmişi, karşılaştırma önizlemesi, kuponlar (yüzde/sabit/ilk ay bedava), ekstra kaynak (disk, kullanıcı, premium modül)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I10",
-      "group": "I",
-      "requirement": "aktif abonelikler; Iyzico ödeme takipleri; başarısız ödeme için 1/3/7. gün yeniden deneme; fatura üretimi; KDV raporu; demo hesap yönetimi (14→30 gün uzatma, sıfırlama) (ödemeye bağlı kısımlar KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I11",
-      "group": "I",
-      "requirement": "toplu/hedefli mesaj (e-posta/uygulama/SMS), çok dilli şablonlar (hoş geldin, ödeme, bakım), üst banner duyuruları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I12",
-      "group": "I",
-      "requirement": "tüm şirketlerdeki kullanıcılar, parola sıfırlama zorunluluğu, oturum sonlandırma, ücretsiz özel kullanıcı rozetleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I13",
-      "group": "I",
-      "requirement": "gerçek zamanlı sağlık (CPU/RAM/Disk/Ağ); servis durumları (uygulama, Postgres, proxy, Cloudflare, Iyzico, Google); günlük/haftalık otomatik yedek; 30 günlük yedek geçmişi; yedek indir/geri yükle; ayrıntılı sistem logları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I14",
-      "group": "I",
-      "requirement": "gelir (12 aylık, net, KDV); müşteri (churn oranı, ARPU); sistem kullanım yoğunluğu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I15",
-      "group": "I",
-      "requirement": "genel site; Iyzico API (sandbox/canlı); SMTP e-posta; güvenlik (MFA, kaba kuvvet koruması); entegrasyonlar (Google, Cloudflare, Slack, Webhook, SMS)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I16",
-      "group": "I",
-      "requirement": "sol kenar çubuğu `#0A0A0F` koyu lacivert; Inter yazı tipi; saten parlak kartlar; 300 ms cubic-bezier geçişler; menü: Dashboard, Şirketler, Kullanıcılar, Abonelikler, Faturalar, Planlar, Kuponlar, Demo, Duyurular, Loglar, Raporlar, Sistem, Yedekleme, Ayarlar, Çıkış; üst çubuk: arama (Ctrl+K), hızlı işlem, bildirim, profil, tema; kısayollar: Ctrl+K, G+D/S/U, N+C/U, Esc",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J01",
-      "group": "J",
-      "requirement": "Dashboard: varlık/zimmet/lisans/bakım özeti",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J02",
-      "group": "J",
-      "requirement": "Varlık oluşturma/düzenleme/silme, transfer",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J03",
-      "group": "J",
-      "requirement": "Lisans, aksesuar, sarf yönetimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J04",
-      "group": "J",
-      "requirement": "Bakım ve sayım modülleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J05",
-      "group": "J",
-      "requirement": "Paket limitleri içinde kullanıcı/rol yönetimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J06",
-      "group": "J",
-      "requirement": "Departman ve lokasyon tanımları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J07",
-      "group": "J",
-      "requirement": "Şirket içi özel raporlar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J08",
-      "group": "J",
-      "requirement": "Excel/CSV dışa aktarma",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J09",
-      "group": "J",
-      "requirement": "Whitelabel ayarları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J10",
-      "group": "J",
-      "requirement": "Veri yedeği indirme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J11",
-      "group": "J",
-      "requirement": "firma yöneticileri başka şirketin verisini, süper admin panelini ve sistem geneli fiyat/plan yönetim ekranlarını ASLA göremez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K01",
-      "group": "K",
-      "requirement": "Hero: ürün tanıtımı + 2 dakikalık video",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K02",
-      "group": "K",
-      "requirement": "9+ modül özellik kartı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K03",
-      "group": "K",
-      "requirement": "Fiyatlandırma tablosu: 4 plan karşılaştırması (ödeme açılana kadar \"Demo iste/Ön kayıt\", çalışmayan \"Satın al\" düğmesi YOK)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K04",
-      "group": "K",
-      "requirement": "Çözüm segmentleri: KOBİ / orta / kurumsal",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K05",
-      "group": "K",
-      "requirement": "Kaynaklar: dokümantasyon, video, SSS",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K06",
-      "group": "K",
-      "requirement": "İletişim: `admin@envantertr.com` + WhatsApp (wa.me)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K07",
-      "group": "K",
-      "requirement": "5 dil, koyu/açık tema, tam mobil uyum",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K08",
-      "group": "K",
-      "requirement": "Formlarda aydınlatma metni linki; pazarlama e-postası için önceden onay",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L01",
-      "group": "L",
-      "requirement": "Kayıt formu: firma, subdomain, e-posta, parola, yetkili",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L02",
-      "group": "L",
-      "requirement": "Subdomain canlı kontrol",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L03",
-      "group": "L",
-      "requirement": "E-posta doğrulama",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L04",
-      "group": "L",
-      "requirement": "Plan seçimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L05",
-      "group": "L",
-      "requirement": "Iyzico güvenli ödeme (KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L06",
-      "group": "L",
-      "requirement": "Webhook → otomatik şirket kurulumu (KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L07",
-      "group": "L",
-      "requirement": "Karşılama + 5 adımlı onboarding: (1) firma bilgileri, (2) logo + renk, (3) ilk toplu veri aktarımı, (4) kullanıcı davetleri, (5) ilk varlık kaydı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L08",
-      "group": "L",
-      "requirement": "Ödeme açılana kadar: platform yöneticisi manuel aktivasyon (ücretsiz pilot; para tahsilatı yok)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M01",
-      "group": "M",
-      "requirement": "Her kiracı tablosunda zorunlu kiracı anahtarı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M02",
-      "group": "M",
-      "requirement": "Kiracılar arası veri sızıntısı İMKANSIZ: otomatik testle kanıtlanır",
-      "status": "KISMEN",
-      "evidence": "İzole PostgreSQL/security kabul: 244/244 PASS; bu, tüm endpoint ve her hostile-ID sınıfı için canlı kabul değildir."
-    },
-    {
-      "id": "M03",
-      "group": "M",
-      "requirement": "Ara katman alt alan adından kiracıyı çözer",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M04",
-      "group": "M",
-      "requirement": "Tüm sorgulara kiracı filtresi otomatik uygulanır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M05",
-      "group": "M",
-      "requirement": "Oturum + kiracı bağlamı birlikte doğrulanır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M06",
-      "group": "M",
-      "requirement": "Önbellek/kuyruk/dosya depolama anahtarları kiracı önekli",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M07",
-      "group": "M",
-      "requirement": "Sızıntı testleri her yayında otomatik koşar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M08",
-      "group": "M",
-      "requirement": "Mevcut altyapıyı koru: sadece EKLE/DÜZELT; silmek için gerekçe + veri taşıma planı + risk analizi + sahibin onayı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M09",
-      "group": "M",
-      "requirement": "Wildcard yönlendirme: `^[a-z0-9-]+\\.envantertr\\.com$` (mevcut Coolify/proxy kurulumuyla uyumlu)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N01",
-      "group": "N",
-      "requirement": "Bulut SaaS (V1 kapsamı, öncelik)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N02",
-      "group": "N",
-      "requirement": "Yerel Windows EXE",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N03",
-      "group": "N",
-      "requirement": "Windows Server kurulumu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N04",
-      "group": "N",
-      "requirement": "Linux kurulumu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N05",
-      "group": "N",
-      "requirement": "Mobil iOS/Android",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O01",
-      "group": "O",
-      "requirement": "Her API'de yetki + kiracı kontrolü",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O02",
-      "group": "O",
-      "requirement": "Oturum + yenileme, CSRF, hız sınırı",
-      "status": "KISMEN",
-      "evidence": "İzole PostgreSQL/security ve hosted Chromium oturum/CSRF/MFA akışları PASS; tam güvenlik matrisi henüz eşlenmedi."
-    },
-    {
-      "id": "O03",
-      "group": "O",
-      "requirement": "Girdi doğrulama/temizleme (XSS, SQL enjeksiyonu)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O04",
-      "group": "O",
-      "requirement": "CSP başlığı, zorunlu HTTPS",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O05",
-      "group": "O",
-      "requirement": "Güçlü parola özeti (mevcut mekanizma korunur, maliyet ayarı güvenli düzeyde)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O06",
-      "group": "O",
-      "requirement": "Sırlar yalnızca ortam değişkeninde; `.env` depoya girmez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O07",
-      "group": "O",
-      "requirement": "KVKK teknik kontrol listesi ve güncel mevzuat izleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "P01",
-      "group": "P",
-      "requirement": "Önceden kanıtlı iddia edilen platform, lisans, CRM, güvenlik, Docker ve login teşhis modüllerinin korunup yeniden doğrulanması",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: listedeki her modül için ayrı kabul eşlemesi henüz yok."
-    },
-    {
-      "id": "Q01",
-      "group": "Q",
-      "requirement": "Önceden kısmen tamam denilen tüm SaaS, tenant, modül, UI, güvenlik, CI, kurulum ve dokümantasyon kapsamı",
-      "status": "KISMEN",
-      "evidence": "Geniş kapsamın parçaları bu oturumda test edildi; 244/244 PostgreSQL/security ve tam hosted Chromium paketi PASS. Ancak Q maddelerinin her biri tekil kanıtla eşleştirilmedi."
-    }
-  ],
-  "liveBackup": {
-    "status": "LOCALLY_HASHED_AND_RESTORED",
-    "coolifyTask": "EnvanterTR daily consistent PostgreSQL backup",
-    "taskId": "irsodh1rfb6jx4n6fzin63sn",
-    "executedAtUtc": "2026-11-02T12:21:17Z",
-    "durationSeconds": 5,
-    "result": "Success",
-    "sanitizedOutput": "DAILY_SQL_BACKUP_OK",
-    "archiveSizeDisplayed": "453.55 KB",
-    "archiveName": "daily-20261102T122121Z.dump",
-    "archivePermissions": "600",
-    "sha256Manifest": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-    "sha256RecomputedLocally": true,
-    "pgRestoreListValidatedByTask": true,
-    "independentRestore": true,
-    "isolatedClone": true,
-    "productionDatabaseWrites": false,
-    "note": "Archive downloaded only to the authorized isolated-rehearsal workflow; local SHA-256 matched the Coolify manifest. pg_restore --list and restore into the isolated clone passed. Production DB was not written.",
-    "productionDataTransferred": true
-  },
-  "isolatedRestoreTarget": {
-    "status": "REAL_ARCHIVE_RESTORED_AND_MIGRATION_ROLLBACK_REHEARSED",
-    "container": "envantertr-f1-restore-20261102",
-    "image": "postgres:17-alpine",
-    "networkMode": "none",
-    "publishedPorts": [],
-    "persistentVolumes": [],
-    "dataStorage": "temporary tmpfs",
-    "database": "envantertr_restorecheck",
-    "publicTableCount": 96,
-    "readyCheck": "pg_isready PASS",
-    "productionDataTransferred": true,
-    "migrationRows": 122,
-    "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-    "companyCount": 3,
-    "assetCount": 1
-  },
-  "restoredBackupMigrationHistoryComparison": {
-    "measuredAtUtc": "2026-11-02T21:15:43Z",
-    "source": "envantertr-f1-restore-20261102 / envantertr_restorecheck / public.__EFMigrationsHistory",
-    "target": "clean release candidate source migration IDs",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "candidateLiveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-    "comparison": "exact sorted ID set equality",
-    "status": "PASS",
-    "backupMigrationIds": 122,
-    "sourceMigrationIds": 122,
-    "onlyBackup": [],
-    "onlySource": [],
-    "productionWrites": false
-  },
-  "currentFeatureBranchReleaseBuild": {
-    "measuredAtUtc": "2026-11-02T21:23:09Z",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
-    "worktreeChangesIncluded": true,
-    "command": "C:\\Users\\Lenovo\\.dotnet\\dotnet.exe build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
-    "status": "PASS",
-    "exitCode": 0,
-    "warnings": 0,
-    "errors": 0,
-    "elapsed": "00:02:56.38",
-    "ciOrAcceptanceImplied": false,
-    "productionWrites": false
-  },
-  "currentFeatureBranchEfSnapshotCheck": {
-    "measuredAtUtc": "2026-11-02T21:28:03Z",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
-    "worktreeChangesIncluded": true,
-    "command": "dotnet ef migrations has-pending-model-changes --project src/EnvanterTR.Web/EnvanterTR.Web.csproj --startup-project src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
-    "status": "PASS",
-    "result": "No changes have been made to the model since the last migration.",
-    "databaseConnected": false,
-    "migrationExecuted": false,
-    "liveMigrationSetParityProven": false
-  },
-  "localRestoreRunner": {
-    "status": "SYNTHETIC_E2E_PASS",
-    "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
-    "purpose": "Verify manifest SHA-256, enforce an isolated local PostgreSQL target, and restore without writing to production.",
-    "powerShellParse": "PASS",
-    "productionBackupUsed": false,
-    "restoreCompleted": true,
-    "syntheticFixtureCounts": {
-      "publicTables": 3,
-      "migrationRows": 1,
-      "companies": 1,
-      "assets": 1
-    },
-    "argumentPassingBugFoundAndFixed": true,
-    "realArchiveRestore": {
-      "status": "PASS",
-      "archiveName": "daily-20261102T122121Z.dump",
-      "archiveBytes": 464439,
-      "localSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-      "manifestMatch": true,
-      "pgRestoreList": "PASS",
-      "publicTables": 96,
-      "migrationRows": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "companies": 3,
-      "assets": 1,
-      "productionWrites": false
-    }
-  },
-  "currentReleaseMigrationAcceptance": {
-    "measuredAtUtc": "2026-11-02T13:40:38Z",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "command": "deploy/testing/run-current-release-migration-acceptance.ps1",
-    "test": "Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently",
-    "status": "PASS",
-    "passed": 1,
-    "failed": 0,
-    "durationSeconds": 52.7033,
-    "isolatedSyntheticDatabase": true,
-    "temporaryComposeResourcesRemoved": true,
-    "productionDataTransferred": false,
-    "productionWrites": false
-  },
-  "migrationRehearsalHarness": {
-    "measuredAtUtc": "2026-11-02T21:03:48Z",
-    "file": "deploy/coolify/rehearse-migrations.sh",
-    "status": "REAL_BACKUP_NO_PENDING_MIGRATION_AND_ROLLBACK_PASS",
-    "syntheticBaseline": {
-      "migrationCount": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "companies": 1,
-      "assets": 1
-    },
-    "syntheticCandidate": {
-      "migrationCount": 123,
-      "latestMigration": "20261102000000_F1SyntheticProof"
-    },
-    "firstApply": "PASS",
-    "repeatApplyIdempotency": "PASS",
-    "existingTableRowCountsPreserved": true,
-    "rollbackCloneMatchesUntouchedBaseline": true,
-    "temporaryCandidateAndRollbackDatabasesCleaned": true,
-    "restoredBaseDatabaseRetained": true,
-    "productionArchiveUsed": false,
-    "productionWrites": false,
-    "firstRunCleanupDefectFoundAndFixed": true,
-    "realBackup": {
-      "archiveSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-      "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-      "candidateMigrationCount": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "pendingMigrations": 0,
-      "candidateSql": "latest-to-latest 3-byte no-op",
-      "candidateSqlSha256": "F1945CD6C19E56B3C1C78943EF5EC18116907A4CA1EFC40A57D48AB1DB7ADFC5",
-      "firstApply": "PASS",
-      "repeatApplyIdempotency": "PASS",
-      "existingPublicTableRowCountsPreserved": true,
-      "rollbackCloneMatchesRestoredBaseline": true,
-      "restoredBaselineRetained": true,
-      "temporaryCandidateAndRollbackDatabasesCleaned": true,
-      "productionWrites": false
-    }
-  },
-  "knownLimitations": [
-    "Iyzico/real payment remains locked: owner has no Iyzico merchant account and goal requires legal company confirmation.",
-    "Live deploy and live DB migration were not performed. The authorized Coolify archive SHA-256 was recomputed locally and matched; real archive restore and current-candidate no-pending migration/rollback rehearsal passed in an isolated network-none PostgreSQL clone. Real tenant acceptance was not performed in this run.",
-    "F1 feature-branch migration parity is unresolved: live/candidate have 122 EF migration IDs; dirty feature has 121, with five live IDs absent and four Nov 1 IDs not deployed. Static source search also found no SubscriptionCoupon, EmployeeHandoverEmailAttempt, or PlatformImpersonationSession model references in the feature worktree; the drift includes application model/source, not only migration files. Exact IDs are recorded in migrationParity; no migration was run or copied blindly.",
-    "Full-history EF idempotent SQL generation failed at already-applied migration 20261010215527_AddAssetModelNumbersAndDefaultLocation because raw SQL statements omit semicolons inside generated DO blocks. The applied migration was not edited; current candidate has no pending migrations. Feature-branch migration/model parity remains unresolved."
-  ],
-  "migrationParity": {
-    "measuredAtUtc": "2026-11-02T13:16:07Z",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "liveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-    "candidateMigrationIdCount": 122,
-    "featureMigrationIdCount": 121,
-    "candidateMatchesLive": true,
-    "liveIdsMissingFromFeature": [
-      "20261020174959_AddSubscriptionCoupons",
-      "20261023190000_AddExistingCompanyCheckoutContext",
-      "20261024010000_AddPlatformImpersonationSessions",
-      "20261024212238_AddRecoverableCompanyDeletion",
-      "20261026083058_AddHandoverEmailAttempts"
-    ],
-    "featureOnlyMigrationIds": [
-      "20261101212918_AddCheckoutWebhookReceipts",
-      "20261101214246_AddCompanyPayments",
-      "20261101220912_AddCompanyInvoices",
-      "20261101230628_AddPlatformAnnouncements"
-    ],
-    "liveMigrationOrProductionChanges": false,
-    "featureSourceDrift": {
-      "type": "STATIC_SEARCH",
-      "featureWorktreeContainsReferences": {
-        "SubscriptionCoupon": false,
-        "EmployeeHandoverEmailAttempt": false,
-        "PlatformImpersonationSession": false
+      "uiInventory": {
+        "status": "CURRENT",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2240,
+        "pageRoutes": 66,
+        "menuGroups": 10,
+        "links": 52,
+        "buttons": 950,
+        "forms": 111,
+        "inputs": 616,
+        "selects": 202,
+        "textareas": 41,
+        "modals": 107,
+        "tabs": 5,
+        "tables": 80
       },
-      "meaning": "The five missing live migration IDs are not only absent migration files; at least three feature model/source changes are also absent. Do not copy migration files alone.",
-      "executedDatabaseChanges": false
+      "migrationSourceCount": 121,
+      "liveReadOnly": {
+        "apex": "HTTP 200 ready",
+        "firm": "HTTP 200 ready",
+        "publicPlans": 8,
+        "checkout": "unavailable",
+        "applicationReportedMigrations": 122,
+        "sourceLiveMigrationDifference": 1,
+        "checkedBy": "node tools/Check-CoolifyProduction.mjs",
+        "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "deploymentHistory": "Coolify latest successful deployment 2026-11-01 08:42 UTC",
+        "liveCommitMigrationCount": 122,
+        "liveCommitLatestMigration": "20261026083058_AddHandoverEmailAttempts",
+        "liveCommitOnlyMigrations": [
+          "20261020174959_AddSubscriptionCoupons",
+          "20261023190000_AddExistingCompanyCheckoutContext",
+          "20261024010000_AddPlatformImpersonationSessions",
+          "20261024212238_AddRecoverableCompanyDeletion",
+          "20261026083058_AddHandoverEmailAttempts"
+        ],
+        "worktreeOnlyMigrations": [
+          "20261101212918_AddCheckoutWebhookReceipts",
+          "20261101214246_AddCompanyPayments",
+          "20261101220912_AddCompanyInvoices",
+          "20261101230628_AddPlatformAnnouncements"
+        ]
+      },
+      "sourceLineage": {
+        "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "mergeBaseWithFeatureHead": "36c5937440229b6105c3c8b5f9e86cafa655e2c0",
+        "originMainMergeBaseWithDeployedSha": "4d55270827be312775ebffe60c5a6d74011d7802",
+        "originMainOnlyCommits": 74,
+        "featureBranchOnlyCommits": 13,
+        "featureBranch": "feat/platform-checkout-readiness-20261020",
+        "worktreeDirty": true,
+        "mergeOrDeployPerformed": false
+      },
+      "liveDerivedReleaseCandidate": {
+        "releaseBuild": {
+          "errors": 0,
+          "warnings": 0,
+          "status": "PASS"
+        },
+        "postgresSecurityAcceptance": {
+          "failed": 0,
+          "duration": "1.9849 hours",
+          "cleanup": "Compose containers, network, and volume removed",
+          "isolatedDatabase": true,
+          "status": "PASS",
+          "productionWrites": false,
+          "passed": 413
+        },
+        "evidence": "tests/reports/live-derived-candidate-security-20261102.md",
+        "branch": "release/v1-candidate-20261102",
+        "uiInventory": {
+          "forms": 117,
+          "tabs": 5,
+          "links": 58,
+          "textareas": 45,
+          "staticControls": 2304,
+          "inputs": 627,
+          "selects": 206,
+          "buttons": 976,
+          "modals": 110,
+          "pageRoutes": 71,
+          "status": "CURRENT",
+          "tables": 79,
+          "menuGroups": 10
+        },
+        "hostedChromiumAcceptance": {
+          "note": "Full hosted Chromium acceptance runner completed on this candidate; exit code 0; synthetic API fixtures; no production writes.",
+          "status": "PASS",
+          "exitCode": 0,
+          "fullSuite": true,
+          "productionWrites": false,
+          "evidence": "tests/reports/live-derived-candidate-hosted-chromium-20261102.md"
+        },
+        "migrationIdSetMatchesBase": true,
+        "sourceVerifiers": {
+          "passed": 85,
+          "failed": 0,
+          "total": 85,
+          "status": "PASS"
+        },
+        "commit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+        "migrationCount": 122,
+        "baseDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "productionDeployment": false
+      }
     }
-  },
-  "featureMigrationReview": {
-    "type": "SOURCE_ONLY_STATIC_REVIEW",
-    "reviewedMigrationIds": [
-      "20261101212918_AddCheckoutWebhookReceipts",
-      "20261101214246_AddCompanyPayments",
-      "20261101220912_AddCompanyInvoices",
-      "20261101230628_AddPlatformAnnouncements"
-    ],
-    "upOperations": "All four create new tables/indexes and foreign keys; no destructive Up operation found by source inspection.",
-    "dependencies": [
-      "CheckoutWebhookReceipts -> Companies, CompanyCheckoutOrders",
-      "CompanyPayments -> Companies, CompanyCheckoutOrders",
-      "CompanyInvoices -> Companies, CompanyPayments, AspNetUsers",
-      "PlatformAnnouncements -> Companies, AspNetUsers"
-    ],
-    "downOrder": [
-      "AddPlatformAnnouncements",
-      "AddCompanyInvoices",
-      "AddCompanyPayments",
-      "AddCheckoutWebhookReceipts"
-    ],
-    "caveat": "Down methods drop these tables; this is not a DB execution test or production authorization. Payment-related schema remains behind locked F14."
   }
 }
