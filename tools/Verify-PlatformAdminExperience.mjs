@@ -76,8 +76,8 @@ assert.match(api, /var activeAssetCount = await db\.Assets[\s\S]*?var employeeCo
   'Company detail usage must be derived from tenant-scoped live records and active plan limits.');
 assert.match(page, /id="companyUsagePanel"[\s\S]*?Kullanım ve plan sınırları[\s\S]*?Kayıtlı ek dosya[\s\S]*?storageNote/,
   'Company details must show resource usage and disclose the limits of recorded attachment storage.');
-assert.match(browserAcceptance, /companyUsagePanel[\s\S]*?usagePanel\.innerText\(\)[\s\S]*?Sınırsız[\s\S]*?şirket logoları ve medya dizinindeki dosyalar dahil değildir/i,
-  'Hosted Chromium must verify plan limits, unlimited cloud users, attachment bytes and storage exclusions in company details.');
+assert.match(browserAcceptance, /companyUsagePanel[\s\S]*?usagePanel\.innerText\(\)[\s\S]*?Cloud login-user usage must be reported against the configured plan cap[\s\S]*?The usage view must show bytes recorded for attachments[\s\S]*?The usage view must explain what recorded attachment storage excludes/i,
+  'Hosted Chromium must verify the configured login-user cap, recorded attachment bytes and storage exclusions in company details.');
 assert.match(acceptance, /Platform_company_member_details_are_pageable_beyond_one_hundred_and_include_account_state[\s\S]*?activeApiTokens[\s\S]*?recordedAttachmentBytes/,
   'The isolated PostgreSQL company-detail acceptance must verify usage counts, plan limits and tenant-scoped recorded file sizes.');
 assert.match(api, /MapPost\("\/members\/\{userId:guid\}\/security-actions"[\s\S]*?request\.LockoutDays[\s\S]*?otherUnlockedPlatformAdmins[\s\S]*?SetLockoutEndDateAsync[\s\S]*?RevokedAt[\s\S]*?GeneratePasswordResetTokenAsync[\s\S]*?SendPasswordResetEmailAsync[\s\S]*?MemberSecurityAction/,
