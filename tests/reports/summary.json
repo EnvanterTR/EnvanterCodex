@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T04:20:29Z",
+  "measuredAt": "2026-11-04T04:24:29Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "bdf209c29a25495ec7d534ba96da23afa1648b03",
+    "commit": "e4c1eb7",
     "workingTreeCleanAtRun": false,
     "workingTreeChangesAtMeasurement": [
       "docs/LEDGER.md"
@@ -160,6 +160,40 @@
         "Public Cloud pricing loading/empty/error states, five locales, tenant slug suggestions"
       ],
       "note": "The browser acceptance uses synthetic API fixtures. It does not prove production company acceptance or database persistence."
+    },
+    "liveReadOnlyCheck": {
+      "status": "PARTIAL_PASS",
+      "observedAt": "2026-11-04T04:24:29Z",
+      "command": "node tools/Check-CoolifyProduction.mjs",
+      "productionWrites": false,
+      "requests": "HTTPS GET only",
+      "endpoints": {
+        "https://envantertr.com/api/status": {
+          "httpStatus": 200,
+          "appStatus": "ready",
+          "migrationCount": 122,
+          "pendingMigrationCount": 0
+        },
+        "https://firma.envantertr.com/api/status": {
+          "httpStatus": 200,
+          "appStatus": "ready",
+          "migrationCount": 122,
+          "pendingMigrationCount": 0
+        },
+        "https://envantertr.com/api/plans": {
+          "httpStatus": 200,
+          "publicPlanCount": 8
+        },
+        "https://envantertr.com/api/checkout/status": {
+          "httpStatus": 200,
+          "checkoutAvailable": false
+        }
+      },
+      "sourceMigrationCount": 122,
+      "migrationIdentityParity": "NOT_CHECKED",
+      "deployedSha": "NOT_EXPOSED_BY_CHECK",
+      "overallReadiness": "NOT_READY_CHECKOUT_UNAVAILABLE",
+      "note": "Health and schema-count checks are ready. Checkout remains unavailable under locked F14; matching migration counts alone do not prove migration-ID parity or the deployed SHA."
     }
   },
   "historicalBaseline": {
