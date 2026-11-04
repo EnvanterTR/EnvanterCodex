@@ -8554,6 +8554,76 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        await SetCompanyRoleAsync("viewer");
+        using (var viewerArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerArchive.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var activeArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, activeArchive.StatusCode);
+        using (var crossTenantArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_otherCompanyEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantArchive.StatusCode);
+
+        using (var deactivated = await SendAsRoleAsync(HttpMethod.Patch, $"/api/employees/{_ownEmployeeId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        using var archived = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, archived.StatusCode);
+        using var archivedPayload = JsonDocument.Parse(await archived.Content.ReadAsStringAsync());
+        Assert.True(archivedPayload.RootElement.GetProperty("isArchived").GetBoolean());
+
+        using (var defaultList = await SendAsAdminAsync("/api/employees?active=false"))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaultList.StatusCode);
+            using var payload = JsonDocument.Parse(await defaultList.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.GetProperty("items").EnumerateArray(),
+                item => item.GetProperty("id").GetGuid() == _ownEmployeeId);
+        }
+        using (var archivedList = await SendAsAdminAsync("/api/employees?active=false&includeArchived=true"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archivedList.StatusCode);
+            using var payload = JsonDocument.Parse(await archivedList.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(),
+                row => row.GetProperty("id").GetGuid() == _ownEmployeeId);
+            Assert.True(item.GetProperty("isArchived").GetBoolean());
+        }
+
+        using var restored = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/restore", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        using var restoredPayload = JsonDocument.Parse(await restored.Content.ReadAsStringAsync());
+        Assert.False(restoredPayload.RootElement.GetProperty("isArchived").GetBoolean());
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var employee = await db.Employees.AsNoTracking().SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownEmployeeId);
+        Assert.False(employee.IsActive);
+        Assert.Null(employee.ArchivedAt);
+        Assert.Contains(await db.AuditEntries.AsNoTracking().Where(item => item.CompanyId == _companyId && item.TargetId == _ownEmployeeId).ToListAsync(),
+            item => item.Action == "Archived");
+        Assert.Contains(await db.AuditEntries.AsNoTracking().Where(item => item.CompanyId == _companyId && item.TargetId == _ownEmployeeId).ToListAsync(),
+            item => item.Action == "Restored");
+    }
+
+    [Fact]
     public async Task Employee_private_notes_are_restricted_company_scoped_trimmed_and_audited_without_copying_content()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

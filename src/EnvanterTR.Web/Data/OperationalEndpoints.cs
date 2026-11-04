@@ -269,7 +269,7 @@ public static class OperationalEndpoints
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
             [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
-            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeArchived = false) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -278,7 +278,7 @@ public static class OperationalEndpoints
             var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
             var allowedCompanyUnits = employeeAccessScope.AllowedCompanyUnits;
             var scopedEmployees = EmployeesInScope(db, companyId, employeeAccessScope);
-            var query = scopedEmployees;
+            var query = includeArchived ? scopedEmployees : scopedEmployees.Where(employee => employee.ArchivedAt == null);
             if (startedFrom is DateOnly start && startedTo is DateOnly end && start > end)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["startedFrom"] = ["İşe başlama başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (active is bool isActive) query = query.Where(x => x.IsActive == isActive);
@@ -329,7 +329,7 @@ public static class OperationalEndpoints
                             (allowedLocations == null || allowedLocations.Contains(location.Id)))
                         .Select(location => db.CompanyUnits.Where(unit => unit.CompanyId == companyId && unit.Id == location.CompanyUnitId)
                             .Select(unit => unit.Name).FirstOrDefault()).FirstOrDefault(),
-                    x.LocationCatalogId, x.StartedOn, x.IsActive,
+                    x.LocationCatalogId, x.StartedOn, x.IsActive, isArchived = x.ArchivedAt != null,
                     ManagerEmployeeId = !x.ManagerEmployeeId.HasValue || scopedEmployees.Any(manager => manager.Id == x.ManagerEmployeeId)
                         ? x.ManagerEmployeeId : null,
                     ManagerName = scopedEmployees.Where(manager => manager.Id == x.ManagerEmployeeId)
@@ -551,7 +551,8 @@ public static class OperationalEndpoints
         }).RequireAuthorization("people.manage");
 
         api.MapGet("/employees/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
-            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+            [FromQuery] bool includeArchived = false) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
             var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
@@ -560,7 +561,9 @@ public static class OperationalEndpoints
             var scopedEmployees = EmployeesInScope(db, companyId, employeeAccessScope);
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 20 : pageSize, 1, 100);
-            var employee = await scopedEmployees.Where(x => x.Id == id)
+            var employeeQuery = scopedEmployees.Where(x => x.Id == id);
+            if (!includeArchived) employeeQuery = employeeQuery.Where(x => x.ArchivedAt == null);
+            var employee = await employeeQuery
                 .Select(x => new
                 {
                     x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone,
@@ -951,6 +954,52 @@ public static class OperationalEndpoints
             catch (UnauthorizedAccessException) { }
             return Results.NoContent();
         }).RequireAuthorization("people.files.manage");
+
+        api.MapPost("/employees/{id:guid}/archive", async (Guid id, [FromBody] EmployeeArchiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var reason = request.Reason?.Trim();
+            if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Arşiv nedeni 1 ile 500 karakter arasında olmalıdır."] });
+            var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var employee = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (employee is null || !EmployeeIsInScope(employee.LocationCatalogId, employee.CompanyUnitId, employeeAccessScope))
+                return Results.NotFound();
+            if (employee.ArchivedAt is not null) return Results.Conflict(new { message = "Çalışan kaydı zaten arşivlenmiş." });
+            if (employee.IsActive) return Results.Conflict(new { message = "Arşivlemeden önce çalışanı pasife alın." });
+
+            var now = DateTimeOffset.UtcNow;
+            employee.ArchivedAt = now;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
+                TargetId = id, Action = "Archived", Details = $"Pasif çalışan kaydı arşivlendi. Neden: {reason}" });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { employee.Id, isArchived = true, archivedAt = employee.ArchivedAt });
+        }).RequireAuthorization("people.manage");
+
+        api.MapPost("/employees/{id:guid}/restore", async (Guid id, [FromBody] EmployeeArchiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var reason = request.Reason?.Trim();
+            if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Geri yükleme nedeni 1 ile 500 karakter arasında olmalıdır."] });
+            var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var employee = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (employee is null || !EmployeeIsInScope(employee.LocationCatalogId, employee.CompanyUnitId, employeeAccessScope))
+                return Results.NotFound();
+            if (employee.ArchivedAt is null) return Results.Conflict(new { message = "Çalışan kaydı arşivlenmiş değil." });
+
+            employee.ArchivedAt = null;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
+                TargetId = id, Action = "Restored", Details = $"Arşivlenmiş pasif çalışan kaydı geri yüklendi. Neden: {reason}" });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { employee.Id, isArchived = false, employee.IsActive });
+        }).RequireAuthorization("people.manage");
 
         api.MapPatch("/employees/{id:guid}/manager", async (Guid id, [FromBody] SetEmployeeManagerRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -3038,6 +3087,8 @@ public static class OperationalEndpoints
         if (to.HasValue) query = query.Where(x => x.OccurredAt <= to.Value);
         return query;
     }
+
+    private sealed record EmployeeArchiveRequest(string? Reason);
 
     private sealed record SelectedAssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,

@@ -2980,6 +2980,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 

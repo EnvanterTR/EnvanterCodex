@@ -347,6 +347,7 @@ public sealed class Employee
     public string? PrivateNotes { get; set; }
     public Guid? ManagerEmployeeId { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTimeOffset? ArchivedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
