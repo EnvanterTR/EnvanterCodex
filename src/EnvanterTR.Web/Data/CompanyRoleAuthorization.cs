@@ -33,6 +33,7 @@ public static class CompanyRoleAuthorization
         Role("asset_manager", "Envanter yöneticisi", AssetsRead, AssetsWrite, PeopleRead, PeopleManage),
         Role("asset_operator", "Envanter operatörü", AssetsRead, AssetsWrite, PeopleRead),
         Role("auditor", "Denetçi", AssetsRead, PeopleRead),
+        Role("finance", "Muhasebe (salt okunur)", AssetsRead),
         Role("viewer", "Salt okunur", AssetsRead),
         Role("hr_operator", "İK operatörü", PeopleRead, PeopleManage, EmployeeDocuments)
     ];

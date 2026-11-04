@@ -866,7 +866,7 @@ public static partial class PlatformEndpoints
             [FromBody] UpdatePlatformMemberRoleRequest request, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             var roleKey = request?.RoleKey?.Trim();
             var note = Clean(request?.Note);
             if (request is null || roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal) ||
@@ -945,7 +945,7 @@ public static partial class PlatformEndpoints
             var email = request?.NewOwnerEmail?.Trim();
             var previousOwnerRole = request?.FormerOwnerRoleKey?.Trim();
             var note = Clean(request?.Note);
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             if (request is null || userId == Guid.Empty || companyId == Guid.Empty ||
                 string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
                 previousOwnerRole is null || !allowedRoles.Contains(previousOwnerRole, StringComparer.Ordinal) ||
@@ -1030,7 +1030,7 @@ public static partial class PlatformEndpoints
             var fullName = request.FullName?.Trim();
             var email = request.Email?.Trim();
             var roleKey = request.RoleKey?.Trim();
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             if (request.CompanyId == Guid.Empty || string.IsNullOrWhiteSpace(fullName) || fullName.Length > 160 ||
                 string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
                 roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal))

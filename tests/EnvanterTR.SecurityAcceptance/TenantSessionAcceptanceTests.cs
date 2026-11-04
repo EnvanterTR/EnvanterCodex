@@ -16237,6 +16237,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             (Role: "asset_operator", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "auditor", AssetRead: true, AssetWrite: false, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "viewer", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
+            (Role: "finance", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "hr_operator", AssetRead: false, AssetWrite: false, EmployeeRead: true, EmployeeWrite: true, HrFiles: true, SettingsManage: false)
         };
 

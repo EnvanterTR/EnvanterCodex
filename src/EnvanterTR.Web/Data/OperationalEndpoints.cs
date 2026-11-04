@@ -589,7 +589,7 @@ public static class OperationalEndpoints
                 .SingleOrDefaultAsync(cancellationToken);
             if (employee is null) return Results.NotFound();
             var role = user.FindFirstValue("company_role");
-            var canReadAssetData = role is "owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer";
+            var canReadAssetData = role is "owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer" or "finance";
             var assignedQuery = db.Assets.AsNoTracking().Where(x => canReadAssetData && x.CompanyId == companyId && x.AssignedEmployeeId == id)
                 .AssetsInLocationScope(companyId, allowedLocations);
             var assignedAssetCount = await assignedQuery.CountAsync(cancellationToken);
@@ -2356,7 +2356,7 @@ public static class OperationalEndpoints
             var customRoles = await db.CompanyCustomRoles.AsNoTracking().Where(role => role.CompanyId == companyId && role.IsActive)
                 .OrderBy(role => role.Name).Select(role => role.RoleKey).ToArrayAsync(cancellationToken);
             return Results.Ok(new { members, total = members.Count,
-                roles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" }.Concat(customRoles).ToArray() });
+                roles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" }.Concat(customRoles).ToArray() });
         }).RequireAuthorization("settings.manage");
 
         api.MapPost("/members/invite", async ([FromBody] InviteCompanyMemberRequest request,

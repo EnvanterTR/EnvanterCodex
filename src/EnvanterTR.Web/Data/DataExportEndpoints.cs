@@ -1030,7 +1030,7 @@ public static class DataExportEndpoints
                         ReadString(member, "displayName")!.Length > 160 ||
                         string.IsNullOrWhiteSpace(ReadString(member, "email")) ||
                         ReadString(member, "email")!.Length > 256 ||
-                        ReadString(member, "roleKey") is not ("owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer" or "hr_operator"))
+                        ReadString(member, "roleKey") is not ("owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer" or "finance" or "hr_operator"))
                         AddError(errors, "Bir uygulama üyesinin adı, e-postası veya rolü geçersiz.");
                 }
             }

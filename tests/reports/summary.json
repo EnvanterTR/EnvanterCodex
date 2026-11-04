@@ -161,14 +161,14 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 76,
+        "notRun": 75,
         "partial": 14,
-        "implemented": 25
+        "implemented": 26
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
       "measuredCommit": "bba69b2",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-085"
+      "latestStatusWp": "WP-086"
     },
     "sourceMigrationInventory": {
       "status": "PASS",
@@ -366,6 +366,26 @@
       "productionWrites": false,
       "liveCompanyAcceptance": false,
       "note": "F03 VAR. API suite evidence was recorded in WP-082; this WP added and passed the missing focused browser interaction. No live company acceptance."
+    },
+    "roleMatrixAcceptance": {
+      "status": "PASS",
+      "rolePolicyTestsPassed": 3,
+      "rolePolicyTestsFailed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix",
+        "Company_custom_roles_are_tenant_scoped_owner_controlled_and_recalculated_per_request",
+        "Company_member_and_platform_admin_boundaries_are_enforced_over_http"
+      ],
+      "roleMatrixCommand": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix'",
+      "supportingCommand": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_custom_roles_are_tenant_scoped_owner_controlled_and_recalculated_per_request|FullyQualifiedName~Company_member_and_platform_admin_boundaries_are_enforced_over_http'",
+      "staticVerifier": "node tools/Verify-RoleMatrix.mjs",
+      "staticVerifierStatus": "PASS",
+      "roleScope": "finance grants assets.read only; platform administrator is separate; custom roles remain tenant-scoped and location/unit restrictions are independently enforced.",
+      "runnerCleanup": "Temporary PostgreSQL containers and networks removed",
+      "liveCompanyAcceptance": false,
+      "note": "F04 classified VAR for code/API role support. Invitation control mappings and import role validation are statically verified; live company acceptance remains part of F7."
     }
   },
   "historicalBaseline": {

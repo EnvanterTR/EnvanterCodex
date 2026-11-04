@@ -2,11 +2,11 @@
 
 ## Güncel oturum durumu
 
-WP-082/F01, WP-083/F02 ve WP-084/F03 tamamlandı. F01 ve F02 sentetik Chromium + izole PostgreSQL çalışan kabuline dayanır. F03 API kabul testi çalışan filtresindeki 31/31 koşuda geçti; Chromium sentetik API akışı iptal/yazmama, doğru onay metni, tek PATCH ve iade sayısı bildirimiyle geçti. F03 sırasında tekil pasife alma onayı, varlık/aksesuarların otomatik iade edileceği ve lisansların kaldırılacağı gerçeğiyle çelişiyordu; metin düzeltildi. Hiçbir canlı firma kabulü yapılmadı.
+WP-082/F01, WP-083/F02, WP-084/F03 ve WP-086/F04 tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 çalışan API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme kanıtına dayanır. F04'te `finance` yalnız `assets.read` ile eklendi; platform admin ayrımı, şirket özel rolleri ve konum/birim sınırları mevcut testlerle doğrulandı. Canlı firma kabulü yapılmadı.
 
-A–O katalog durumu: 76 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 25 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F4/F5/F6/F7 kapıları açık; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
+A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F5/F6/F7 kapıları açık; F4 kabul testleri geçti; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
 
-**Sıradaki WP-085:** F04 rolleri (platform yöneticisi, şirket yöneticisi, editör, okuyucu, sınırlı, muhasebe) için kapsamı çıkar; mevcut rol/API security ve UI kabul kanıtlarını bir kez eşleştir, yalnızca eksik kalan somut kabul testini çalıştır. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
+**Sıradaki WP-087:** F5 UI matrisi: güncel UI envanterindeki en yüksek riskli akışlardan başlayarak gerçek etkileşim kabulini tamamla; PASS/FAIL/BLOCKED sayılarıyla raporla. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
 # Güncel devam noktası — 4 Kasım 2026
 
 ## WP-082 — DONE
@@ -205,3 +205,13 @@ WP-035 is pushed in `2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f`.
 On `2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f`, the two runtime API acceptance tests passed 2/2. They enumerate every API `RouteEndpoint`, assert explicit auth/AllowAnonymous, exact anonymous-route and authorization-policy sets, and check the protected routes against the company/platform role matrix. This does not establish data-level hostile-ID isolation for every endpoint; F4 remains partial. `summary.json` now records this check separately from the historic 297/297 run, and old measurement content is preserved exactly. The isolated test DB/network were removed. No production access or writes occurred.
 
 Next: push WP-036, then wait for the user's pending action-time confirmation before opening a draft PR to trigger CI. Do not modify production while CI/review is pending. F2 remains partial; do not start payment/Iyzico.
+
+## WP-086 — DONE — F04 rol politikası
+
+F04 hedef rolleri kaynak API ve mevcut erişim modeliyle eşlendi. `finance` rolü şirket daveti, platform daveti, platform üye listesi/rol seçicileri ve veri içe aktarma allowlistine eklendi. En az ayrıcalık: yalnız `assets.read`; `people.read`, `people.manage`, `people.documents`, `assets.write` ve `company.settings` izinleri yok. F04 eşlemesi: Süper Admin = ayrı platform admin hesabı; Şirket Yöneticisi = owner/admin; Editör = asset_manager/asset_operator; Okuyucu = viewer; Sınırlı = şirket kapsamlı özel izin seti ve ayrı konum/birim kısıtları; Muhasebe = finance.
+
+Kanıt: `Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix` 1/1 PASS; `Company_custom_roles_are_tenant_scoped_owner_controlled_and_recalculated_per_request` ve `Company_member_and_platform_admin_boundaries_are_enforced_over_http` 2/2 PASS. Testler izole PostgreSQL'de koştu, geçici DB/container/network kaldırıldı. `node tools/Verify-RoleMatrix.mjs`, `node --check src/EnvanterTR.Web/wwwroot/platform-admin-members.js` ve `git diff --check` PASS. İlk hedefli koşunun kırmızı sonucu role resolver eksikliğini gösterdi; düzeltme sonrası yeşil. F04 kod/API için VAR; canlı firma kabulü yok. Üretime/ödeme/Coolify'ye dokunulmadı.
+
+## Sıradaki iş
+
+WP-087: F5 UI matrisi; envanterden yüksek riskli sayfa/akışları seç, tekrar yeşil kabul koşusu yapmadan gerçek etkileşimleri PASS/FAIL/BLOCKED sayılarıyla ölç. F1 exact migration-ID eşleşmesi/restore provası ve yayımlama kapısı ayrıca açık. Yeni canlı yayın veya PR açma/birleştirme yok.
