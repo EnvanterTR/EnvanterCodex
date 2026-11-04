@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T03:41:02Z",
+  "measuredAt": "2026-11-04T04:01:21Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "105e932",
+    "commit": "a35cce4753ce1dfbd0829905dea979598398a680",
     "workingTreeCleanAtRun": true,
     "workingTreeChangesAtMeasurement": []
   },
@@ -93,30 +93,28 @@
       "runnerCleanup": "Temporary database container and network removed"
     },
     "prCiObservation": {
-      "status": "PASS",
-      "runId": "41765272026",
-      "headSha": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
-      "observedAt": "2026-11-04T03:41:02Z",
+      "status": "IN_PROGRESS",
+      "runId": "41768913869",
+      "headSha": "a35cce4753ce1dfbd0829905dea979598398a680",
+      "observedAt": "2026-11-04T04:01:21Z",
       "requiredJobs": 5,
-      "successfulJobs": 5,
-      "inProgressJobs": 0,
+      "successfulJobs": 4,
+      "inProgressJobs": 1,
       "failedJobs": 0,
       "jobResults": {
         "Platform MFA browser acceptance": "success",
-        "Linux PostgreSQL tenant acceptance": "success",
+        "Linux PostgreSQL tenant acceptance": "in_progress",
         "Windows deployment and backup safety": "success",
         "Homepage gallery browser acceptance": "success",
         "Linux tenant security acceptance": "success"
       },
-      "linuxPostgresStartedAt": "2026-11-04T03:09:39Z",
-      "linuxPostgresCompletedAt": "2026-11-04T03:41:02Z",
       "previousRun": {
-        "runId": "41763218442",
-        "headSha": "00e4e8e8bafbbecbf219baabcb217f3856d0e4e9",
-        "status": "FAIL",
-        "cause": "Obsolete Cloud unlimited-user verifier assertion; fixed in 56c0fae"
+        "runId": "41765272026",
+        "headSha": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
+        "status": "PASS",
+        "successfulJobs": 5
       },
-      "note": "GitHub Actions run completed successfully on exact PR head SHA. Test count not reported by the run metadata."
+      "note": "Current exact-PR-head run is not terminal. Do not call it PASS until Linux PostgreSQL tenant acceptance completes."
     },
     "catalogCoverageAudit": {
       "status": "PASS",
