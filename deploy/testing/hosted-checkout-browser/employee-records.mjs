@@ -23,10 +23,10 @@ const appScripts = new Map(await Promise.all(['report-print.js', 'scheduled-repo
 const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
 const requests = [];
 const employees = [
-  { id: managerId, employeeNumber: 'QA-MGR-001', displayName: 'QA Supervisor', email: null, department: 'Operations', jobTitle: 'Team lead', phone: null, location: 'Istanbul Office / Floor 1', companyUnitId: '99999999-9999-4999-8999-999999999991', companyUnitName: 'QA Main Unit', startedOn: '2020-03-10', isActive: true, managerEmployeeId: null, managerName: null },
-  { id: alternateManagerId, employeeNumber: 'QA-MGR-002', displayName: 'QA Supervisor II', email: null, department: 'IT', jobTitle: 'Engineering lead', phone: null, location: null, startedOn: '2021-05-11', isActive: true, managerEmployeeId: null, managerName: null },
-  { id: '77777777-7777-4777-8777-777777777777', employeeNumber: 'QA-EMP-INACTIVE', displayName: 'QA Inactive Employee', email: null, department: 'Operations', jobTitle: 'Former technician', phone: null, location: null, startedOn: '2020-12-31', isActive: false, managerEmployeeId: null, managerName: null },
-  { id: '88888888-8888-4888-8888-888888888888', employeeNumber: 'QA-EMP-UNDATED', displayName: 'QA Undated Employee', email: null, department: 'Operations', jobTitle: 'New technician', phone: null, location: null, startedOn: null, isActive: true, managerEmployeeId: null, managerName: null }
+  { id: managerId, employeeNumber: 'QA-MGR-001', displayName: 'QA Supervisor', email: null, department: 'Operations', jobTitle: 'Team lead', phone: null, location: 'Istanbul Office / Floor 1', companyUnitId: '99999999-9999-4999-8999-999999999991', companyUnitName: 'QA Main Unit', startedOn: '2020-03-10', isActive: true, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: alternateManagerId, employeeNumber: 'QA-MGR-002', displayName: 'QA Supervisor II', email: null, department: 'IT', jobTitle: 'Engineering lead', phone: null, location: null, startedOn: '2021-05-11', isActive: true, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: '77777777-7777-4777-8777-777777777777', employeeNumber: 'QA-EMP-INACTIVE', displayName: 'QA Inactive Employee', email: null, department: 'Operations', jobTitle: 'Former technician', phone: null, location: null, startedOn: '2020-12-31', isActive: false, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: '88888888-8888-4888-8888-888888888888', employeeNumber: 'QA-EMP-UNDATED', displayName: 'QA Undated Employee', email: null, department: 'Operations', jobTitle: 'New technician', phone: null, location: null, startedOn: null, isActive: true, isArchived: false, managerEmployeeId: null, managerName: null }
 ];
 let syntheticRole = 'admin';
 let privateNotes = '';
@@ -135,6 +135,7 @@ const server = createServer(async (request, response) => {
     ], total: 1 });
     if (url.pathname === '/api/employees') {
       const filtered = employees.filter(item => {
+        if (url.searchParams.get('includeArchived') !== 'true' && item.isArchived) return false;
         const active = url.searchParams.get('active');
         if (active === 'true' && !item.isActive) return false;
         if (active === 'false' && item.isActive) return false;
@@ -436,9 +437,23 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/employees') {
     const manager = employees.find(item => item.id === body.managerEmployeeId);
-    const created = { ...body, id: employeeId, isActive: true, companyUnitName: body.companyUnitId ? 'QA Main Unit' : null,
+    const created = { ...body, id: employeeId, isActive: true, isArchived: false, companyUnitName: body.companyUnitId ? 'QA Main Unit' : null,
       managerEmployeeId: manager?.id || null, managerName: manager?.displayName || null };
     employees.push(created); return json(response, 201, created);
+  }
+  const employeeArchiveMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/(archive|restore)$/i);
+  if (request.method === 'POST' && employeeArchiveMatch) {
+    if (!['owner', 'admin', 'hr_operator'].includes(syntheticRole)) return json(response, 403, { message: 'Forbidden' });
+    const employee = employees.find(item => item.id === employeeArchiveMatch[1]);
+    if (!employee) return json(response, 404, { message: 'Employee not found' });
+    if (!body?.reason?.trim()) return json(response, 400, { message: 'Archive reason required' });
+    if (employeeArchiveMatch[2] === 'archive') {
+      if (employee.isActive) return json(response, 409, { message: 'Inactive employee required' });
+      employee.isArchived = true;
+      return json(response, 200, { id: employee.id, isArchived: true, archivedAt: '2026-11-04T12:00:00Z' });
+    }
+    employee.isArchived = false;
+    return json(response, 200, { id: employee.id, isArchived: false, isActive: employee.isActive });
   }
   const managerMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/manager$/i);
   if (request.method === 'PATCH' && managerMatch) {
@@ -475,6 +490,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('#authLayer').waitFor({ state: 'hidden' });
   await page.locator('#sidebar [data-group="people"]').click({ force: true });
+  await page.locator('#sidebar [data-page="Çalışan kayıtları"]').waitFor({ state: 'visible' });
   await page.locator('#sidebar [data-page="Çalışan kayıtları"]').click();
   await page.locator('#employeesPage').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#employeesPage').isVisible(), true, 'Employee directory must be open before adding a record.');
@@ -1199,6 +1215,67 @@ try {
   assert.equal((await restoreAllResponse).status(), 200, 'Restoring access to all locations must succeed.');
   const restoreAllWrite = requests.filter(item => item.method === 'PUT' && item.path === `/api/members/${memberUserId}/location-access`).at(-1);
   assert.deepEqual(restoreAllWrite?.body, { mode: 'all', locationIds: [], companyUnitMode: 'all', companyUnitIds: [] });
+
+  await page.locator('#sidebar [data-group="people"]').click({ force: true });
+  await page.locator('#sidebar [data-page="Çalışan kayıtları"]').evaluate(element => element.click());
+  await page.locator('#employeesPage').waitFor({ state: 'visible' });
+  await page.locator('#employeeSearch').fill('');
+  await page.locator('#employeeDepartmentFilter').fill('');
+  await page.locator('#employeeManagerFilter').selectOption('');
+  await page.locator('#employeeStartedFrom').fill('');
+  await page.locator('#employeeStartedTo').fill('');
+  await page.locator('#employeeIncludeArchived').uncheck();
+  const inactiveEmployeesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('active') === 'false';
+  });
+  await page.locator('#employeeState').selectOption('false');
+  await inactiveEmployeesResponse;
+  let inactiveEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await inactiveEmployeeRow.getByRole('button', { name: 'Arşivle' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  await page.locator('#employeeActionDialog').getByRole('button', { name: 'Vazgeç' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  assert.equal(requests.filter(item => item.method === 'POST' && item.path.endsWith('/archive')).length, 0,
+    'Canceling employee archive must not write to the API.');
+  inactiveEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await inactiveEmployeeRow.getByRole('button', { name: 'Arşivle' }).click();
+  const defaultListResponsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' &&
+      url.searchParams.get('active') === 'false' && url.searchParams.get('includeArchived') !== 'true';
+  });
+  const employeeArchiveResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === '/api/employees/77777777-7777-4777-8777-777777777777/archive');
+  await page.locator('#employeeActionSubmit').click();
+  const [employeeArchiveResponse] = await Promise.all([employeeArchiveResponsePromise, defaultListResponsePromise]);
+  assert.equal(employeeArchiveResponse.status(), 200, 'Archiving an inactive employee must succeed.');
+  const archiveRequest = requests.findLast(item => item.method === 'POST' && item.path === '/api/employees/77777777-7777-4777-8777-777777777777/archive');
+  assert.equal(archiveRequest?.csrf, csrfToken, 'Employee archive must include CSRF protection.');
+  assert.ok(archiveRequest?.body.reason, 'Employee archive must include an audit reason.');
+  await page.locator('#employeeRows').getByText('QA Inactive Employee').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('#employeeRows').getByText('QA Inactive Employee').count(), 0,
+    'Archived employees must disappear from the default list.');
+  const archivedEmployeesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('includeArchived') === 'true';
+  });
+  await page.locator('#employeeIncludeArchived').check();
+  await archivedEmployeesResponse;
+  let archivedEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await archivedEmployeeRow.waitFor();
+  assert.match(await archivedEmployeeRow.innerText(), /Arşivli/, 'Included archived employee must display its archived state.');
+  const restoreResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === '/api/employees/77777777-7777-4777-8777-777777777777/restore');
+  const restoredListResponsePromise = page.waitForResponse(response => response.request().method() === 'GET' &&
+    new URL(response.url()).pathname === '/api/employees' && new URL(response.url()).searchParams.get('includeArchived') === 'true');
+  await archivedEmployeeRow.getByRole('button', { name: 'Arşivden geri yükle' }).click();
+  await page.locator('#employeeActionSubmit').click();
+  const [employeeRestoreResponse] = await Promise.all([restoreResponsePromise, restoredListResponsePromise]);
+  assert.equal(employeeRestoreResponse.status(), 200, 'Restoring an archived employee must succeed.');
+  const restoreRequest = requests.findLast(item => item.method === 'POST' && item.path === '/api/employees/77777777-7777-4777-8777-777777777777/restore');
+  assert.equal(restoreRequest?.csrf, csrfToken, 'Employee restore must include CSRF protection.');
+  assert.ok(restoreRequest?.body.reason, 'Employee restore must include an audit reason.');
+  archivedEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await archivedEmployeeRow.getByRole('button', { name: 'Arşivle' }).waitFor();
+  assert.match(await archivedEmployeeRow.innerText(), /Pasif/, 'Restoring an archived employee must preserve its inactive status.');
 
   syntheticRole = 'asset_operator';
   // This limits private HR notes to authorized roles.

@@ -38,6 +38,24 @@
       "command": "deploy/testing/run-security-acceptance.ps1 (single employee archive test filter)",
       "note": "Employee archive/restore role, tenant, CSRF, inactive-state, audit, default-list, includeArchived and restore behavior passed. Test ran against the exact source content committed as measuredCommit; working tree contained source edits while test ran."
     },
+    "employeeLifecycleAcceptance": {
+      "status": "PASS",
+      "passed": 31,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": "FullyQualifiedName~Employee_",
+      "measuredCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Employee_'",
+      "hostedBrowser": {
+        "status": "PASS",
+        "command": "node deploy/testing/hosted-checkout-browser/employee-records.mjs",
+        "sourceFileChangedDuringVerification": true,
+        "note": "Synthetic API-backed Chromium flow verified employee archive cancellation without writes, CSRF and reason submission, default-list hiding, includeArchived visibility and restore preserving inactive state."
+      },
+      "note": "Employee create/edit, list/detail/export, photo/document, CSV, department/location/manager, company scope, and archive/restore acceptance passed. API tests used an isolated PostgreSQL clone; this is not live-company acceptance."
+    },
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",

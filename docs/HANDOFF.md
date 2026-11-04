@@ -1,5 +1,11 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-082 — DONE
+
+F01 çalışan kabulini tamamla. `deploy/testing/hosted-checkout-browser/employee-records.mjs` içinde sentetik API'li Chromium akışına arşivleme/geri yükleme eklendi: iptal yazma üretmiyor, CSRF ve açıklama gidiyor, arşivli kayıt varsayılan listeden çıkıyor, filtre ile bulunuyor ve geri yüklenince pasif kalıyor. Hedefli Chromium koşusu PASS. `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Employee_'` izole PostgreSQL'de 31/31 PASS; çalışan listesi, detay/dışa aktarma, create/edit, fotoğraf/dosya, CSV, departman/lokasyon/yönetici bağlantıları, rol/tenant kapsamı ve arşiv yaşam döngüsü dahil. Test DB/container/network temizlendi. `node tools/Verify-EmployeeRecordsUi.mjs`, JS syntax ve `git diff --check` PASS. `docs/PROJECT-STATUS.md` F01 `VAR` olarak güncellendi. Bu kanıt canlı firma kabulü değildir; canlı DB/deploy/migration/Coolify/ödeme değişmedi. Uygulama kaynağı `92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5`, test eklemesi çalışma ağacında.
+
+**Sıradaki:** CODEX-HEDEF-4/F0 tablosunda bir sonraki açık gereksinime geç; F02 CSV içe aktarma ve F03 çalışan devre dışı bırakma/iade akışlarının kanıtını ayrı ayrı tamamla. Üretim yayını, PR oluşturma/birleştirme ve ödeme kilitleri yürürlükte.
+
 ## WP-081 — DONE
 
 F01 çalışan arşivleme/geri yükleme dilimi `92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5` commit'inde. Önce kabul testi kırmızıydı: `Employee` entity'sinde `ArchivedAt` bulunmadı. `20261104112743_ArchiveEmployeeRecords` migration'ı eklendi; `POST /api/employees/{id}/archive` ve `/restore` şirket/lokasyon kapsamı, `people.manage`, CSRF, zorunlu neden, pasif çalışan şartı ve audit kaydıyla çalışıyor. Varsayılan liste arşivlileri gizliyor; UI filtresi arşivlileri gösteriyor ve geri yükleme pasif kaydı geri getiriyor. `Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited` izole PostgreSQL'de 1/1 PASS; `node tools/Verify-EmployeeRecordsUi.mjs` ve `git diff --check` PASS. Test DB/container/internal network kaldırıldı. Migration canlıya uygulanmadı; canlı DB/deploy/ödeme/Coolify değişmedi. F01 KISMEN: create/edit/fotoğraf/departman/lokasyon/yönetici ve arşiv UI etkileşiminin gerçek Chromium matrisi ayrıca tamamlanmalı.
