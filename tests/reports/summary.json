@@ -1,14 +1,11 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T04:24:29Z",
+  "measuredAt": "2026-11-04T04:56:12Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "e4c1eb7",
-    "workingTreeCleanAtRun": false,
-    "workingTreeChangesAtMeasurement": [
-      "docs/LEDGER.md"
-    ]
+    "commit": "aaff45e559cc62403772f04eed830b21023bb7f7",
+    "workingTreeCleanAtRun": true
   },
   "currentVerification": {
     "releaseBuild": {
@@ -96,9 +93,9 @@
     },
     "prCiObservation": {
       "status": "PASS",
-      "runId": "41768913869",
-      "headSha": "a35cce4753ce1dfbd0829905dea979598398a680",
-      "observedAt": "2026-11-04T04:10:26Z",
+      "runId": "41773396545",
+      "headSha": "aaff45e559cc62403772f04eed830b21023bb7f7",
+      "observedAt": "2026-11-04T04:56:12Z",
       "requiredJobs": 5,
       "successfulJobs": 5,
       "inProgressJobs": 0,
@@ -111,12 +108,12 @@
         "Linux tenant security acceptance": "success"
       },
       "previousRun": {
-        "runId": "41765272026",
-        "headSha": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
+        "runId": "41768913869",
+        "headSha": "a35cce4753ce1dfbd0829905dea979598398a680",
         "status": "PASS",
         "successfulJobs": 5
       },
-      "note": "GitHub Actions run completed successfully in 24m13s on the exact PR head SHA; all five required jobs concluded success."
+      "note": "GitHub Actions run completed successfully on the exact PR head SHA; all five required jobs concluded success. The Linux PostgreSQL tenant acceptance job was observed in progress for 25+ minutes and later completed successfully. This Actions run verifies the pushed documentation-only head; application-source acceptance evidence remains recorded separately by its measured commit SHA."
     },
     "catalogCoverageAudit": {
       "status": "PASS",
