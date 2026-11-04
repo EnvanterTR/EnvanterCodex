@@ -261,6 +261,32 @@
       "measuredCommit": "32f17ca",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three targeted component allocation/relation/scope tests)"
+    },
+    "kitAcceptance": {
+      "status": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore",
+        "Accessory_kit_requests_are_company_scoped_and_approve_all_stock_lines_atomically",
+        "Mixed_kits_validate_tenant_items_and_issue_all_four_types_as_one_request"
+      ],
+      "hostedChromium": {
+        "status": "PASS",
+        "scenario": "accessory-kits.mjs",
+        "productionWrites": false
+      },
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-AccessoryKitsUi.mjs"
+        ]
+      },
+      "measuredCommit": "d98696e",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three kit CRUD/request/mixed-issue tests); deploy/testing/run-hosted-checkout-browser-acceptance.ps1"
     }
   },
   "historicalBaseline": {

@@ -2,9 +2,13 @@
 
 
 
+## WP-076 — DONE
+
+D04 kit hazır set: `Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore`, `Accessory_kit_requests_are_company_scoped_and_approve_all_stock_lines_atomically`, `Mixed_kits_validate_tenant_items_and_issue_all_four_types_as_one_request` izole PostgreSQL'de 3/3 PASS. Kit reçetesi CRUD/arşiv, tüm kalemlerde yeterli stok/atomik teslim ve mixed kit'in çalışan talebi üzerinden aksesuar/sarf/varlık/bileşen tahsisi doğrulandı. Hosted Chromium `accessory-kits.mjs` PASS: kit CRUD/history/export ve satın alma satırlarından varlığa bağlı kit reçetesi, yalnız alınmış/iade edilmemiş satırlar, adet/CSRF ve stok değişmedi bildirimi. `node tools/Verify-AccessoryKitsUi.mjs` PASS. Geçici DB/container/network kaldırıldı. D04 `VAR`; sonraki WP: D05 ortak CRUD/zimmet/stok/minimum stok kabul matrisi.
+
 ## WP-075 — DONE
 
-D03 bileşeni varlığa takma: `Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company`, `Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Location_access_scope_is_tenant_scoped_inherited_and_enforced_for_assets` izole PostgreSQL'de 3/3 PASS. Varlık detayında açık/takılı bileşen ve kalan adet, tenant izolasyonu, lokasyon kapsamı ve yarış koşulunda tek stok tahsisi doğrulandı. `node tools/Verify-ComponentInventoryUi.mjs` PASS; gerçek Chromium tahsis formu gönderimi çalıştırılmadı. Geçici DB/container/network kaldırıldı. D03 `VAR`; sonraki WP: D04 kit (laptop + çanta + mouse) hazır set.
+D03 bileşeni varlığa takma: `Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company`, `Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Location_access_scope_is_tenant_scoped_inherited_and_enforced_for_assets` izole PostgreSQL'de 3/3 PASS. Varlık detayında açık/takılı bileşen ve kalan adet, tenant izolasyonu, lokasyon kapsamı ve yarış koşulunda tek stok tahsisi doğrulandı. `node tools/Verify-ComponentInventoryUi.mjs` PASS; gerçek Chromium tahsis formu gönderimi çalıştırılmadı. Geçici DB/container/network kaldırıldı. D03 `VAR`.
 
 ## WP-074 — DONE
 
