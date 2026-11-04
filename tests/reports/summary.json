@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T04:56:12Z",
+  "measuredAt": "2026-11-04T09:05:06Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "aaff45e559cc62403772f04eed830b21023bb7f7",
-    "workingTreeCleanAtRun": true
+    "commit": "9c9d0b555b0b6aa88b46cb1a7879264adb3e9285",
+    "workingTreeCleanAtRun": false
   },
   "currentVerification": {
     "releaseBuild": {
@@ -26,16 +26,16 @@
     },
     "targetedPostgresSecurityAcceptance": {
       "status": "PASS",
-      "passed": 2,
+      "passed": 1,
       "failed": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
       "tests": [
-        "Cloud_company_invites_obey_plan_seat_caps_while_local_caps_remain_enforced",
-        "Platform_plan_catalog_requires_reason_and_audits_pricing_changes_before_publishing"
+        "Software_license_create_update_and_read_are_tenant_scoped_audited_and_csrf_protected"
       ],
-      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972",
-      "runnerCleanup": "Temporary database container and network removed"
+      "measuredCommit": "9c9d0b555b0b6aa88b46cb1a7879264adb3e9285",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Software_license_create_update_and_read_are_tenant_scoped_audited_and_csrf_protected"
     },
     "uiInventory": {
       "status": "CURRENT",
@@ -124,14 +124,14 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 88,
+        "notRun": 87,
         "partial": 14,
-        "implemented": 13
+        "implemented": 14
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "c51f260d6cea95d194c2bce98039b994d8dedcbd",
+      "measuredCommit": "9c9d0b555b0b6aa88b46cb1a7879264adb3e9285",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-071"
+      "latestStatusWp": "WP-072"
     },
     "sourceMigrationInventory": {
       "status": "PASS",

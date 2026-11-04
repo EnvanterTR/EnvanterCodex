@@ -2,9 +2,13 @@
 
 
 
+## WP-072 — DONE
+
+C05 lisans maliyet kaydı izole PostgreSQL kabulinde 1/1 PASS: create/update, negatif maliyet reddi, şirket kapsamlı liste/detay API’si, saklanan değer ve CSV maliyet/para birimi. UI lisans formu/detayı ve lisans sipariş tablosu maliyet alanlarını içeriyor. Test projesinde dört eski `TrustedClientIpTests` uyarısı kaldı; test başarılı. Geçici PostgreSQL/network kaldırıldı. C05 `VAR`; ayrı birleştirilmiş dönemsel maliyet raporu bu pakette doğrulanmadı. Sonraki WP: D01 aksesuar zimmeti.
+
 ## WP-071 — DONE
 
-C04 lisans bitiş uyarıları 30/15/7/3/1 gün eşiklerine bağlandı; saatlik worker günde bir digest içinde yalnız eşik günündeki lisansları alır. Önce kırmızı test (helper yok), ardından düzeltme; `SoftwareLicenseReminderThresholdTests` 12/12 PASS, product build 0 uyarı/0 hata. Gerçek SMTP alıcı teslimi yapılmadı; F3’te açık. C04 `VAR`. Sonraki paket C05 lisans maliyet takibi.
+C04 lisans bitiş uyarıları 30/15/7/3/1 gün eşiklerine bağlandı; saatlik worker günde bir digest içinde yalnız eşik günündeki lisansları alır. Önce kırmızı test (helper yok), ardından düzeltme; `SoftwareLicenseReminderThresholdTests` 12/12 PASS, product build 0 uyarı/0 hata. Gerçek SMTP alıcı teslimi yapılmadı; F3’te açık. C04 `VAR`.
 
 ## WP-069 — DONE
 
@@ -34,7 +38,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık. WP-071 sonrası A–O dağılımı 88 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 13 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 ve C01 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05/C02/C03/C04 VAR. C01 lisans anahtarı alanı eksik. Sonraki paket C05 lisans maliyet takibi. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-072 sonrası A–O dağılımı 87 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 14 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 ve C01 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05/C02/C03/C04/C05 VAR. C01 lisans anahtarı alanı eksik. Sonraki paket D01 aksesuar zimmeti. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
