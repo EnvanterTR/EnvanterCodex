@@ -24,7 +24,7 @@ A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 11 `KISMEN`, 29 `VAR` (115 benzersi
 
 **WP-097 DONE:** A05 model create/edit, model detail, depreciation report and CSV UI accepts the annual percentage. Hosted Chromium verified five-language labels, month/rate exclusivity, POST/PATCH payloads, annual-rate detail/report/CSV, and the linear-only rule: annual-rate entry forces the supported linear method and disables both half-year options. The complete `asset-detail-actions.mjs` module exited 0; static verifier, JS syntax, diff check, and updated 2,260-control/65-route inventory pass. A05 is now VAR. Source migration remains unapplied. No live DB, deployment, payment, or Coolify change.
 
-**Next:** Resume WP-090 read-only backup discovery: locate and verify the 3 November dump and SHA-256 under the known PostgreSQL volume path. Do not restore or publish until the archive/hash and exact migration ID parity gates are satisfied. F1 remains release-blocking. Current A–O evidence classification: 75 not run, 11 partial, 29 present; this is not a completion percentage.
+**Sıradaki:** WP-090, Coolify Files Beta ekranında 3 Kasım dumpını ve SHA-256 sidecarını buldu; metadata/manifest docs/LEDGER.md içinde. WP-098 açık: dump hashini yeniden hesaplama ve izole restore henüz yapılmadı. Kaynakta 126 migration ID, son ölçülen canlıda 122 var; tam ID eşitliği kanıtlanmış değil. Müşteri verisini sunucu dışına taşıma; eşitlik farklı veya doğrulanmamışken migration/yayın yapma. F1 yayın kapısı olarak açık. A–O kanıt sınıfları: 75 ölçülmedi, 11 kısmi, 29 var; bu tamamlanma yüzdesi değildir.
 
 
 # Güncel devam noktası — 4 Kasım 2026
@@ -234,4 +234,4 @@ Kanıt: `Company_roles_follow_the_asset_stock_employee_and_settings_policy_matri
 
 ## Sıradaki iş
 
-WP-094 completed F0/A01 bulk-trash UI; WP-095 closed A02 model EOL; WP-096/097 completed A05 annual-rate backend and UI acceptance. Next: WP-090 read-only discovery/verification of the 3 November backup and exact migration-ID parity. F1 remains release-blocking until current backup/restore and parity evidence is complete.
+WP-094 toplu çöp kutusu UI kabulini; WP-095 model EOL, WP-096/097 yıllık amortisman backend/UI kabulini tamamladı. WP-090 yedek dosyası ve manifestini buldu. Sonraki iş WP-098: güncel yedek hash doğrulaması ve izole restore. F1 açık; migration eşitliği çözülmeden yayın yok.
