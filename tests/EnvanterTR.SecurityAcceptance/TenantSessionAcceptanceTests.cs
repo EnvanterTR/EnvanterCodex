@@ -10310,6 +10310,13 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using var listPayload = JsonDocument.Parse(await maintenanceList.Content.ReadAsStringAsync());
         var row = Assert.Single(listPayload.RootElement.EnumerateArray());
         Assert.Equal(maintenanceId, row.GetProperty("id").GetGuid());
+        Assert.Equal("Inspection", row.GetProperty("maintenanceType").GetString());
+        Assert.Equal(today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            row.GetProperty("startedOn").GetString());
+        Assert.Equal(today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            row.GetProperty("completedOn").GetString());
+        Assert.Equal(1200m, row.GetProperty("cost").GetDecimal());
+        Assert.Equal("TRY", row.GetProperty("currency").GetString());
         Assert.Equal("Completed", row.GetProperty("status").GetString());
         Assert.Equal(_ownEmployeeId, row.GetProperty("responsibleEmployeeId").GetGuid());
 
