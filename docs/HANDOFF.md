@@ -1,6 +1,11 @@
 # Güncel devam noktası — 4 Kasım 2026
 
 
+
+## WP-068 — DONE
+
+C01 lisans listesi/formu, koltuk ve atanmış adet, bitiş tarihi ile bitiş raporu kanıtlandı. Hosted Chromium lisans create/edit ve koltuk sayaçlarını; employee EULA UI’si ve Verify-LicenseAssignmentUi/Verify-LicenseActionDialogs PASS. İzole PostgreSQL create/update/read + expiry report 2/2 PASS. Gerçek aktivasyon anahtarı saklama alanı yok; LicenseReference aynı şey değildir. C01 KISMEN. Sonraki paket C02 lisans koltuğu atama/geri alma.
+
 ## WP-067 — DONE
 
 B05 gelecek tarihli rezervasyon: hosted Chromium’da tarih doğrulama, istek, onay/ret, iptal, CSRF ve filtreler geçti; `Verify-ReservationUi.mjs` ve `Verify-AsyncUiForms.mjs` PASS. İzole PostgreSQL’de tarih/çakışma, tenant, reviewer rolü ve eşzamanlı talep testleri 2/2 PASS; geçici DB/network kaldırıldı. B05 `VAR`. Sonraki paket C01 lisans kayıtları.
@@ -17,7 +22,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık. WP-067 sonrası A–O dağılımı 91 `ÇALIŞTIRILMADI`, 15 `KISMEN`, 10 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05 VAR. B02 süre göstergesi, B03 toplu atama/iade, B04 zimmet PDF/imza/QR/e-posta onay akışı ve B05 gelecek rezervasyon isteği hosted Chromium ile; B03/B04/B05 API kabul testleri tenant/yetki/audit/idempotency veya çakışma sınırlarında PASS. Sonraki paket C01 lisans kayıtları. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-068 sonrası A–O dağılımı 89 `ÇALIŞTIRILMADI`, 16 `KISMEN`, 10 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05 VAR. B02 süre göstergesi, B03 toplu atama/iade, B04 zimmet PDF/imza/QR/e-posta onay akışı ve B05 gelecek rezervasyon isteği hosted Chromium ile; B03/B04/B05 API kabul testleri tenant/yetki/audit/idempotency veya çakışma sınırlarında PASS. C01 anahtar alanı eksik; sonraki paket C02 lisans koltuğu atama/geri alma. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
