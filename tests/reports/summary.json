@@ -93,17 +93,17 @@
       "runnerCleanup": "Temporary database container and network removed"
     },
     "prCiObservation": {
-      "status": "IN_PROGRESS",
+      "status": "PASS",
       "runId": "41768913869",
       "headSha": "a35cce4753ce1dfbd0829905dea979598398a680",
-      "observedAt": "2026-11-04T04:01:21Z",
+      "observedAt": "2026-11-04T04:10:26Z",
       "requiredJobs": 5,
-      "successfulJobs": 4,
-      "inProgressJobs": 1,
+      "successfulJobs": 5,
+      "inProgressJobs": 0,
       "failedJobs": 0,
       "jobResults": {
         "Platform MFA browser acceptance": "success",
-        "Linux PostgreSQL tenant acceptance": "in_progress",
+        "Linux PostgreSQL tenant acceptance": "success",
         "Windows deployment and backup safety": "success",
         "Homepage gallery browser acceptance": "success",
         "Linux tenant security acceptance": "success"
@@ -114,7 +114,7 @@
         "status": "PASS",
         "successfulJobs": 5
       },
-      "note": "Current exact-PR-head run is not terminal. Do not call it PASS until Linux PostgreSQL tenant acceptance completes."
+      "note": "GitHub Actions run completed successfully in 24m13s on the exact PR head SHA; all five required jobs concluded success."
     },
     "catalogCoverageAudit": {
       "status": "PASS",

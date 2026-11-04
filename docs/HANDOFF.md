@@ -1,12 +1,12 @@
 # Güncel devam noktası — 4 Kasım 2026
 
-PR #37 açık ve taslak; yeni PR açılmadı. Dal `codex/f2-cloud-seat-limits-20261104`, güncel uzak head `a35cce4753ce1dfbd0829905dea979598398a680`. Önceki CI run `41765272026`, SHA `aefde30`: 5/5 `success`. Güncel run `41768913869`, SHA `a35cce4`, 2026-11-04 03:44:01Z başladı; son kontrolde dört iş `success`, Linux PostgreSQL tenant acceptance `in_progress`.
+PR #37 açık ve taslak; yeni PR açılmadı. Dal `codex/f2-cloud-seat-limits-20261104`, uzak head `a35cce4753ce1dfbd0829905dea979598398a680`. WP-042 tamamlandı: Actions run `41768913869` exact head SHA ile `success`, beş zorunlu iş 5/5 başarılı; toplam süre 24m13s. Üretim deploy'u veya DB değişikliği yapılmadı.
 
 WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8` ile push edildi; tam statik verifier suite'i 84/84 PASS. WP-039 hedef kataloğu denetimi 115 benzersiz A–O maddesinin 115 tekil durum satırına eşlendiğini doğruladı; `ÇALIŞTIRILMADI` 105, `KISMEN` 10. Bu satır eşlemesi özellik kabulü değildir. WP-040 kaynak migration envanteri 122 benzersiz ID gösteriyor; son ID `20261026083058_AddHandoverEmailAttempts`. Canlı DB ve restore klonu bu kontrolde bağlı değildi; bu sonuç canlı paritesi değildir.
 
-WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 aktif run `41768913869`, exact remote head `a35cce4`; dört CI işi `success`, Linux PostgreSQL acceptance `in_progress`. Güncel gözlem kaydı yerel commit `3bd5f45` içinde; bu commit uzak dala push edilmedi, aktif run kesilmesin. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
+WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** run `41765272026` PostgreSQL job'ının terminal sonucunu denetle; sonucu ve SHA'yı kayda geçir. WP-040 doküman commit'ini tamamla. PR #37'ye yeni commit push edilirse o commit için yeni CI'yı izleyip sonucu eşleştir. PR taslağını merge/deploy etme. Ardından F0'ı özellik başına somut test/kanıtla ölçmeye devam et; aynı oturumda toplam en çok 5 WP. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F2 hâlâ kısmi. PR #37'yi inceleme/taslak sürecinden çıkarmadan ve bu değişiklik için canlı yayın onayı olmadan Coolify'de yayınlama. Sonraki WP, F2 canlı ön koşulları ve kabul kanıtı için; canlı plan kataloğu değişikliği veya pilot gerekiyorsa sahibinden işlem anı onayı al. PR #37'nin mevcut CI sonucu 5/5 başarılı olsa da PR birleştirilmiş değildir. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
