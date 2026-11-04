@@ -919,7 +919,7 @@ const server = createServer(async (request, response) => {
       const allItems = query === 'qa-prnt' ? printAssetRows
         : query === 'synthetic qa parent' ? [hierarchyParent]
           : query === 'synthetic qa child' ? [hierarchyChild]
-            : [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...clonedAssets, ...bulkAssets];
+            : [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...clonedAssets, ...bulkAssets.filter(item => !item.isDeleted)];
       const matchingItems = allItems.filter(item => !query || [item.assetTag, item.serialNumber, item.name, item.companyUnitName].some(value => value?.toLocaleLowerCase('tr-TR').includes(query)))
         .map(item => item.id === assetId ? { ...item, photoAttachmentId: [...assetAttachments].reverse().find(file => file.contentType?.startsWith('image/'))?.id || null, modelPhotoUrl: null } : item);
       const page = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 50);
@@ -1772,6 +1772,21 @@ const server = createServer(async (request, response) => {
     }
     record.responseBody = { recorded: targets.length, auditDate: body.auditDate, nextAuditOn: body.nextAuditOn,
       outcome: body.outcome, auditEvents };
+    json(response, 200, record.responseBody);
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-trash') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Bulk trash must use CSRF protection.');
+    assert.deepEqual(body.assetIds, ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313']);
+    assert.equal(body.note, 'Quarterly inventory cleanup');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'Bulk trash must submit exactly the two selected synthetic assets.');
+    for (const target of targets) {
+      target.isDeleted = true;
+      target.updatedAt = '2026-10-15T11:30:00Z';
+    }
+    record.responseBody = { trashedCount: targets.length, assetIds: [...selected], trashedAt: '2026-10-15T11:30:00Z' };
     json(response, 200, record.responseBody);
     return;
   }
@@ -3729,7 +3744,7 @@ try {
   const bulkAssetIds = ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313'];
   bulkAssets = bulkAssetIds.map((id, index) => ({
     ...asset, companyId: activeCompanyId, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
-    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null
+    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null, isDeleted: false
   }));
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   const firstBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[0]}"]`);
@@ -4047,6 +4062,48 @@ try {
   'The unacceptable outcome and finding must be recorded for each selected asset.');
   assert.ok(bulkAssets.every(item => item.nextAuditOn === null), 'An omitted next-audit date must clear the previous schedule.');
   console.log('PASS: bulk unacceptable audit requires a finding, preserves CSRF, records findings for every selected asset, and supports clearing its schedule.');
+
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  const bulkTrashButton = page.locator('#bulkTrashSelectedAssets');
+  assert.equal(await bulkTrashButton.isVisible(), true, 'Writable users must see the bulk-trash action.');
+  assert.equal(await bulkTrashButton.isDisabled(), false, 'Bulk trash must be available for a valid selection of up to 100 assets.');
+  const bulkTrashWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length;
+  await bulkTrashButton.click();
+  const bulkTrashDialog = page.locator('dialog[aria-labelledby="bulkAssetActionTitle"]');
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#bulkAssetActionTitle').innerText(), /Seçili varlıkları çöp kutusuna taşı/);
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /2 seçili varlık/);
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /geri alınabilir/);
+  await page.keyboard.press('Escape');
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length, bulkTrashWritesBeforeCancel,
+    'Escape must cancel the bulk-trash confirmation without writing.');
+  assert.ok(bulkAssets.every(item => !item.isDeleted), 'Escape must leave every selected asset unchanged.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/,
+    'Escape must preserve selection so the user can retry deliberately.');
+  await bulkTrashButton.click();
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  await page.locator('#cancelBulkAssetAction').click();
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length, bulkTrashWritesBeforeCancel,
+    'The cancel button must also avoid writes.');
+  assert.ok(bulkAssets.every(item => !item.isDeleted), 'Cancel must leave every selected asset unchanged.');
+  await bulkTrashButton.click();
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  await page.locator('#bulkAssetActionForm [name="note"]').fill('Quarterly inventory cleanup');
+  await page.locator('#submitBulkAssetAction').click();
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  await firstBulkRow.waitFor({ state: 'detached' });
+  await secondBulkRow.waitFor({ state: 'detached' });
+  const bulkTrashWrite = apiRequests.find(item => item.path === '/api/assets/bulk-trash');
+  assert.equal(bulkTrashWrite?.method, 'POST');
+  assert.deepEqual(bulkTrashWrite?.body, { assetIds: bulkAssetIds, note: 'Quarterly inventory cleanup' });
+  assert.equal(bulkTrashWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.isDeleted), 'Only confirmed selected assets may be soft-deleted.');
+  assert.equal(await bulkToolbar.isHidden(), true, 'Successful bulk trash must clear selection and hide the toolbar.');
+  assert.match(await page.locator('#toast').innerText(), /2 seçili varlık çöp kutusuna taşındı/);
+  console.log('PASS: bulk-trash UI is writable-role gated, confirms reversible trash, Escape/cancel do not write, confirmed request is CSRF-protected, and removed rows/selection are refreshed.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {

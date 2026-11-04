@@ -2,11 +2,11 @@
 
 ## Güncel oturum durumu
 
-WP-082/F01, WP-083/F02, WP-084/F03, WP-086/F04, WP-087 ve WP-091 F5 UI dilimleri tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 çalışan API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme kanıtına; F5 gerçek Chromium UI kabul paketine dayanır. F04'te `finance` yalnız `assets.read` ile eklendi; platform admin ayrımı, şirket özel rolleri ve konum/birim sınırları mevcut testlerle doğrulandı. Canlı firma kabulü yapılmadı.
+WP-082/F01, WP-083/F02, WP-084/F03, WP-086/F04, WP-087, WP-091 F5 ve WP-094 F0/A01 UI dilimleri tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme; F5 hosted Chromium kanıtına dayanır. F04'te `finance` yalnız `assets.read` yetkisiyle eklendi. WP-093/WP-094 ile A01'in toplu çöp kutusu API'si ve UI akışı tamamlandı; A01 `VAR`. Bu UI kabulinin API'si sentetiktir. Canlı firma kabulü yapılmadı.
 
 Güncel salt-okunur canlı kontrol (4 Kasım 13:35 UTC): `https://envantertr.com/api/status` ve `https://firma.envantertr.com/api/status` HTTP 200/ready, 122 migration/0 pending; kaynak dal 124 migration. 8 public plan, checkout kapalı. GET dışında canlı işlem yapılmadı. Exact migration ID eşleşmesi, 3 Kasım yedeğinin klonda restore kanıtı ve rollback provası yok; bu nedenle canlı yayın kapısı kapalı.
 
-A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F5/F6/F7 kapıları açık; F4 kabul testleri geçti; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
+A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 13 `KISMEN`, 27 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve güncel yedek/restore kanıtı olmadan yayınlanamaz. F1/F2/F3/F4/F5/F6/F7 kapıları açık; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 taslak olarak kaydedilmişti; üretime yayın yapılmadı.
 
 **WP-089 sonucu:** F1 yedek dosyası henüz bulunmadı. Worktree'de `deploy/local/backups` yok. Coolify `Backups` sekmesindeki `Schedules 0`, `Enabled 0`, `Total executions 0` Storage backups özelliğine ait. Ayrı `Scheduled Tasks` sekmesinde `EnvanterTR daily consistent PostgreSQL backup` görevi günlük ve `Success` durumunda (WP-090). Kaynak Compose, DB verisini `envantertr-v1-postgres-data` kalıcı volume'ünde tutuyor; `daily-postgres-backup.sh`, varsayılan olarak `/var/lib/postgresql/data/envantertr-backups/daily-*.dump` ve `.sha256` üretir. Henüz görev çalıştırma geçmişi, 3 Kasım dosya adı veya hash okunmadı; bu yüzden restore scripti çalıştırılmadı ve üretime yazılmadı.
 
@@ -14,7 +14,9 @@ A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersi
 
 **WP-092 sonucu: BLOCKED, 3/3 deneme.** Günlük PostgreSQL görevi `Success` ve kaynak kodundaki beklenen dump/hash yolu bulundu; ancak Coolify'de 3 Kasım dump/hash dosyasını salt okunur görme imkânı bu oturumda doğrulanmadı. Üç farklı `cua.getTab` çağrısı aynı `browser.user is unavailable` hatası verdi. Bu, yedeğin başka saklama alanında olmadığı anlamına gelmez. Restore yapılmadı; canlı veritabanına, migration'a, ortama veya yayına dokunulmadı.
 
-**WP-093 DONE:** F0/A01 company-scoped reversible bulk-trash API added and acceptance/regression passed 2/2 in isolated PostgreSQL. Verified viewer 403, CSRF 400, tenant/location 404, relation conflict 409, atomic failure behavior, invalid selection limits and per-asset history/audit. No migration or live changes. F0/A01 stays partial until the UI bulk-trash action is implemented and accepted.
+**WP-093 DONE:** F0/A01 company-scoped reversible bulk-trash API added and acceptance/regression passed 2/2 in isolated PostgreSQL. Verified viewer 403, CSRF 400, tenant/location 404, relation conflict 409, atomic failure behavior, invalid selection limits and per-asset history/audit.
+
+**WP-094 DONE:** F0/A01 bulk-trash UI added in five languages. Hosted Chromium `asset-detail-actions.mjs` PASS: write-role action, reversible confirmation, Escape/cancel no-write, selection retained on cancel, CSRF request body, soft-trash list refresh, selection cleared and success message. No DB migration, live DB, deploy, payment or Coolify change. A01 is now `VAR` in the target evidence table. Next package: inspect and close the A02 EOL acceptance gap; do not deploy while F1 remains open.
 
 
 # Güncel devam noktası — 4 Kasım 2026
@@ -224,4 +226,4 @@ Kanıt: `Company_roles_follow_the_asset_stock_employee_and_settings_policy_matri
 
 ## Sıradaki iş
 
-WP-094: F0/A01 bulk-trash UI. Önce başarısız hosted Chromium kabulini ekle; sonra seçili varlık sayısı, açık onay, iptal/no-write, başarılı çöp kutusu POST ve liste/geri bildirim akışını doğrula. Kapsamı 5 dil ve klavye/Esc ile incele; mevcut API kabulini tekrar koşturmadan UI regresyonu çalıştır. A01 KISMEN kalır; canlı/deploy/DB/migration/ödeme değişikliği yok.
+WP-094 completed: F0/A01 bulk-trash UI is accepted. Next WP-095: close the A02 end-of-life (EOL) field and behavior acceptance gap; define the missing acceptance first, verify existing API/UI before changing code, and keep live/deploy/DB/migration/payment untouched. F1 remains a release blocker.

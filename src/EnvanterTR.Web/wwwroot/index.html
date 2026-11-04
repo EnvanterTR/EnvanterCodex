@@ -2348,6 +2348,12 @@
       '“{assetTag}” varlığını çöp kutusundan geri almak istiyor musunuz?':['Restore asset “{assetTag}” from the trash?','Восстановить актив “{assetTag}” из корзины?','Відновити актив “{assetTag}” із кошика?','Да се врати средството „{assetTag}“ од корпата?'],
       'Çöp kutusu notu (isteğe bağlı):':['Trash note (optional):','Примечание к перемещению в корзину (необязательно):','Примітка до переміщення в кошик (необов’язково):','Забелешка за корпата (изборно):'],
       'Çöp kutusuna taşı':['Move to trash','Переместить в корзину','Перемістити до кошика','Премести во корпата'],
+      'Toplu çöp kutusu':['Bulk trash','Массовое перемещение в корзину','Масове переміщення до кошика','Масовно преместување во корпата'],
+      'Seçili varlıkları çöp kutusuna taşı':['Move selected assets to trash','Переместить выбранные активы в корзину','Перемістити вибрані активи до кошика','Премести ги избраните средства во корпата'],
+      '{count} seçili varlık çöp kutusuna taşınacak. Bu işlem geri alınabilir; varlıklar silinmez ve çöp kutusundan geri alınabilir.':['{count} selected assets will be moved to the trash. This action is reversible; assets are not permanently deleted and can be restored from the trash.','{count} выбранных активов будут перемещены в корзину. Действие обратимо: активы не удаляются окончательно и могут быть восстановлены.','{count} вибраних активів буде переміщено до кошика. Дію можна скасувати: активи не видаляються остаточно та можуть бути відновлені.','{count} избрани средства ќе бидат преместени во корпата. Дејството може да се врати: средствата не се бришат трајно и може да се обноват.'],
+      'Seçili varlıkları çöp kutusuna taşı?':['Move selected assets to the trash?','Переместить выбранные активы в корзину?','Перемістити вибрані активи до кошика?','Да се преместат избраните средства во корпата?'],
+      'Seçili varlıkları çöp kutusuna taşıma notu (isteğe bağlı)':['Bulk trash note (optional)','Примечание к массовому перемещению в корзину (необязательно)','Примітка до масового переміщення до кошика (необов’язково)','Белешка за масовно преместување во корпата (изборно)'],
+      '{count} seçili varlık çöp kutusuna taşındı; çöp kutusundan geri alınabilir.':['{count} selected assets were moved to the trash and can be restored from the trash.','{count} выбранных активов перемещены в корзину и могут быть восстановлены.','{count} вибраних активів переміщено до кошика; їх можна відновити.','{count} избрани средства се преместени во корпата и може да се обноват.'],
       'Çöp kutusundan geri al':['Restore from trash','Восстановить из корзины','Відновити з кошика','Врати од корпата'],
       'Varlığı çöp kutusuna taşı':['Move asset to trash','Переместить актив в корзину','Перемістити актив до кошика','Премести средство во корпата'],
       'Geri al':['Restore','Восстановить','Відновити','Врати'],
@@ -4017,6 +4023,7 @@
     const bulkReturnButton = document.createElement('button'); bulkReturnButton.id = 'bulkReturnSelectedAssets'; bulkReturnButton.type = 'button'; bulkReturnButton.className = 'btn small'; bulkReturnButton.textContent = 'Toplu iade'; $('#bulkAssetToolbar').append(bulkReturnButton);
     const bulkTransferButton = document.createElement('button'); bulkTransferButton.id = 'bulkTransferSelectedAssets'; bulkTransferButton.type = 'button'; bulkTransferButton.className = 'btn small'; bulkTransferButton.textContent = 'Toplu konum aktar'; bulkTransferButton.addEventListener('click', openBulkAssetTransferDialog); $('#bulkAssetToolbar').append(bulkTransferButton);
     const bulkAuditButton = document.createElement('button'); bulkAuditButton.id = 'bulkAuditSelectedAssets'; bulkAuditButton.type = 'button'; bulkAuditButton.className = 'btn small'; bulkAuditButton.textContent = 'Toplu denetim'; bulkAuditButton.addEventListener('click', openBulkAssetAuditDialog); $('#bulkAssetToolbar').append(bulkAuditButton);
+    const bulkTrashButton = document.createElement('button'); bulkTrashButton.id = 'bulkTrashSelectedAssets'; bulkTrashButton.type = 'button'; bulkTrashButton.className = 'btn small'; bulkTrashButton.textContent = translateUiText('Toplu çöp kutusu'); $('#bulkAssetToolbar').append(bulkTrashButton);
     const bulkEligibilityHint = document.createElement('small'); bulkEligibilityHint.id = 'bulkAssetEligibilityHint'; bulkEligibilityHint.className = 'muted'; bulkEligibilityHint.style.flexBasis = '100%'; $('#bulkAssetToolbar').append(bulkEligibilityHint);
     const bulkEditAssetDialog = document.createElement('dialog'); bulkEditAssetDialog.id = 'bulkEditAssetDialog'; bulkEditAssetDialog.className = 'detail-dialog';
     bulkEditAssetDialog.innerHTML = `<form id="bulkEditAssetForm">
@@ -4175,6 +4182,7 @@
       const transitionSelectionInvalid = !!requestedStatus && selectedAssets.some(asset => asset && !isAssetStatusTransitionAllowed(asset.status, requestedStatus));
       const bulkAssignmentInvalid = selectedAssets.some(asset => !asset || asset.assignedEmployeeId || asset.status !== 'Available');
       const bulkReturnInvalid = selectedAssets.some(asset => !asset || !asset.assignedEmployeeId);
+      const bulkTrashInvalid = selectedAssets.some(asset => !asset || !!asset.assignedEmployeeId || asset.status === 'Deployed');
       const allAvailable = count > 0 && selectedAssets.every(asset => asset && !asset.assignedEmployeeId && asset.status === 'Available');
       const allAssigned = count > 0 && selectedAssets.every(asset => asset?.assignedEmployeeId);
       $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : ''}`;
@@ -4191,6 +4199,8 @@
       bulkReturnButton.hidden = !canWriteAssets(); bulkReturnButton.disabled = count === 0 || count > 100 || bulkReturnInvalid;
       bulkTransferButton.hidden = !canWriteAssets(); bulkTransferButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
       bulkAuditButton.hidden = !canWriteAssets(); bulkAuditButton.disabled = count === 0 || count > 100 || selectedAssets.some(asset => !asset);
+      bulkTrashButton.hidden = !canWriteAssets(); bulkTrashButton.disabled = count === 0 || count > 100 || bulkTrashInvalid;
+      bulkTrashButton.title = bulkTrashInvalid ? 'Çöp kutusuna taşımadan önce varlıkları çalışanlardan iade alın.' : '';
       bulkAssignButton.title = bulkAssignmentInvalid ? 'Toplu zimmet için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
       bulkTransferButton.title = bulkAssignmentInvalid ? 'Toplu konum aktarımı için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
       bulkReturnButton.title = bulkReturnInvalid ? 'Toplu iade için seçimin tamamı zimmetli olmalı.' : '';
@@ -12055,6 +12065,25 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
         const result = await api('/api/assets/bulk-return', { method: 'POST', body: JSON.stringify({ assetIds: ids, note: note?.trim() || null }) });
         clearBulkAssetSelection(); await loadDashboard($('#globalSearch').value.trim(), assetPage);
         notify(`${fmt.format(result.updated)} varlık iade alındı; her kayıt için işlem geçmişi oluşturuldu.`);
+      } catch (error) { notify(error.message); }
+      finally { updateBulkAssetSelection(); }
+    });
+    $('#bulkTrashSelectedAssets').addEventListener('click', async () => {
+      const ids = [...selectedAssetIds], assets = ids.map(id => selectedAssetRows.get(id));
+      if (!canWriteAssets() || !ids.length || ids.length > 100 || assets.some(asset => !asset || asset.assignedEmployeeId || asset.status === 'Deployed')) return;
+      const submission = await requestBulkAssetAction({
+        title: 'Seçili varlıkları çöp kutusuna taşı?',
+        description: translateUiText('{count} seçili varlık çöp kutusuna taşınacak. Bu işlem geri alınabilir; varlıklar silinmez ve çöp kutusundan geri alınabilir.').replace('{count}', fmt.format(ids.length)),
+        noteLabel: 'Seçili varlıkları çöp kutusuna taşıma notu (isteğe bağlı)',
+        submitLabel: 'Seçili varlıkları çöp kutusuna taşı'
+      });
+      if (!submission) return;
+      const button = $('#bulkTrashSelectedAssets'); button.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-trash', { method: 'POST', body: JSON.stringify({ assetIds: ids, note: submission.note }) });
+        clearBulkAssetSelection();
+        await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(translateUiText('{count} seçili varlık çöp kutusuna taşındı; çöp kutusundan geri alınabilir.').replace('{count}', fmt.format(result.trashedCount)));
       } catch (error) { notify(error.message); }
       finally { updateBulkAssetSelection(); }
     });
