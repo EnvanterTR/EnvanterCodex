@@ -1827,7 +1827,7 @@ const server = createServer(async (request, response) => {
     asset.assignedEmployeeName = body.employeeId === employeeId ? 'Synthetic QA Employee' : 'Unknown synthetic employee';
     asset.expectedReturnOn = body.expectedReturnOn;
     asset.status = 'Deployed';
-    assetHistory.unshift({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventType: 'Assigned', occurredAt: '2026-10-14T16:00:00Z',
+    assetHistory.unshift({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventType: 'Assigned', employeeId: body.employeeId, occurredAt: '2026-10-14T16:00:00Z',
       details: `Varlık ${asset.assignedEmployeeName} çalışanına zimmetlendi${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ id: assetId, assetTag: asset.assetTag, status: asset.status, assignedEmployeeId: employeeId,
@@ -1839,7 +1839,7 @@ const server = createServer(async (request, response) => {
     delete asset.assignedEmployeeId;
     delete asset.assignedEmployeeName;
     delete asset.expectedReturnOn;
-    assetHistory.unshift({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', eventType: 'Returned', occurredAt: '2026-10-14T17:00:00Z',
+    assetHistory.unshift({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', eventType: 'Returned', employeeId, occurredAt: '2026-10-14T17:00:00Z',
       details: `Varlık iade alındı${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(204); response.end(); return;
   }
@@ -2592,6 +2592,13 @@ try {
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
   await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#detailEmployee')?.textContent.includes('Synthetic QA Employee'));
   assert.equal(asset.status, 'Deployed');
+  await page.locator('#assetTabHistoryButton').click();
+  const openAssignmentDuration = page.locator('[data-assignment-event="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]');
+  await openAssignmentDuration.waitFor({ state: 'visible' });
+  assert.equal(await openAssignmentDuration.getAttribute('data-asset-held-duration'), 'ongoing');
+  assert.match(await openAssignmentDuration.innerText(), /Zimmet süresi · \d+ gün \(devam ediyor\)/,
+    'The assignment timeline must show elapsed holding time while the employee still has the asset.');
+  await page.locator('#assetTabOverviewButton').click();
 
   const detailReferenceFilters = [
     { selector: '#detailCategory', label: 'Synthetic equipment', queryKey: 'categoryId', value: asset.categoryId },
@@ -2886,6 +2893,12 @@ try {
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
   assert.match(await page.locator('#detailEmployee').innerText(), /—|atanmamış/i,
     'After a successful return, reopening the asset must not show the previous assignee.');
+  await page.locator('#assetTabHistoryButton').click();
+  const completedAssignmentDuration = page.locator('[data-assignment-event="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]');
+  await completedAssignmentDuration.waitFor({ state: 'visible' });
+  assert.equal(await completedAssignmentDuration.getAttribute('data-asset-held-duration'), 'completed');
+  assert.match(await completedAssignmentDuration.innerText(), /Zimmet süresi · 1 saat/,
+    'The assignment timeline must show the elapsed duration up to the matching employee return.');
   await page.locator('#assetDialog #closeDialog').click();
 
   await page.locator('[data-group="data"]').click();

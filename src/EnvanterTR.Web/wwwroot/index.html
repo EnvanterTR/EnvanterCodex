@@ -7672,6 +7672,30 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         }
       }
     }
+    function formatAssetHeldDuration(startedAt, endedAt = Date.now()) {
+      const elapsedMinutes = Math.max(0, Math.floor((endedAt - Date.parse(startedAt)) / 60000));
+      const days = Math.floor(elapsedMinutes / 1440);
+      if (days > 0) return `${fmt.format(days)} gün`;
+      const hours = Math.floor(elapsedMinutes / 60);
+      if (hours > 0) return `${fmt.format(hours)} saat`;
+      return `${fmt.format(Math.max(1, elapsedMinutes))} dk`;
+    }
+    function assetAssignmentDuration(event, events) {
+      if (event.eventType !== 'Assigned' || !event.employeeId) return null;
+      const startTime = Date.parse(event.occurredAt);
+      if (!Number.isFinite(startTime)) return null;
+      const matchingReturn = events
+        .filter(item => item.eventType === 'Returned' && item.employeeId === event.employeeId && Date.parse(item.occurredAt) > startTime)
+        .sort((left, right) => Date.parse(left.occurredAt) - Date.parse(right.occurredAt))[0];
+      if (matchingReturn) return { state: 'completed', label: formatAssetHeldDuration(event.occurredAt, Date.parse(matchingReturn.occurredAt)) };
+      if (currentAsset?.assignedEmployeeId === event.employeeId) {
+        const latestAssignment = events
+          .filter(item => item.eventType === 'Assigned' && item.employeeId === event.employeeId && Number.isFinite(Date.parse(item.occurredAt)))
+          .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))[0];
+        if (latestAssignment?.id === event.id) return { state: 'ongoing', label: `${formatAssetHeldDuration(event.occurredAt)} (devam ediyor)` };
+      }
+      return null;
+    }
     function renderAssetHistory(events, attachments = []) {
       const history = $('#assetHistory'); history.replaceChildren();
       const entries = [
@@ -7717,6 +7741,13 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         if (event.details) { const details = document.createElement('p'); details.textContent = event.details; card.append(details); }
         if (event.actorName) { const actor = document.createElement('div'); actor.className = 'asset-history-person'; actor.textContent = `İşlemi yapan · ${event.actorName}`; card.append(actor); }
         if (event.employeeName) { const person = document.createElement('div'); person.className = 'asset-history-person'; person.textContent = `Çalışan · ${event.employeeName}`; card.append(person); }
+        const heldDuration = assetAssignmentDuration(event, events);
+        if (heldDuration) {
+          item.dataset.assignmentEvent = event.id;
+          item.dataset.assetHeldDuration = heldDuration.state;
+          const duration = document.createElement('div'); duration.className = 'asset-history-person asset-held-duration';
+          duration.textContent = `Zimmet süresi · ${heldDuration.label}`; card.append(duration);
+        }
         if (canWriteAssets()) {
           const actions = document.createElement('div'); actions.className = 'asset-attachment-actions';
           const add = document.createElement('button'); add.type = 'button'; add.className = 'btn small';
