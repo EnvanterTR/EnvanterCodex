@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T09:05:06Z",
+  "measuredAt": "2026-11-04T10:43:19Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "9c9d0b555b0b6aa88b46cb1a7879264adb3e9285",
+    "commit": "99245393f4ba74437e3019f363575d1945a72a1b",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -40,11 +40,11 @@
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2253,
+      "staticControls": 2255,
       "pageRoutes": 65,
       "menuGroups": 10,
       "links": 53,
-      "buttons": 952,
+      "buttons": 954,
       "forms": 113,
       "inputs": 621,
       "selects": 204,
@@ -52,7 +52,7 @@
       "modals": 109,
       "tabs": 5,
       "tables": 79,
-      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972"
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b"
     },
     "gitDiffCheck": {
       "status": "PASS",
@@ -124,24 +124,24 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 87,
+        "notRun": 82,
         "partial": 14,
-        "implemented": 14
+        "implemented": 19
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "9c9d0b555b0b6aa88b46cb1a7879264adb3e9285",
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-072"
+      "latestStatusWp": "WP-077"
     },
     "sourceMigrationInventory": {
       "status": "PASS",
-      "count": 122,
+      "count": 123,
       "first": "20261002192729_InitialSchema",
-      "last": "20261026083058_AddHandoverEmailAttempts",
+      "last": "20261104101113_AddStockCatalogArchiving",
       "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
-      "measuredCommit": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
       "databaseConnected": false,
-      "note": "Source inventory only; no live database or restored backup clone was connected."
+      "note": "Source inventory 123 migrations; the new archive migration was applied in the isolated PostgreSQL acceptance DB. No live database or restored backup clone was connected."
     },
     "f2HostedBrowserAcceptance": {
       "status": "PASS",
@@ -287,6 +287,32 @@
       "measuredCommit": "d98696e",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three kit CRUD/request/mixed-issue tests); deploy/testing/run-hosted-checkout-browser-acceptance.ps1"
+    },
+    "stockArchiveAcceptance": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-StockArchiveUi.mjs",
+          "Verify-AccessoryInventoryUi.mjs",
+          "Verify-ConsumableInventoryUi.mjs",
+          "Verify-ComponentInventoryUi.mjs"
+        ]
+      },
+      "hostedChromium": {
+        "status": "NOT_RUN",
+        "reason": "Archive/restore button was not clicked in hosted Chromium; F5 remains separate."
+      },
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss"
     }
   },
   "historicalBaseline": {

@@ -1,5 +1,9 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-077 — DONE
+
+D05 ortak stok CRUD/zimmet/stok/minimum uyarısı: D01–D04 önceki kabul kanıtlarına yeni, geri alınabilir arşiv yaşam döngüsü eklendi. `Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss` izole PostgreSQL'de 1/1 PASS: aksesuar/sarf/bileşen arşivleme, başka şirket kaydında 404, varsayılan listeden saklama, `includeArchived` ile erişim, geri yükleme ve üç hareket geçmişini koruma. `node tools/Verify-StockArchiveUi.mjs` ile `Verify-AccessoryInventoryUi.mjs`, `Verify-ConsumableInventoryUi.mjs`, `Verify-ComponentInventoryUi.mjs` PASS. Yeni `IsArchived` alanları için migration test DB'de uygulandı. Gerçek Chromium arşiv/geri yükleme tıklaması denenmedi; F5'te doğrula. Commit `99245393f4ba74437e3019f363575d1945a72a1b`. Canlı DB/deploy/Coolify/ödeme değişmedi. Sonraki WP: E01 arıza/bakım/onarım kabul ölçümü.
+
 
 
 ## WP-076 — DONE
