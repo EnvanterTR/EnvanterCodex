@@ -6,6 +6,10 @@
 
 C02 lisans koltuğu atama/geri alma doğrulandı: hosted Chromium’da tekli/toplu atama, liste arama/durum/geçmiş filtresi/sayfalama, iptal ve onay, sayaç yenileme ve CSRF PASS. `Verify-LicenseAssignmentUi.mjs` + `Verify-LicenseActionDialogs.mjs` PASS. İzole PostgreSQL’de tekli assign/revoke, tekrar atama reddi, EULA gerektiren atomik toplu atama/kapasite ve tenant/birim sınırları 3/3 PASS; geçici DB/network kaldırıldı. C02 `VAR`. Sonraki paket C03 lisans dosyası yükleme kabulini ölç.
 
+## WP-070 — DONE
+
+C03 lisans eki upload/download/delete: hosted Chromium lisans dosyası/EULA akışları PASS; izole PostgreSQL `Software_license_attachments_are_validated_audited_and_tenant_scoped` 1/1 PASS (içerik/isim, rol, tenant, download ve audit). Geçici DB/network kaldırıldı. C03 `VAR`. Sonraki paket C04 süre yaklaşan uyarılar.
+
 ## WP-068 — DONE
 
 C01 lisans listesi/formu, koltuk ve atanmış adet, bitiş tarihi ile bitiş raporu kanıtlandı. Hosted Chromium lisans create/edit ve koltuk sayaçlarını; employee EULA UI’si ve Verify-LicenseAssignmentUi/Verify-LicenseActionDialogs PASS. İzole PostgreSQL create/update/read + expiry report 2/2 PASS. Gerçek aktivasyon anahtarı saklama alanı yok; LicenseReference aynı şey değildir. C01 KISMEN; WP-069’da tamamlanan C02’ye bakınız.
@@ -26,7 +30,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık. WP-069 sonrası A–O dağılımı 90 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 11 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 ve C01 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05/C02 VAR. C01 lisans anahtarı alanı eksik. Sonraki paket C03 lisans dosyası yükleme kabulini ölç. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-070 sonrası A–O dağılımı 89 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 12 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 ve C01 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05/C02/C03 VAR. C01 lisans anahtarı alanı eksik. Sonraki paket C04 lisans süre uyarılarını ölç. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
