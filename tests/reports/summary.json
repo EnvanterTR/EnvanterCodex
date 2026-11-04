@@ -1,11 +1,14 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T00:51:13Z",
+  "measuredAt": "2026-11-04T00:57:31Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "1b2a8554923687b052b3b2b293622c8eda285580",
-    "workingTreeCleanAtRun": true
+    "commit": "2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f",
+    "workingTreeCleanAtRun": false,
+    "workingTreeChangesAtMeasurement": [
+      "docs/LEDGER.md"
+    ]
   },
   "currentVerification": {
     "releaseBuild": {
@@ -65,6 +68,21 @@
       "productionWrites": false,
       "evidenceCommit": "7446037f249487581f3acbe655b05c95ca92b29f",
       "note": "Broad historical suite; not rerun on current branch. Current WP-034 has a separate 2/2 targeted acceptance result above."
+    },
+    "apiRouteBoundaryAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        "Every_api_endpoint_declares_an_explicit_authentication_boundary",
+        "Every_api_route_policy_matches_the_company_and_platform_role_matrix"
+      ],
+      "routesLowerBoundVerified": 300,
+      "coverage": "Every runtime /api RouteEndpoint was checked for explicit authorization or AllowAnonymous; every protected route was evaluated against the company/platform role-policy matrix; the exact public route and policy sets were asserted.",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "measuredCommit": "2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f",
+      "runnerCleanup": "Temporary database container and network removed"
     }
   },
   "historicalBaseline": {

@@ -104,4 +104,10 @@ WP-034 is committed and pushed to `codex/f2-cloud-seat-limits-20261104` at `1b2a
 
 `tests/reports/summary.json` previously identified a different branch/SHA (`eb5b93a`, measured Nov 2) as its current source while the working feature branch had advanced. The summary now has a current measurement section tied to the exact Release build SHA (`1b2a8554923687b052b3b2b293622c8eda285580`) and preserves the former data under `historicalBaseline`. It separately records 84/84 source verifiers and 2/2 targeted PostgreSQL acceptance on `f3a12e5` (the application/verifier files match the measured Release SHA; the only interim difference was the handoff note), current UI inventory 2,253 controls/65 routes, and the prior 297/297 broad suite on `7446037f`. It does not imply the 297-test suite was rerun on the current feature commit. Release build used Docker SDK 10.0 because `dotnet` is not installed on Windows: 0 warnings, 0 errors. JSON source/SHA, scope separation and historical retention checks passed; `git diff --check` passed.
 
-Next: push WP-035, then wait for the user's pending action-time confirmation before opening a draft PR to trigger CI. Do not modify production while CI/review is pending. F2 remains partial; do not start payment/Iyzico.
+WP-035 is pushed in `2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f`.
+
+## WP-036 — DONE
+
+On `2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f`, the two runtime API acceptance tests passed 2/2. They enumerate every API `RouteEndpoint`, assert explicit auth/AllowAnonymous, exact anonymous-route and authorization-policy sets, and check the protected routes against the company/platform role matrix. This does not establish data-level hostile-ID isolation for every endpoint; F4 remains partial. `summary.json` now records this check separately from the historic 297/297 run, and old measurement content is preserved exactly. The isolated test DB/network were removed. No production access or writes occurred.
+
+Next: push WP-036, then wait for the user's pending action-time confirmation before opening a draft PR to trigger CI. Do not modify production while CI/review is pending. F2 remains partial; do not start payment/Iyzico.
