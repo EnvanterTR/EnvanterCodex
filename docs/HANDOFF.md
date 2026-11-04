@@ -2,9 +2,13 @@
 
 
 
+## WP-075 — DONE
+
+D03 bileşeni varlığa takma: `Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company`, `Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Location_access_scope_is_tenant_scoped_inherited_and_enforced_for_assets` izole PostgreSQL'de 3/3 PASS. Varlık detayında açık/takılı bileşen ve kalan adet, tenant izolasyonu, lokasyon kapsamı ve yarış koşulunda tek stok tahsisi doğrulandı. `node tools/Verify-ComponentInventoryUi.mjs` PASS; gerçek Chromium tahsis formu gönderimi çalıştırılmadı. Geçici DB/container/network kaldırıldı. D03 `VAR`; sonraki WP: D04 kit (laptop + çanta + mouse) hazır set.
+
 ## WP-074 — DONE
 
-D02 sarf stok/minimum stok: `Consumable_search_stock_filters_pagination_and_csv_export_match_company_scope` ve `Stock_and_model_employee_scope_matches_customer_api_and_explicit_location_restrictions` izole PostgreSQL'de 2/2 PASS. Eşik altı stok filtresi/CSV, stok girişi, sarf çıkışıyla miktar düşümü, eksik stok ve fazla zimmet reddi, detay/hareket tutarlılığı ve çalışan/lokasyon kapsamı doğrulandı. `node tools/Verify-ConsumableInventoryUi.mjs` PASS; gerçek Chromium form gönderimi bu WP’de çalıştırılmadı. Geçici PostgreSQL/container/network kaldırıldı. D02 `VAR`; sonraki WP: D03 bileşeni varlığa takma.
+D02 sarf stok/minimum stok: `Consumable_search_stock_filters_pagination_and_csv_export_match_company_scope` ve `Stock_and_model_employee_scope_matches_customer_api_and_explicit_location_restrictions` izole PostgreSQL'de 2/2 PASS. Eşik altı stok filtresi/CSV, stok girişi, sarf çıkışıyla miktar düşümü, eksik stok ve fazla zimmet reddi, detay/hareket tutarlılığı ve çalışan/lokasyon kapsamı doğrulandı. `node tools/Verify-ConsumableInventoryUi.mjs` PASS; gerçek Chromium form gönderimi bu WP’de çalıştırılmadı. Geçici PostgreSQL/container/network kaldırıldı. D02 `VAR`.
 
 ## WP-073 — DONE
 

@@ -239,6 +239,28 @@
       "measuredCommit": "0d374ef",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(two targeted consumable inventory/scope tests)"
+    },
+    "componentAssignmentAcceptance": {
+      "status": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company",
+        "Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice",
+        "Location_access_scope_is_tenant_scoped_inherited_and_enforced_for_assets"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-ComponentInventoryUi.mjs"
+        ],
+        "chromiumAllocationFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "32f17ca",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three targeted component allocation/relation/scope tests)"
     }
   },
   "historicalBaseline": {
