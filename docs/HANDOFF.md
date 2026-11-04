@@ -1,8 +1,13 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+
+## WP-067 — DONE
+
+B05 gelecek tarihli rezervasyon: hosted Chromium’da tarih doğrulama, istek, onay/ret, iptal, CSRF ve filtreler geçti; `Verify-ReservationUi.mjs` ve `Verify-AsyncUiForms.mjs` PASS. İzole PostgreSQL’de tarih/çakışma, tenant, reviewer rolü ve eşzamanlı talep testleri 2/2 PASS; geçici DB/network kaldırıldı. B05 `VAR`. Sonraki paket C01 lisans kayıtları.
+
 ## WP-066 — DONE
 
-B04 zimmet formu: imzalı PDF’ye aynı-origin, şirket oturumu gerektiren QR eklendi. Hosted Chromium sentetik API ile iki PNG imza/hash, arşivden aynı imzalı belgeyi açma, PDF üretimi, QR hedefi ve alıcıya gösterilen açık onaydan sonra tek CSRF korumalı e-posta isteği PASS. İzole PostgreSQL belge snapshot/imza ve üç handover email yetki/tenant/idempotency testi 4/4 PASS. Gerçek SMTP alıcı teslimi kanıtlanmadı; F3 KISMEN. Sonraki paket B05 rezervasyon/talep akışı.
+B04 zimmet formu: imzalı PDF’ye aynı-origin, şirket oturumu gerektiren QR eklendi. Hosted Chromium sentetik API ile iki PNG imza/hash, arşivden aynı imzalı belgeyi açma, PDF üretimi, QR hedefi ve alıcıya gösterilen açık onaydan sonra tek CSRF korumalı e-posta isteği PASS. İzole PostgreSQL belge snapshot/imza ve üç handover email yetki/tenant/idempotency testi 4/4 PASS. Gerçek SMTP alıcı teslimi kanıtlanmadı; F3 KISMEN. Sonraki paket C01 lisans kayıtları.
 
 PR #37 açık ve taslak; yeni PR açılmadı. Dal `codex/f2-cloud-seat-limits-20261104`, uzak head `aaff45e559cc62403772f04eed830b21023bb7f7`. WP-045 Actions run `41773396545` exact head SHA'da `success`, beş zorunlu iş 5/5 başarılı; PostgreSQL tenant işi yaklaşık 28 dakika sürdü. Önceki run `41768913869` da 5/5 başarılıydı. WP-043 hosted Chromium exit 0; sentetik UI trial, plan ve pricing akışları PASS. WP-044 canlıya yalnız GET yaptı: apex/firma health 2/2 ready, migration sayısı 122/122, 8 public plan; checkout `available:false` ve F14 nedeniyle kilitli. Tam migration-ID parity ve canlı müşteri kabulü kanıtlanmadı. Üretim DB/deploy değişmedi.
 
@@ -12,7 +17,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık. WP-066 sonrası A–O dağılımı 92 `ÇALIŞTIRILMADI`, 15 `KISMEN`, 9 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02/B03 VAR. B02 süre göstergesi, B03 toplu atama/iade ve B04 zimmet PDF/imza/QR/e-posta onay akışı hosted Chromium ile; B03 ve B04 API atomiklik, yetki, tenant/audit veya idempotency kabul testleri PASS. Sonraki paket B05 rezervasyon/talep akışı. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-067 sonrası A–O dağılımı 91 `ÇALIŞTIRILMADI`, 15 `KISMEN`, 10 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02/B03/B04/B05 VAR. B02 süre göstergesi, B03 toplu atama/iade, B04 zimmet PDF/imza/QR/e-posta onay akışı ve B05 gelecek rezervasyon isteği hosted Chromium ile; B03/B04/B05 API kabul testleri tenant/yetki/audit/idempotency veya çakışma sınırlarında PASS. Sonraki paket C01 lisans kayıtları. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
