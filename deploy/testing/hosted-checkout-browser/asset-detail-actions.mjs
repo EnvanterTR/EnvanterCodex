@@ -64,7 +64,10 @@ const asset = {
   createdAt: '2026-10-01T12:00:00Z', purchaseDate: '2025-01-15', warrantyExpiresAt: '2027-01-15',
   insuranceProvider: 'Synthetic Insurer', insurancePolicyNumber: 'QA-POLICY-001', insuranceExpiresAt: '2028-12-31',
   purchaseCost: 2500, currency: 'TRY', isRequestable: true, isByod: false,
-  customFields: { inventory_reference: 'QA-SOURCE-REF', secret_key: 'source-sensitive-value' }
+  customFields: {
+    inventory_reference: 'QA-SOURCE-REF', secret_key: 'source-sensitive-value',
+    purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+  }
 };
 const installedSoftwareRows = [{ name: 'Synthetic Inventory Agent', publisher: 'EnvanterTR QA', version: '1.2.3', architecture: 'x64', installDate: '2026-10-01', lastSeenAt: '2026-10-19T12:00:00Z' }];
 let assetValuation = { ageMonths: 21, depreciationMonths: 60, remainingMonths: 39, currentValue: 1625 };
@@ -84,6 +87,9 @@ const clonedAssets = [];
 const assetCreateWrites = [];
 const assetCustomFieldDefinitions = [
   { key: 'inventory_reference', name: 'Envanter referansı', groupName: 'Genel', fieldType: 'text', isActive: true, isRequired: false, options: [] },
+  { key: 'purchase_date_custom', name: 'Özel satın alma tarihi', groupName: 'Satın alma', fieldType: 'date', isActive: true, isRequired: false, options: [] },
+  { key: 'encrypted_unit', name: 'Şifreleme etkin', groupName: 'Güvenlik', fieldType: 'checkbox', isActive: true, isRequired: false, options: [] },
+  { key: 'asset_class', name: 'Varlık sınıfı', groupName: 'Genel', fieldType: 'select', isActive: true, isRequired: false, options: ['Laptop', 'Desktop'] },
   { key: 'secret_key', name: 'Gizli anahtar', groupName: 'Genel', fieldType: 'sensitive', isActive: true, isRequired: false, options: [] },
   { key: 'model_secret', name: 'Model güvenlik kodu', groupName: 'Güvenlik', categoryId: asset.categoryId, modelId,
     fieldType: 'sensitive', isActive: true, isRequired: false, options: [] }
@@ -664,8 +670,9 @@ const server = createServer(async (request, response) => {
     assert.equal(record.body.purchaseDate, asset.purchaseDate);
     assert.equal(record.body.warrantyExpiresAt, asset.warrantyExpiresAt);
     assert.equal(record.body.purchaseCost, asset.purchaseCost);
-    assert.deepEqual(record.body.customFields, { inventory_reference: 'QA-SOURCE-REF' },
-      'The clone must copy ordinary custom fields but never carry encrypted sensitive values.');
+    assert.deepEqual(record.body.customFields, {
+      inventory_reference: 'QA-SOURCE-REF', purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+    }, 'The clone must preserve text, date, checkbox, and select values while never carrying encrypted sensitive values.');
     assert.equal(Object.hasOwn(record.body, 'assignedEmployeeId'), false, 'A clone must not inherit an assignment.');
     assert.equal(Object.hasOwn(record.body, 'status'), false, 'A clone must be created in the default available state.');
     assetCreateWrites.push(record);
@@ -2200,6 +2207,14 @@ try {
   assert.equal(await page.locator('#newAssetForm [name="insuranceExpiresAt"]').inputValue(), '', 'Policy-specific insurance data must be cleared on clone.');
   assert.equal(await page.locator('#newAssetForm [name="purchaseCost"]').inputValue(), String(asset.purchaseCost));
   assert.equal(await page.locator('#newAssetForm [name="customField:inventory_reference"]').inputValue(), 'QA-SOURCE-REF');
+  assert.equal(await page.locator('#newAssetForm [name="customField:purchase_date_custom"]').getAttribute('type'), 'date',
+    'A custom date field must render as a native date input.');
+  assert.equal(await page.locator('#newAssetForm [name="customField:purchase_date_custom"]').inputValue(), '2026-10-15');
+  assert.equal(await page.locator('#newAssetForm [name="customField:encrypted_unit"]').getAttribute('type'), 'checkbox',
+    'A custom checkbox field must render as a checkbox.');
+  assert.equal(await page.locator('#newAssetForm [name="customField:encrypted_unit"]').isChecked(), true);
+  assert.equal(await page.locator('#newAssetForm [name="customField:asset_class"]').inputValue(), 'Laptop',
+    'A custom select field must preserve the selected configured option.');
   assert.equal(await page.locator('#newAssetForm [name="customField:secret_key"]').inputValue(), '',
     'Encrypted sensitive source values must not be prefilled into a cloned asset.');
   assert.equal(await page.locator('#newAssetForm .asset-custom-field-group h3').filter({ hasText: 'Güvenlik' }).count(), 1,
@@ -2224,6 +2239,9 @@ try {
   assert.equal(assetCreateWrites.at(-1).body.insuranceProvider, null);
   assert.equal(assetCreateWrites.at(-1).body.insurancePolicyNumber, null);
   assert.equal(assetCreateWrites.at(-1).body.insuranceExpiresAt, null);
+  assert.deepEqual(assetCreateWrites.at(-1).body.customFields, {
+    inventory_reference: 'QA-SOURCE-REF', purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+  }, 'Text, date, checkbox, and select values must be serialized with the cloned asset; sensitive data must remain excluded.');
   await page.waitForFunction(() => [...document.querySelectorAll('#assetRows tr')].some(row => row.innerText.includes('QA-CLONE-001')));
   assert.equal(await page.locator('#assetRows tr').filter({ hasText: 'QA-CLONE-001' }).count(), 1,
     'The cloned asset must appear in the refreshed company inventory.');
@@ -4679,8 +4697,10 @@ try {
   const customPresetsResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/assets/custom-reports' && response.request().method() === 'GET');
   await page.locator('#sidebar button[data-page="Özel rapor oluştur"]').click();
   await Promise.all([customFieldsResponse, customPresetsResponse]);
-  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').count(), 1,
+  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').count(), 4,
     'Only active non-sensitive company custom fields may be offered as custom report columns.');
+  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').filter({ hasText: 'Gizli anahtar' }).count(), 0,
+    'Sensitive custom fields must remain unavailable as custom report columns.');
   const customReportChecks = page.locator('#customReportColumns input[type="checkbox"]');
   await customReportChecks.evaluateAll(inputs => inputs.forEach(input => { input.checked = false; input.dispatchEvent(new Event('change', { bubbles: true })); }));
   await page.locator('#customReportName').fill('QA Custom Assets');
