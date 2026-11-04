@@ -1,5 +1,9 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-080 — DONE
+
+E03 bakım geçmişi ve ekleri: `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` + `Maintenance_attachments_are_validated_audited_and_included_in_company_archive` izole PostgreSQL'de 2/2 PASS. Geçmiş olayları, yükleme/liste/indirme/silme, içerik ve dosya adı doğrulaması, tenant/rol/CSRF, audit ve şirket arşivine dahil edilme doğrulandı. `Verify-MaintenanceAttachmentsUi.mjs`, `Verify-MaintenancePlanUi.mjs`, `git diff --check` PASS; test DB/network kaldırıldı. Gerçek Chromium etkileşimi F5'te. E03 `VAR`; canlı/ödeme/Coolify değişmedi. Sonraki WP: F01 kullanıcı yaşam döngüsü, profil fotoğrafı ve departman/lokasyon/yönetici bağlantıları.
+
 ## WP-079 — DONE
 
 E02 fiziksel denetim: üç izole PostgreSQL kabul testi 3/3 PASS: denetim kaydı/bulgu/sonraki tarih/geçmiş/rapor-CSV; gecikmiş-yaklaşan-planlanmamış kuyruk, arama ve sayfalama; plan oluşturma/temizleme. Şirket/rol/CSRF ve tarih sınırları PASS. `Verify-AuditScheduleUi.mjs`, `git diff --check` PASS. Geçici DB/network kaldırıldı; canlı DB/deploy/migration/ödeme/Coolify değişmedi. E02 `VAR`; gerçek Chromium form gönderimi F5'te ayrıca doğrulanacak. Sonraki WP: E03 bakım geçmişi ve dosya ekleri.
