@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T03:26:30Z",
+  "measuredAt": "2026-11-04T03:41:02Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -93,28 +93,30 @@
       "runnerCleanup": "Temporary database container and network removed"
     },
     "prCiObservation": {
-      "status": "IN_PROGRESS",
+      "status": "PASS",
       "runId": "41765272026",
       "headSha": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
-      "observedAt": "2026-11-04T03:26:30Z",
+      "observedAt": "2026-11-04T03:41:02Z",
       "requiredJobs": 5,
-      "successfulJobs": 4,
-      "inProgressJobs": 1,
+      "successfulJobs": 5,
+      "inProgressJobs": 0,
       "failedJobs": 0,
       "jobResults": {
         "Platform MFA browser acceptance": "success",
-        "Linux PostgreSQL tenant acceptance": "in_progress",
+        "Linux PostgreSQL tenant acceptance": "success",
         "Windows deployment and backup safety": "success",
         "Homepage gallery browser acceptance": "success",
         "Linux tenant security acceptance": "success"
       },
+      "linuxPostgresStartedAt": "2026-11-04T03:09:39Z",
+      "linuxPostgresCompletedAt": "2026-11-04T03:41:02Z",
       "previousRun": {
         "runId": "41763218442",
         "headSha": "00e4e8e8bafbbecbf219baabcb217f3856d0e4e9",
         "status": "FAIL",
         "cause": "Obsolete Cloud unlimited-user verifier assertion; fixed in 56c0fae"
       },
-      "note": "Current exact-SHA CI is not terminal. Do not call the run PASS until PostgreSQL tenant acceptance completes."
+      "note": "GitHub Actions run completed successfully on exact PR head SHA. Test count not reported by the run metadata."
     },
     "catalogCoverageAudit": {
       "status": "PASS",
