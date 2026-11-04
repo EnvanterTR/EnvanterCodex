@@ -5741,7 +5741,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var plan = new SubscriptionPlan
         {
             Code = $"m-{_companyId:N}", Name = "Multi-company invite", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = 2, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
