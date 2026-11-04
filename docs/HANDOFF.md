@@ -8,7 +8,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık; güncel tabloda 117 kodlu gereksinim satırı bulunuyor: 101 `ÇALIŞTIRILMADI`, 15 `KISMEN`, 1 `KİLİTLİ` (F14). WP-039'un eski 115 satırlı katalog eşlemesini güncel F14/F15 kapsamıyla uzlaştır; sonra F0 ölçümüne devam et. PR #37 açık/taslak ve CI 5/5 başarılı olsa da yeni, ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-053 115 A–O ürün gereksiniminin hedef dosyasıyla birebir eşleştiğini doğruladı; 100 `ÇALIŞTIRILMADI`, 15 `KISMEN`. F14/F15 ayrı faz kapılarıdır. Faz sırasına göre F0 ölçümüne devam et. PR #37 açık/taslak ve CI 5/5 başarılı olsa da yeni, ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
