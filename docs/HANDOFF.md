@@ -2,9 +2,13 @@
 
 
 
+## WP-074 — DONE
+
+D02 sarf stok/minimum stok: `Consumable_search_stock_filters_pagination_and_csv_export_match_company_scope` ve `Stock_and_model_employee_scope_matches_customer_api_and_explicit_location_restrictions` izole PostgreSQL'de 2/2 PASS. Eşik altı stok filtresi/CSV, stok girişi, sarf çıkışıyla miktar düşümü, eksik stok ve fazla zimmet reddi, detay/hareket tutarlılığı ve çalışan/lokasyon kapsamı doğrulandı. `node tools/Verify-ConsumableInventoryUi.mjs` PASS; gerçek Chromium form gönderimi bu WP’de çalıştırılmadı. Geçici PostgreSQL/container/network kaldırıldı. D02 `VAR`; sonraki WP: D03 bileşeni varlığa takma.
+
 ## WP-073 — DONE
 
-D01 aksesuar zimmeti: `Asset_scope_mutations_reject_hidden_checkout_targets_and_catalog_employee_changes_atomically`, `Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return`, `Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments` izole PostgreSQL'de 4/4 PASS. Tekil başarılı zimmet, birim/lokasyon/çalışan kapsamı, yabancı stok/atama reddi, rol, kısmi iade, movement/audit ve eşzamanlı stok yarışları doğrulandı. `Verify-AccessoryInventoryUi.mjs` ve `Verify-AccessoryCheckinDialog.mjs` PASS; gerçek Chromium'da zimmet formu gönderimi bu WP'de doğrulanmadı. Geçici PostgreSQL/container/network kaldırıldı. D01 `VAR`; sonraki WP: D02 sarf stok ve minimum stok uyarısı.
+D01 aksesuar zimmeti: `Asset_scope_mutations_reject_hidden_checkout_targets_and_catalog_employee_changes_atomically`, `Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return`, `Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments` izole PostgreSQL'de 4/4 PASS. Tekil başarılı zimmet, birim/lokasyon/çalışan kapsamı, yabancı stok/atama reddi, rol, kısmi iade, movement/audit ve eşzamanlı stok yarışları doğrulandı. `Verify-AccessoryInventoryUi.mjs` ve `Verify-AccessoryCheckinDialog.mjs` PASS; gerçek Chromium'da zimmet formu gönderimi bu WP'de doğrulanmadı. Geçici PostgreSQL/container/network kaldırıldı. D01 `VAR`.
 
 ## WP-072 — DONE
 

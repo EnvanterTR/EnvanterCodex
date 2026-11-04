@@ -218,6 +218,27 @@
       "measuredCommit": "d0f1c0a",
       "runnerCleanup": "Temporary PostgreSQL containers and internal networks removed",
       "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(four targeted accessory assignment/checkin tests)"
+    },
+    "consumableStockAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Consumable_search_stock_filters_pagination_and_csv_export_match_company_scope",
+        "Stock_and_model_employee_scope_matches_customer_api_and_explicit_location_restrictions"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-ConsumableInventoryUi.mjs"
+        ],
+        "chromiumFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "0d374ef",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(two targeted consumable inventory/scope tests)"
     }
   },
   "historicalBaseline": {
