@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T12:31:56Z",
+  "measuredAt": "2026-11-04T12:51:14Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "9f505cc",
+    "commit": "bba69b2",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -53,9 +53,9 @@
         "status": "PASS",
         "command": "node deploy/testing/hosted-checkout-browser/employee-records.mjs",
         "sourceFileChangedDuringVerification": true,
-        "note": "Synthetic API-backed Chromium flow verified employee archive cancellation without writes, CSRF and reason submission, default-list hiding, includeArchived visibility and restore preserving inactive state."
+        "note": "Synthetic API-backed Chromium verifies employee CSV flows, archive cancel/confirm, default filtering, restore preserving inactive state, and single offboarding cancel/confirm with one PATCH and returned-item counts."
       },
-      "note": "Employee create/edit, list/detail/export, photo/document, CSV, department/location/manager, company scope, and archive/restore acceptance passed. API tests used an isolated PostgreSQL clone; this is not live-company acceptance."
+      "note": "Employee create/edit, list/detail/export, photo/document, CSV, department/location/manager, company scope, archive/restore, and offboarding API acceptance passed. Isolated PostgreSQL is not live-company acceptance."
     },
     "employeeCsvImportAcceptance": {
       "status": "PASS",
@@ -161,24 +161,24 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 77,
+        "notRun": 76,
         "partial": 14,
-        "implemented": 24
+        "implemented": 25
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "9f505cc",
+      "measuredCommit": "bba69b2",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-083"
+      "latestStatusWp": "WP-085"
     },
     "sourceMigrationInventory": {
       "status": "PASS",
-      "count": 123,
+      "count": 124,
       "first": "20261002192729_InitialSchema",
-      "last": "20261104101113_AddStockCatalogArchiving",
+      "last": "20261104112743_ArchiveEmployeeRecords",
       "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
-      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
+      "measuredCommit": "bba69b2",
       "databaseConnected": false,
-      "note": "Source inventory 123 migrations; the new archive migration was applied in the isolated PostgreSQL acceptance DB. No live database or restored backup clone was connected."
+      "note": "Current source branch contains 124 unique timestamped EF migration IDs. The last previously verified live/backup history was 122; two migrations differ. No live database or restored clone was connected in this measurement."
     },
     "f2HostedBrowserAcceptance": {
       "status": "PASS",
@@ -350,6 +350,22 @@
       "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss"
+    },
+    "employeeOffboardingAcceptance": {
+      "status": "PASS",
+      "apiSuiteStatus": "PASS",
+      "apiSuitePassed": 31,
+      "apiSuiteFailed": 0,
+      "apiTest": "Bulk_employee_status_changes_are_company_scoped_atomic_and_audited",
+      "apiTestEvidence": "Included in the already measured Employee_ filter suite; single/bulk deactivation, asset/accessory returns, license revocation, movement/audit, CSRF, tenant, role, and location scope assertions.",
+      "apiMeasuredProductCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "browserCommand": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/employee-records.mjs",
+      "browserStatus": "PASS",
+      "browserScope": "Synthetic API fixture; cancellation writes nothing; confirmation sends one PATCH; result notice reports return counts.",
+      "regression": "Initial browser run failed on misleading confirmation copy; corrected copy and targeted rerun passed.",
+      "productionWrites": false,
+      "liveCompanyAcceptance": false,
+      "note": "F03 VAR. API suite evidence was recorded in WP-082; this WP added and passed the missing focused browser interaction. No live company acceptance."
     }
   },
   "historicalBaseline": {
