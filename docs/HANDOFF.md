@@ -1,3 +1,12 @@
+# Devam notu — 2026-11-04
+
+## Güncel oturum durumu
+
+WP-082/F01, WP-083/F02 ve WP-084/F03 tamamlandı. F01 ve F02 sentetik Chromium + izole PostgreSQL çalışan kabuline dayanır. F03 API kabul testi çalışan filtresindeki 31/31 koşuda geçti; Chromium sentetik API akışı iptal/yazmama, doğru onay metni, tek PATCH ve iade sayısı bildirimiyle geçti. F03 sırasında tekil pasife alma onayı, varlık/aksesuarların otomatik iade edileceği ve lisansların kaldırılacağı gerçeğiyle çelişiyordu; metin düzeltildi. Hiçbir canlı firma kabulü yapılmadı.
+
+A–O katalog durumu: 76 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 25 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F4/F5/F6/F7 kapıları açık; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
+
+**Sıradaki WP-085:** F04 rolleri (platform yöneticisi, şirket yöneticisi, editör, okuyucu, sınırlı, muhasebe) için kapsamı çıkar; mevcut rol/API security ve UI kabul kanıtlarını bir kez eşleştir, yalnızca eksik kalan somut kabul testini çalıştır. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
 # Güncel devam noktası — 4 Kasım 2026
 
 ## WP-082 — DONE

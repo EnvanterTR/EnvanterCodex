@@ -1277,6 +1277,38 @@ try {
   await archivedEmployeeRow.getByRole('button', { name: 'Arşivle' }).waitFor();
   assert.match(await archivedEmployeeRow.innerText(), /Pasif/, 'Restoring an archived employee must preserve its inactive status.');
 
+  const offboardingWrites = [];
+  await page.route(`**/api/employees/${employeeId}/offboarding-summary`, route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ canCompleteOffboarding: true, assetCount: 1, accessoryCount: 2, activeLicenseCount: 1, activeDirectReportCount: 1 })
+  }));
+  await page.route(`**/api/employees/${employeeId}/active`, route => {
+    offboardingWrites.push({ method: route.request().method(), body: route.request().postDataJSON() });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: employeeId, isActive: false, returnedAssets: 1, returnedAccessories: 2, revokedLicenses: 1 }) });
+  });
+  await page.locator('#employeeIncludeArchived').uncheck();
+  const activeEmployeesBeforeOffboarding = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('active') === 'true';
+  });
+  await page.locator('#employeeState').selectOption('true');
+  await activeEmployeesBeforeOffboarding;
+  const offboardingEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Employee Updated' });
+  await offboardingEmployeeRow.getByRole('button', { name: 'Pasife al' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#employeeActionSummary').innerText(), /otomatik iade edilir/i,
+    'The confirmation must tell the user that assigned assets and accessories will be returned automatically.');
+  assert.equal(offboardingWrites.length, 0, 'Opening the offboarding confirmation must not deactivate the employee.');
+  await page.locator('#employeeActionDialog').getByRole('button', { name: 'Vazgeç' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  assert.equal(offboardingWrites.length, 0, 'Canceling offboarding must not write to the API.');
+  await offboardingEmployeeRow.getByRole('button', { name: 'Pasife al' }).click();
+  const employeeDeactivationResponse = page.waitForResponse(response => response.request().method() === 'PATCH' &&
+    new URL(response.url()).pathname === `/api/employees/${employeeId}/active`);
+  await page.locator('#employeeActionSubmit').click();
+  assert.equal((await employeeDeactivationResponse).status(), 200, 'Confirming offboarding must call the employee deactivation endpoint.');
+  assert.deepEqual(offboardingWrites.at(-1), { method: 'PATCH', body: { isActive: false } });
+  await page.getByRole('status').filter({ hasText: 'Otomatik iade: 1 varlık ve 2 aksesuar' }).waitFor();
+
   syntheticRole = 'asset_operator';
   // This limits private HR notes to authorized roles.
   const privateNotesReadsBeforeLimitedPage = requests.filter(item => item.method === 'GET' && item.path === `/api/employees/${employeeId}/private-notes`).length;
