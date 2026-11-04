@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T11:40:48Z",
+  "measuredAt": "2026-11-04T12:31:56Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "92b7e7b",
+    "commit": "9f505cc",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -36,6 +36,7 @@
       "measuredCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "command": "deploy/testing/run-security-acceptance.ps1 (single employee archive test filter)",
+      "testHarnessCommit": "9f505cc",
       "note": "Employee archive/restore role, tenant, CSRF, inactive-state, audit, default-list, includeArchived and restore behavior passed. Test ran against the exact source content committed as measuredCommit; working tree contained source edits while test ran."
     },
     "employeeLifecycleAcceptance": {
@@ -55,6 +56,23 @@
         "note": "Synthetic API-backed Chromium flow verified employee archive cancellation without writes, CSRF and reason submission, default-list hiding, includeArchived visibility and restore preserving inactive state."
       },
       "note": "Employee create/edit, list/detail/export, photo/document, CSV, department/location/manager, company scope, and archive/restore acceptance passed. API tests used an isolated PostgreSQL clone; this is not live-company acceptance."
+    },
+    "employeeCsvImportAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "apiSuitePassed": 31,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Employee_csv_import_preview_is_read_only_and_commit_is_atomic_round_trips_managers_and_audits",
+        "Employee_csv_import_cannot_link_a_manager_outside_the_direct_company_unit_scope"
+      ],
+      "browserCommand": "node deploy/testing/hosted-checkout-browser/employee-records.mjs",
+      "browserStatus": "PASS",
+      "measuredProductCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "testHarnessCommit": "9f505cc",
+      "note": "Sentinel API-backed Chromium verified template, non-writing preview, cancel-safe confirmation, exact-file commit, filtered export, export/import round-trip and duplicate prevention. The isolated API suite covers atomicity, CSRF, tenant/location, manager and audit behavior. This is not a live-company import."
     },
     "uiInventory": {
       "status": "CURRENT",
@@ -143,14 +161,14 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 82,
+        "notRun": 77,
         "partial": 14,
-        "implemented": 19
+        "implemented": 24
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
+      "measuredCommit": "9f505cc",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-077"
+      "latestStatusWp": "WP-083"
     },
     "sourceMigrationInventory": {
       "status": "PASS",
