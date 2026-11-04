@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T17:31:45.763Z",
+  "measuredAt": "2026-11-04T18:28:14.000Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "40cbe9d",
+    "commit": "0f03f1b",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -77,22 +77,22 @@
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2258,
+      "staticControls": 2260,
       "pageRoutes": 65,
       "menuGroups": 10,
       "links": 53,
       "buttons": 954,
       "forms": 113,
-      "inputs": 624,
+      "inputs": 626,
       "selects": 204,
       "textareas": 42,
       "modals": 109,
       "tabs": 5,
       "tables": 79,
       "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
-      "measuredBaseCommit": "172d9af",
+      "measuredBaseCommit": "0f03f1b",
       "workingTreeModified": true,
-      "note": "WP-095 added model EOL create/edit date controls; regenerated inventory and --check passed on working tree."
+      "note": "WP-097 annual-rate model create/edit inputs and depreciation report column are inventoried; Generate-UiInventory --check passed on the working tree."
     },
     "gitDiffCheck": {
       "status": "PASS",
@@ -165,27 +165,27 @@
       "invalid": 0,
       "classification": {
         "notRun": 75,
-        "partial": 12,
-        "implemented": 28
+        "partial": 11,
+        "implemented": 29
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
       "measuredCommit": "a0b7674",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-095",
+      "latestStatusWp": "WP-097",
       "measuredBaseCommit": "172d9af",
       "workingTreeModified": true,
-      "note": "115 A–O catalog rows, unique and complete. WP-095 moves A02 from partial to evidence-backed implemented. Counts describe evidence classification, not product completion."
+      "note": "115 A–O rows remain uniquely mapped. WP-097 supplies the missing model annual-rate create/edit/report/CSV UI evidence; A05 is VAR. Counts are evidence classifications, not product completion."
     },
     "sourceMigrationInventory": {
       "status": "PASS",
-      "count": 125,
+      "count": 126,
       "first": "20261002192729_InitialSchema",
-      "last": "20261104161606_AddAssetModelEndOfLife",
+      "last": "20261104171011_AddAssetModelAnnualDepreciationRate",
       "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
-      "measuredBaseCommit": "172d9af",
+      "measuredBaseCommit": "0f03f1b",
       "workingTreeModified": true,
       "databaseConnected": false,
-      "note": "The measured source working tree after base commit 172d9af contains 125 IDs. The latest previously verified live/backup history is 122; exact ID parity has not been compared. WP-095 migration is source-only and not applied."
+      "note": "The source tree has 126 distinct migration IDs; the most recently measured live/backup history has 122 and has not been compared by exact ID. The new annual-rate migration is source-only and was not applied."
     },
     "f2HostedBrowserAcceptance": {
       "status": "PASS",
@@ -523,7 +523,49 @@
       "productionWrites": false,
       "deployPerformed": false,
       "paymentTouched": false,
-      "remaining": "WP-097 model create/edit and depreciation report UI acceptance; A05 remains partial until then."
+      "remaining": "WP-097 UI acceptance passed; A05 is VAR. The source migration remains unapplied; live/backup exact migration-ID parity remains an F1 gate."
+    },
+    "wp097AnnualDepreciationRateUiAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T18:28:14.000Z",
+      "measuredSourceBaseCommit": "0f03f1b",
+      "staticVerifier": {
+        "status": "PASS",
+        "command": "node tools/Verify-AssetModelDetailsUi.mjs"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "browser": "Chromium",
+        "command": "docker run --rm --init --volume <asset-detail-actions.mjs>:/acceptance/asset-detail-actions.mjs --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "syntheticApi": true,
+        "assertions": [
+          "Model create POST sends 25% annual rate and clears months policy.",
+          "Model edit PATCH sends 20% annual rate and clears months policy.",
+          "Entering either policy clears the conflicting input.",
+          "Model details display the saved annual rate.",
+          "Depreciation report shows annual percentage and CSV contains annual-rate heading/value.",
+          "Annual-rate entry forces linear depreciation and disables both half-year options in create/edit forms."
+        ],
+        "firstRun": "Initial run stopped because the synthetic model form required a category; fixture corrected. A follow-up used a stale image and failed a Playwright isDisabled() assertion even though option.disabled was true; rebuilt the image and asserted the native DOM property. Final full module exit code 0.",
+        "exitCode": 0,
+        "fullAssetDetailActionsModule": true
+      },
+      "syntaxAndDiff": {
+        "status": "PASS",
+        "nodeCheck": true,
+        "gitDiffCheck": true
+      },
+      "uiInventory": {
+        "status": "PASS",
+        "staticControls": 2260,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "classification": "A05 is VAR; A–O evidence counts are 75 not run, 11 partial, 29 implemented; not a completion percentage.",
+      "remaining": "F1 release gate remains open: current backup archive/hash and exact live/source migration ID parity have not been freshly verified."
     }
   },
   "historicalBaseline": {

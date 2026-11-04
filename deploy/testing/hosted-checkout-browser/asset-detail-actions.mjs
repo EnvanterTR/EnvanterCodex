@@ -13,6 +13,7 @@ const hierarchyChildId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const foreignParentId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const employeeId = '99999999-9999-4999-8999-999999999999';
 const modelId = '66666666-6666-4666-8666-666666666666';
+let modelDepreciationPolicy = { months: 36, annualRatePercent: null, minimum: null, minimumType: 'amount', method: 'linear' };
 const brandId = '55555555-5555-4555-8555-555555555556';
 const bulkEmployeeTwoId = '88888888-8888-4888-8888-888888888882';
 const bulkEmployeeThreeId = '77777777-7777-4777-8777-777777777773';
@@ -153,12 +154,12 @@ const pendingDeliveryReportItems = [
   }))
 ];
 const depreciationReportItems = [
-  { id: 'd3000000-0000-4000-8000-000000000001', assetTag: 'QA-DEPR-LINEAR', name: 'Synthetic depreciating asset', serialNumber: 'QA-DEPR-SERIAL', category: 'QA Hardware', model: 'QA Linear Model', location: 'QA Depot', status: 'Available', purchaseDate: '2025-10-16', endOfLife: '2030-10-16', purchaseCost: 12000, currency: 'TRY', monthlyDepreciation: 200, accumulatedDepreciation: 2400, bookValue: 9600, remainingMonths: 48, method: 'linear' },
+  { id: 'd3000000-0000-4000-8000-000000000001', assetTag: 'QA-DEPR-LINEAR', name: 'Synthetic depreciating asset', serialNumber: 'QA-DEPR-SERIAL', category: 'QA Hardware', model: 'QA Linear Model', location: 'QA Depot', status: 'Available', purchaseDate: '2025-10-16', endOfLife: '2030-10-16', purchaseCost: 12000, currency: 'TRY', annualDepreciationRatePercent: 10, monthlyDepreciation: 200, accumulatedDepreciation: 2400, bookValue: 9600, remainingMonths: 48, method: 'linear' },
   ...Array.from({ length: 51 }, (_, index) => ({
     id: `d4000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, assetTag: `QA-DEPR-PAGE-${String(index + 1).padStart(3, '0')}`,
     name: `Synthetic depreciation asset ${index + 1}`, serialNumber: `QA-DEPR-PAGE-SERIAL-${index + 1}`, category: 'QA Hardware',
     model: 'QA Paging Model', location: 'QA Depot', status: 'Available', purchaseDate: '2026-01-01', endOfLife: '2031-01-01',
-    purchaseCost: 6000, currency: index % 2 ? 'USD' : 'TRY', monthlyDepreciation: 100, accumulatedDepreciation: 900,
+    purchaseCost: 6000, currency: index % 2 ? 'USD' : 'TRY', annualDepreciationRatePercent: index % 2 ? 12.5 : 10, monthlyDepreciation: 100, accumulatedDepreciation: 900,
     bookValue: 5100, remainingMonths: 51, method: index % 2 ? 'half_1' : 'linear'
   }))
 ];
@@ -461,7 +462,7 @@ const server = createServer(async (request, response) => {
     const asOf = url.searchParams.get('asOf') || '2026-10-16';
     const matching = depreciationReportItems.filter(item => !q || [item.assetTag, item.name, item.serialNumber, item.category, item.model, item.location].some(value => value?.toLocaleLowerCase('tr-TR').includes(q)));
     response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename=synthetic-depreciation-${asOf.replaceAll('-', '')}.csv`, 'cache-control': 'no-store' });
-    response.end(`Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n${matching.map(item => `${item.assetTag};${item.name};${item.serialNumber};${item.category};${item.model};${item.location};${item.status};${item.purchaseDate};${item.endOfLife};${item.currency};${item.purchaseCost};${item.monthlyDepreciation};${item.accumulatedDepreciation};${item.bookValue};${item.remainingMonths};${item.method}`).join('\r\n')}\r\n`);
+    response.end(`Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Yıllık amortisman (%);Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n${matching.map(item => `${item.assetTag};${item.name};${item.serialNumber};${item.category};${item.model};${item.location};${item.status};${item.purchaseDate};${item.endOfLife};${item.currency};${item.purchaseCost};${item.annualDepreciationRatePercent};${item.monthlyDepreciation};${item.accumulatedDepreciation};${item.bookValue};${item.remainingMonths};${item.method}`).join('\r\n')}\r\n`);
     return;
   }
   if (request.method === 'GET' && url.pathname === '/api/reports/depreciation') {
@@ -906,7 +907,7 @@ const server = createServer(async (request, response) => {
         })) };
     }
     else if (url.pathname === `/api/models/${modelId}/details`) result = {
-      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', endOfLifeOn: '2030-06-30', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear' },
+      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', endOfLifeOn: '2030-06-30', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: modelDepreciationPolicy.months, depreciationAnnualRatePercent: modelDepreciationPolicy.annualRatePercent, depreciationMinimum: modelDepreciationPolicy.minimum, depreciationMinimumType: modelDepreciationPolicy.minimumType, depreciationMethod: modelDepreciationPolicy.method },
       summary: { assetTotal: 1, statuses: [{ status: 'Available', count: 1 }] },
       assets: [{ id: assetId, assetTag: asset.assetTag, name: asset.name, status: asset.status, serialNumber: asset.serialNumber, location: asset.location, employeeName: null, updatedAt: asset.updatedAt }],
       assetTotal: 1, assetListLimit: 100,
@@ -1013,7 +1014,7 @@ const server = createServer(async (request, response) => {
     }
     else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
     else if (url.pathname === '/api/lookups/brands') result = [{ id: brandId, name: 'Synthetic Brand', assetCount: 1 }];
-    else if (url.pathname === '/api/lookups/models') result = [{ id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandId, brandName: 'Synthetic Brand', categoryId: asset.categoryId, categoryName: 'Synthetic equipment', hasPhoto: false, attachmentCount: 2, depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear', assetCount: 1 }];
+    else if (url.pathname === '/api/lookups/models') result = [{ id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandId, brandName: 'Synthetic Brand', categoryId: asset.categoryId, categoryName: 'Synthetic equipment', hasPhoto: false, attachmentCount: 2, depreciationMonths: modelDepreciationPolicy.months, depreciationAnnualRatePercent: modelDepreciationPolicy.annualRatePercent, depreciationMinimum: modelDepreciationPolicy.minimum, depreciationMinimumType: modelDepreciationPolicy.minimumType, depreciationMethod: modelDepreciationPolicy.method, assetCount: 1 }];
     else if (url.pathname === '/api/locations') result = { items: locationDirectoryRows.map(item => ({ ...item })) };
     else if (url.pathname === '/api/suppliers') result = { items: [{ id: 'ab000000-0000-4000-8000-000000000001', name: 'Synthetic Asset Supplier', isActive: true }] };
     else if (/^\/api\/asset-purchase-budgets\/\d{4}$/.test(url.pathname)) result = {
@@ -1069,6 +1070,20 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/lookups/models') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Creating a model with depreciation policy must retain CSRF protection.');
+    assert.equal(body.depreciationMonths, null, 'Model creation must not send both month and annual-rate policies.');
+    assert.equal(body.depreciationAnnualRatePercent, 25, 'Model creation must persist the annual depreciation percentage.');
+    json(response, 200, { id: 'b7000000-0000-4000-8000-000000000001' }); return;
+  }
+  if (request.method === 'PATCH' && url.pathname === `/api/lookups/models/${modelId}/depreciation`) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Updating a model depreciation policy must retain CSRF protection.');
+    assert.equal(body.months, null, 'An annual-rate update must clear the conflicting month policy.');
+    assert.equal(body.annualRatePercent, 20, 'Model policy updates must persist the annual depreciation percentage.');
+    modelDepreciationPolicy = { months: body.months, annualRatePercent: body.annualRatePercent, minimum: body.minimum,
+      minimumType: body.minimumType, method: body.method };
+    json(response, 200, { id: modelId, ...body }); return;
   }
   const budgetWriteMatch = url.pathname.match(/^\/api\/asset-purchase-budgets\/(\d{4})\/(TRY|USD|EUR)$/);
   if (request.method === 'PUT' && budgetWriteMatch) {
@@ -4529,6 +4544,8 @@ try {
   assert.equal(apiRequests.length, deliveryWritesBeforeRefresh, 'Pending delivery filters, paging, CSV and refresh must remain read-only.');
   await page.locator('#depreciationReportRows').getByText('QA-DEPR-LINEAR').waitFor();
   assert.equal(await page.locator('#depreciationReportRows tr').count(), 50, 'Depreciation report must initially page at 50 rows.');
+  assert.match(await page.locator('#depreciationReportRows').locator('xpath=../thead').innerText(), /Yıllık amortisman \(%\)/, 'Depreciation report must label the annual percentage column.');
+  assert.match(await page.locator('#depreciationReportRows tr').filter({ hasText: 'QA-DEPR-LINEAR' }).innerText(), /10%/, 'Depreciation report must render the effective annual percentage.');
   assert.match(await page.locator('#depreciationReportRows').innerText(), /Doğrusal/);
   assert.match(await page.locator('#depreciationReportRows').innerText(), /9\.600/);
   assert.match(await page.locator('#depreciationReportSummary').innerText(), /TRY/);
@@ -4568,7 +4585,9 @@ try {
   const depreciationStream = await depreciationDownload.createReadStream(), depreciationChunks = [];
   for await (const chunk of depreciationStream) depreciationChunks.push(Buffer.from(chunk));
   const depreciationCsv = Buffer.concat(depreciationChunks).toString('utf8');
+  assert.match(depreciationCsv, /Yıllık amortisman \(%\)/, 'Depreciation CSV must include the annual rate heading.');
   assert.match(depreciationCsv, /QA-DEPR-PAGE-001/);
+  assert.match(depreciationCsv, /10;100;/, 'Depreciation CSV must include the effective annual rate value.');
   assert.doesNotMatch(depreciationCsv, /QA-DEPR-LINEAR/);
   const depreciationExport = requests.findLast(item => item.path === '/api/reports/depreciation/export.csv');
   assert.equal(depreciationExport?.query.asOf, '2026-11-16', 'Depreciation CSV must preserve the report date.');
@@ -5503,6 +5522,46 @@ try {
 
   if (!await page.locator('[data-page="Varlık modelleri"]').isVisible()) await page.locator('[data-group="inventory"]').click();
   await page.locator('[data-page="Varlık modelleri"]').click();
+  const modelRateInput = page.locator('#catalogCreateForm [name="depreciationAnnualRatePercent"]');
+  await modelRateInput.waitFor({ state: 'visible' });
+  await page.locator('#catalogCreateForm [name="name"]').fill('Synthetic annual-rate model');
+  await page.locator('#catalogCreateForm [name="categoryId"]').selectOption(asset.categoryId);
+  await page.locator('#catalogCreateForm [name="depreciationMonths"]').fill('48');
+  await modelRateInput.fill('25');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMonths"]').inputValue(), '',
+    'Entering an annual rate must clear the conflicting useful-life value.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"]').inputValue(), 'linear',
+    'Annual-rate depreciation must use the supported straight-line method.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"] option[value="half_1"]').evaluate(option => option.disabled), true,
+    'Annual-rate depreciation must disable the unsupported first half-year method.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"] option[value="half_2"]').evaluate(option => option.disabled), true,
+    'Annual-rate depreciation must disable the unsupported second half-year method.');
+  const modelCreateResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/lookups/models'
+    && response.request().method() === 'POST');
+  await page.locator('#catalogCreateForm button[type="submit"]').click();
+  assert.equal((await modelCreateResponse).status(), 200);
+  const createdModelRequest = requests.findLast(item => item.path === '/api/lookups/models' && item.method === 'POST');
+  assert.equal(createdModelRequest?.body.depreciationMonths, null);
+  assert.equal(createdModelRequest?.body.depreciationAnnualRatePercent, 25);
+  const modelEditMonths = page.locator(`[data-dep-months="${modelId}"]`);
+  const modelEditRate = page.locator(`[data-dep-annual-rate="${modelId}"]`);
+  await modelEditMonths.fill('36');
+  assert.equal(await modelEditRate.inputValue(), '', 'Entering useful life must clear the conflicting annual rate.');
+  await modelEditRate.fill('20');
+  assert.equal(await modelEditMonths.inputValue(), '', 'Entering an annual rate must clear the conflicting useful life.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"]`).inputValue(), 'linear',
+    'Editing an annual-rate model must select the supported straight-line method.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"] option[value="half_1"]`).evaluate(option => option.disabled), true,
+    'Editing an annual-rate model must disable the unsupported first half-year method.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"] option[value="half_2"]`).evaluate(option => option.disabled), true,
+    'Editing an annual-rate model must disable the unsupported second half-year method.');
+  const modelPolicyResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/lookups/models/${modelId}/depreciation`
+    && response.request().method() === 'PATCH');
+  await page.locator(`[data-dep-save="${modelId}"]`).click();
+  assert.equal((await modelPolicyResponse).status(), 200);
+  const updatedModelPolicy = requests.findLast(item => item.path === `/api/lookups/models/${modelId}/depreciation` && item.method === 'PATCH');
+  assert.equal(updatedModelPolicy?.body.months, null);
+  assert.equal(updatedModelPolicy?.body.annualRatePercent, 20);
   let releaseModelDetails;
   const modelDetailsGate = new Promise(resolve => { releaseModelDetails = resolve; });
   const delayModelDetails = async route => {
@@ -5527,6 +5586,7 @@ try {
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /MD-TEST/);
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /Ömür sonu \(EOL\)/);
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /30\.06\.2030/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /20% yıllık/, 'Model details must show the configured annual depreciation rate.');
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /Teknik dosyalar/);
   assert.match(await page.locator('#modelDetailsAssets').innerText(), /QA-ASSET-001/);
   assert.match(await page.locator('#modelDetailsOrders').innerText(), /PO-MODEL-001/);
