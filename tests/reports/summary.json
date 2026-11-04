@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T12:51:14Z",
+  "measuredAt": "2026-11-04T13:26:34Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "bba69b2",
+    "commit": "a0b7674",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -166,7 +166,7 @@
         "implemented": 26
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
-      "measuredCommit": "bba69b2",
+      "measuredCommit": "a0b7674",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
       "latestStatusWp": "WP-086"
     },
@@ -385,7 +385,8 @@
       "roleScope": "finance grants assets.read only; platform administrator is separate; custom roles remain tenant-scoped and location/unit restrictions are independently enforced.",
       "runnerCleanup": "Temporary PostgreSQL containers and networks removed",
       "liveCompanyAcceptance": false,
-      "note": "F04 classified VAR for code/API role support. Invitation control mappings and import role validation are statically verified; live company acceptance remains part of F7."
+      "note": "F04 classified VAR for code/API role support. Invitation control mappings and import role validation are statically verified; live company acceptance remains part of F7.",
+      "measuredSourceCommit": "a0b7674"
     }
   },
   "historicalBaseline": {
