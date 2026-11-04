@@ -5,6 +5,7 @@
   <style id="asset-label-preview-styles">.asset-label-preview-dialog{width:min(1100px,calc(100% - 24px));height:min(90vh,900px);max-width:none;max-height:90vh;padding:0;border:1px solid var(--line,#dce4ee);border-radius:14px;background:var(--surface,#fff);color:var(--text,#223148);box-shadow:0 24px 80px #091a3280}.asset-label-preview-dialog::backdrop{background:#101b2dcc;backdrop-filter:blur(4px)}.asset-label-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line,#dce4ee)}.asset-label-preview-head h2{margin:0;font-size:1rem}.asset-label-preview-head p{margin:4px 0 0;color:var(--muted,#718096);font-size:.75rem}.asset-label-preview-actions{display:flex;align-items:center;gap:8px}.asset-label-preview-frame{display:block;width:100%;height:calc(100% - 72px);border:0;background:#eef2f7}@media(max-width:600px){.asset-label-preview-dialog{width:calc(100% - 12px);height:94vh;max-height:94vh}.asset-label-preview-head{align-items:flex-start;padding:10px}.asset-label-preview-head h2{font-size:.87rem}.asset-label-preview-actions{flex-direction:column;align-items:stretch}.asset-label-preview-frame{height:calc(100% - 100px)}}</style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style id="mobile-dashboard-welcome-fix">@media(max-width:430px){.welcome{align-items:flex-start;flex-direction:column}.welcome>div{min-width:0;width:100%}.period{max-width:100%;white-space:normal;overflow-wrap:anywhere}}</style>
+  <style id="asset-status-badge-styles">.pill.asset-status-pill{color:inherit;background:var(--asset-status-bg);border:1px solid var(--asset-status-border)}.pill.asset-status-pill:before{display:none}.asset-status-dot{width:6px;height:6px;flex:none;border-radius:50%;background:var(--asset-status-color)}</style>
   <meta name="theme-color" content="#10213a">
   <title>EnvanterTR — Şirket Alanı</title>
   <link rel="preload" href="/assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
@@ -4343,7 +4344,7 @@
       const tagCell = document.createElement('td'), tagLink = document.createElement('button'); tagLink.type = 'button'; tagLink.className = 'text-link relationship-link'; tagLink.textContent = asset.assetTag; tagLink.title = asset.assetTag; tagLink.addEventListener('click', event => { event.stopPropagation(); openAsset(asset.id).catch(error => notify(error.message)); }); tagCell.append(tagLink);
       const serialCell = cell(asset.serialNumber), modelCell = document.createElement('td'); if (asset.modelId && asset.modelName) modelCell.append(assetFilterLink(asset.modelName, 'model', asset.modelId)); else modelCell.textContent = '—'; const modelNumberCell = cell(asset.modelNumber);
       const categoryCell = document.createElement('td'); if (asset.categoryId) categoryCell.append(assetFilterLink(asset.categoryName || 'Kategori', 'category', asset.categoryId)); else categoryCell.textContent = asset.categoryName || '—';
-      const statusCell = document.createElement('td'), statusPill = document.createElement('span'); statusPill.className = 'pill ' + (asset.status === 'Maintenance' ? 'warn' : asset.status === 'Available' ? 'blue' : ''); statusPill.textContent = translateUiText(statusLabel(asset.status)); statusCell.append(statusPill);
+      const statusCell = document.createElement('td'), statusPill = document.createElement('span'); applyAssetStatusPill(statusPill, asset.status); statusCell.append(statusPill);
       const employeeCell = document.createElement('td'); if (asset.assignedEmployeeId && asset.assignedEmployeeName) employeeCell.append(assetFilterLink(asset.assignedEmployeeName, 'employee', asset.assignedEmployeeId)); else employeeCell.textContent = '—';
       const employeeNumberCell = cell(asset.employeeNumber), locationCell = document.createElement('td'); if (asset.companyUnitName) { const unitLabel = document.createElement('div'); unitLabel.className = 'muted'; unitLabel.textContent = asset.companyUnitName; unitLabel.title = translateUiText('Şirket birimi'); locationCell.append(unitLabel); } if (asset.location) locationCell.append(assetFilterLink(asset.location, 'location', asset.location)); else if (!asset.companyUnitName) locationCell.textContent = '—'; const defaultLocationCell = cell(asset.defaultLocation), manufacturerCell = cell(asset.brandName), purchaseCostCell = cell(asset.purchaseCost == null ? '—' : formatRecordedCurrency(asset.purchaseCost, asset.currency)), currentValueCell = cell(asset.currentValue == null ? '—' : formatRecordedCurrency(asset.currentValue, asset.currency)), checkoutCell = document.createElement('td'); const checkoutButton = document.createElement('button'); checkoutButton.type = 'button'; checkoutButton.className = 'btn small'; checkoutButton.textContent = translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış'); checkoutButton.disabled = !canWriteAssets() || asset.status === 'Archived'; checkoutButton.title = asset.assignedEmployeeId ? translateUiText('Zimmeti iade al') : translateUiText('Çalışana zimmetle'); checkoutButton.addEventListener('click', async event => { event.stopPropagation(); try { await openAsset(asset.id); const button = asset.assignedEmployeeId ? $('#returnAssetButton') : $('#assignAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } }); checkoutCell.append(checkoutButton);
       const actions = document.createElement('td'); actions.className = 'asset-row-actions'; const actionButton = (label, handler, primary = false) => { const button = document.createElement('button'); button.type = 'button'; button.className = primary ? 'btn small primary' : 'btn small'; button.textContent = label; button.addEventListener('click', event => { event.stopPropagation(); handler(); }); actions.append(button); };
@@ -4457,11 +4458,24 @@
     });
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
     const defaultAssetStatusLabels = { Available: 'Kullanılabilir', Deployed: 'Atanmış', Pending: 'Beklemede', Maintenance: 'Bakımda', Unusable: 'Kullanılamaz', Archived: 'Arşiv' };
+    const defaultAssetStatusColors = { Available: '#20A779', Deployed: '#3478F6', Pending: '#D99A22', Maintenance: '#D97706', Unusable: '#D64E5A', Archived: '#68758A' };
     let assetStatusLabelRows = Object.entries(defaultAssetStatusLabels).map(([status, defaultLabel]) => ({ status, defaultLabel, label: defaultLabel }));
     let assetStatusLabelsLoadPromise = null;
     let assetStatusLabelMap = { ...defaultAssetStatusLabels };
     let assetStatusConfiguration = { builtInStatuses: Object.entries(defaultAssetStatusLabels).map(([status,label])=>({status,label,defaultLabel:label})), customStatuses: [], transitions: [] };
     function statusLabel(status) { return assetStatusLabelMap[status] || defaultAssetStatusLabels[status] || status || 'Bilinmiyor'; }
+    function applyAssetStatusPill(element, status) {
+      const configured = [...(assetStatusConfiguration.builtInStatuses || []), ...(assetStatusConfiguration.customStatuses || [])].find(item => item.status === status);
+      const color = /^#[0-9a-f]{6}$/i.test(configured?.color || '') ? configured.color : defaultAssetStatusColors[status] || '#607D9B';
+      const red = Number.parseInt(color.slice(1, 3), 16), green = Number.parseInt(color.slice(3, 5), 16), blue = Number.parseInt(color.slice(5, 7), 16);
+      element.className = 'pill asset-status-pill';
+      element.style.setProperty('--asset-status-color', color);
+      element.style.setProperty('--asset-status-bg', `rgba(${red}, ${green}, ${blue}, .11)`);
+      element.style.setProperty('--asset-status-border', `rgba(${red}, ${green}, ${blue}, .45)`);
+      const dot = document.createElement('span'); dot.className = 'asset-status-dot'; dot.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span'); label.textContent = translateUiText(statusLabel(status));
+      element.replaceChildren(dot, label);
+    }
     function isAssetStatusTransitionAllowed(from,to) { if(to==='Archived')return from!=='Archived'; if(from===to)return true; return (assetStatusConfiguration.transitions||[]).some(edge=>edge.from===from&&edge.to===to); }
     function applyAssetStatusLabelsToOptions() {
       const selectors=['#assetStatusFilter','#bulkAssetStatus','#customReportStatus','#assetStatusAction'];
@@ -6539,7 +6553,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (!(result.statusCounts || []).length) reportEmpty(statusRows, 3, 'Henüz raporlanacak varlık kaydı yok.');
       for (const item of result.statusCounts || []) {
         const row = document.createElement('tr'), stateCell = document.createElement('td'), count = document.createElement('td'), action = document.createElement('td');
-        const pill = document.createElement('span'); pill.className = `pill ${item.status === 'Maintenance' ? 'warn' : item.status === 'Available' ? 'blue' : ''}`; pill.textContent = statusLabel(item.status); stateCell.append(pill); count.textContent = fmt.format(item.count);
+        const pill = document.createElement('span'); applyAssetStatusPill(pill, item.status); stateCell.append(pill); count.textContent = fmt.format(item.count);
         const link = document.createElement('button'); link.type = 'button'; link.className = 'text-link'; link.textContent = translateUiText('Varlıkları aç →');
         link.addEventListener('click', () => { $('#assetStatusFilter').value = item.status; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); });
         action.append(link); row.append(stateCell, count, action); statusRows.append(row);
@@ -6820,7 +6834,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const date = document.createElement('td'); date.textContent = formatDate(item.warrantyExpiresAt);
         const tag = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = item.assetTag; open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); tag.append(open);
         const name = document.createElement('td'); name.textContent = item.name;
-        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = `pill ${item.status === 'Maintenance' ? 'warn' : item.status === 'Available' ? 'blue' : ''}`; pill.textContent = translateUiText(statusLabel(item.status)); state.append(pill);
+        const state = document.createElement('td'), pill = document.createElement('span'); applyAssetStatusPill(pill, item.status); state.append(pill);
         const location = document.createElement('td'); location.textContent = item.location || '—';
         const employee = document.createElement('td'); employee.textContent = item.employeeName || '—';
         row.append(date, tag, name, state, location, employee); rows.append(row);
@@ -8312,8 +8326,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const status = $('#detailStatus'), statusTop = $('#detailStatusTop');
         status.textContent = statusLabel(asset.status); statusTop.textContent = statusLabel(asset.status);
         $('#assetStatusAction').querySelectorAll('option').forEach(option=>{if(option.value)option.disabled=!isAssetStatusTransitionAllowed(asset.status,option.value);});
-        const statusClass = asset.status === 'Available' ? 'pill' : asset.status === 'Deployed' ? 'pill blue' : 'pill warn';
-        status.className = statusClass; statusTop.className = statusClass;
+        applyAssetStatusPill(status, asset.status); applyAssetStatusPill(statusTop, asset.status);
         renderAssetRelations(asset, result.references);
         renderAssetRelatedInventory(result.accessories, result.components);
         renderAssetLicenseAssignments(result.softwareLicenses);
