@@ -12030,6 +12030,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                        createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
                        createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using (var invalidCost = await SendAsRoleAsync(HttpMethod.Post, licensePath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { createBody.name, createBody.publisher, createBody.productVersion,
+                       createBody.licenseType, createBody.licenseReference, createBody.supplier, createBody.seats, unitCost = -0.01m,
+                       createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
+                       createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidCost.StatusCode);
 
         await SetCompanyRoleAsync("viewer");
         using (var denied = await SendAsRoleAsync(HttpMethod.Post, licensePath, "viewer",
@@ -12050,7 +12056,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var license = payload.RootElement.GetProperty("license");
             Assert.Equal(createBody.name, license.GetProperty("name").GetString());
             Assert.Equal(2, license.GetProperty("seats").GetInt32());
+            Assert.Equal(45.50m, license.GetProperty("unitCost").GetDecimal());
+            Assert.Equal("USD", license.GetProperty("currency").GetString());
             Assert.Equal(0, license.GetProperty("assigned").GetInt32());
+        }
+        using (var licenseList = await SendAsAdminAsync("/api/software-licenses?status=all"))
+        {
+            Assert.Equal(HttpStatusCode.OK, licenseList.StatusCode);
+            using var payload = JsonDocument.Parse(await licenseList.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(),
+                row => row.GetProperty("id").GetGuid() == licenseId);
+            Assert.Equal(45.50m, item.GetProperty("unitCost").GetDecimal());
+            Assert.Equal("USD", item.GetProperty("currency").GetString());
         }
         await using (var membershipScope = _factory!.Services.CreateAsyncScope())
         {
@@ -12091,9 +12108,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var stored = await verifyDb.SoftwareLicenses.SingleAsync(item => item.CompanyId == _companyId && item.Id == licenseId);
         Assert.Equal(updateBody.name, stored.Name);
         Assert.Equal(4, stored.Seats);
+        Assert.Equal(55.25m, stored.UnitCost);
         Assert.Equal("EUR", stored.Currency);
         Assert.True(stored.RequiresEulaAcceptance);
         Assert.Equal(0, await verifyDb.SoftwareLicenses.CountAsync(item => item.CompanyId == _otherCompanyId && item.Id == licenseId));
+        using (var exported = await SendAsAdminAsync("/api/software-licenses/export.csv?status=all"))
+        {
+            Assert.Equal(HttpStatusCode.OK, exported.StatusCode);
+            var csv = await exported.Content.ReadAsStringAsync();
+            Assert.Contains("55.25", csv, StringComparison.Ordinal);
+            Assert.Contains("EUR", csv, StringComparison.Ordinal);
+            Assert.Contains(updateBody.name, csv, StringComparison.Ordinal);
+        }
         var events = await verifyDb.SoftwareLicenseEvents.Where(item => item.CompanyId == _companyId && item.LicenseId == licenseId)
             .OrderBy(item => item.EventType).Select(item => item.EventType).ToListAsync();
         Assert.Equal(new[] { "Created", "Updated" }, events);
