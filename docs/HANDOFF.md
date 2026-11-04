@@ -1,12 +1,12 @@
 # Güncel devam noktası — 4 Kasım 2026
 
-PR #37 taslak olarak açık: https://github.com/EnvanterTR/EnvanterCodex/pull/37. Baş dal `codex/f2-cloud-seat-limits-20261104`; güncel kaynak commit `0a904faf923acf3043454497ef03cd97af647447`. Bu commit iki düzeltme içeriyor: Cloud plan seat-limit doğrulayıcısını güncel dosya adına bağlayan CI yolu ve çoklu-firma üyelik kabul fixture'ının iki kişilik kapasitesi.
+PR #37 taslak/açık: https://github.com/EnvanterTR/EnvanterCodex/pull/37. Dal `codex/f2-cloud-seat-limits-20261104`; son yerel commit `56c0fae3719d109020398b4a2e7ab158584fd9a8` (CI düzeltmesi; push durumu için git kontrol et). Bu, `Verify-PlatformAdminExperience.mjs` içindeki eski Cloud “Sınırsız” beklentisini, yapılandırılmış kullanıcı kotası ve kayıtlı ek dosya ölçümlerini test edecek şekilde günceller.
 
-F4/M02 filtresiz `deploy/testing/run-security-acceptance.ps1` koşusu 298/298 PASS, exit 0; izole PostgreSQL konteyneri/ağı silinmeden runner tarafından kaldırıldı, production DB'ye yazım yok. Önceki koşuda 297/298 geçmişti; tek başarısızlık test fixture'ının bir koltuk tanımlarken hedef firmada zaten bir üye kurmasıydı. Fixture 2 koltuğa çıkarıldı, tek test 1/1 PASS ve tam koşu 298/298 PASS oldu. CI ilk PR koşusunda kaldırılmış `Verify-CloudUnlimitedUsers.mjs` dosya yolunu çağırdığı için başarısızdı; workflow şimdi `Verify-CloudPlanSeatLimits.mjs` çağırıyor ve yerel verifier PASS. PR üzerindeki yeni Actions koşusu henüz bekleniyor.
+Kanıt: eski assertion yerelde ve Actions run `41763218442` / SHA `00e4e8e` üzerinde kırmızıydı. Düzeltme ardından `tools/Verify-*.mjs` 84/84 PASS ve `git diff --check` PASS; runtime ürün kodu değişmedi. `deploy/testing/run-security-acceptance.ps1` filtresiz tam suite `0a904fa` üzerinde 298/298 PASS; Actions run `41763218442` içindeki PostgreSQL işi en son gözlemde hâlâ çalışıyordu. Yeni commit için CI, push sonrasında doğrulanmalı.
 
-**Şimdi:** commit `0a904fa` ve ledger/summary/status/handoff kanıt güncellemelerini PR #37'ye push et; GitHub Actions'ın beş kapısının yeni SHA'da sonuçlanmasını izle. CI başarısızsa tanıla/düzelt. Draft PR'ı merge etme ve canlıya deploy etme: yalnızca taslak PR açma yetkisi verilmiş durumda. Iyzico ve ödeme kilitli. Tam hostile-ID kiracı veri sızıntısı matrisi ve canlı müşteri kabulü hâlâ açık.
+**Sıradaki:** WP-038 kanıt kayıtlarını (`LEDGER`, `PROJECT-STATUS`, `summary.json`, bu not) commit edip PR #37'ye push et; yeni SHA'nın zorunlu CI işlerini izle. Hata varsa tek hata imzasını inceleyip hedef belgedeki 3 deneme sınırını uygula. Draft PR'ı merge etme veya canlıya deploy etme. F0 katalog eşlemesi, tam F4 hostile-ID matrisi ve F2 canlı ödemesiz pilot kabulü açık. Iyzico/ödeme kilitli.
 
-Kanıt özeti `tests/reports/summary.json`; paket ayrıntısı `docs/LEDGER.md` WP-037. Canlı DB, migration, deploy, ödeme, e-posta veya Coolify ayarları değiştirilmedi.
+Kanıt özeti `tests/reports/summary.json`; paket ayrıntısı `docs/LEDGER.md` WP-038. Canlı DB, migration, deploy, ödeme, e-posta veya Coolify ayarları değiştirilmedi.
 
 # Devam notu — 2026-11-03
 

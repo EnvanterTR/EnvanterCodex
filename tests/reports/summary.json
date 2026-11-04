@@ -1,16 +1,13 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T02:30:39Z",
+  "measuredAt": "2026-11-04T03:04:12Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "0a904faf923acf3043454497ef03cd97af647447",
+    "commit": "56c0fae3719d109020398b4a2e7ab158584fd9a8",
     "workingTreeCleanAtRun": false,
     "workingTreeChangesAtMeasurement": [
-      "docs/LEDGER.md",
-      "docs/HANDOFF.md",
-      "docs/PROJECT-STATUS.md",
-      "tests/reports/summary.json"
+      "tools/Verify-PlatformAdminExperience.mjs"
     ]
   },
   "currentVerification": {
@@ -26,8 +23,9 @@
       "passed": 84,
       "failed": 0,
       "total": 84,
-      "measuredCommit": "f3a12e577a1bbb8bfb6cd50541a280f38d64f972",
-      "note": "The only later commit change before the Release build was docs/HANDOFF.md; application and verifier content is unchanged."
+      "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8",
+      "command": "node tools/Verify-*.mjs",
+      "note": "Full local suite passed after correcting the stale Cloud-unlimited assertion; working tree content matches measured commit."
     },
     "targetedPostgresSecurityAcceptance": {
       "status": "PASS",
@@ -61,7 +59,8 @@
     },
     "gitDiffCheck": {
       "status": "PASS",
-      "command": "git diff --check"
+      "command": "git diff --check",
+      "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8"
     },
     "lastFullPostgresSecurityAcceptance": {
       "repair": "Set the test plan limit to 2, then focused test passed 1/1.",
@@ -94,6 +93,15 @@
       "productionWrites": false,
       "measuredCommit": "2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f",
       "runnerCleanup": "Temporary database container and network removed"
+    },
+    "prCiObservation": {
+      "status": "FAIL",
+      "runId": "41763218442",
+      "headSha": "00e4e8e8bafbbecbf219baabcb217f3856d0e4e9",
+      "failedJob": "Linux tenant security acceptance",
+      "failure": "Verify-PlatformAdminExperience expected the obsolete unlimited Cloud user-cap copy",
+      "postgresJobAtLastObservation": "in_progress",
+      "note": "This run predates verifier fix 56c0fae; rerun required after push."
     }
   },
   "historicalBaseline": {
