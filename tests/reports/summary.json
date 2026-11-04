@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T13:33:05Z",
+  "measuredAt": "2026-11-04T13:35:17Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -199,7 +199,7 @@
     },
     "liveReadOnlyCheck": {
       "status": "PARTIAL_PASS",
-      "observedAt": "2026-11-04T04:24:29Z",
+      "observedAt": "2026-11-04T13:35:17Z",
       "command": "node tools/Check-CoolifyProduction.mjs",
       "productionWrites": false,
       "requests": "HTTPS GET only",
@@ -225,11 +225,11 @@
           "checkoutAvailable": false
         }
       },
-      "sourceMigrationCount": 122,
+      "sourceMigrationCount": 124,
       "migrationIdentityParity": "NOT_CHECKED",
       "deployedSha": "NOT_EXPOSED_BY_CHECK",
       "overallReadiness": "NOT_READY_CHECKOUT_UNAVAILABLE",
-      "note": "Health and schema-count checks are ready. Checkout remains unavailable under locked F14; matching migration counts alone do not prove migration-ID parity or the deployed SHA."
+      "note": "Live check is read-only. Source/deployed migration counts differ by two; exact ID parity, 3 November backup restore and rollback rehearsal were not performed. No deployment or database writes."
     },
     "accessoryAssignmentAcceptance": {
       "status": "PASS",

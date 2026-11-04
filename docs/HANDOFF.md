@@ -4,9 +4,11 @@
 
 WP-082/F01, WP-083/F02, WP-084/F03, WP-086/F04 ve WP-087 F5 UI dilimi tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 çalışan API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme kanıtına; WP-087 gerçek Chromium finance davet akışına dayanır. F04'te `finance` yalnız `assets.read` ile eklendi; platform admin ayrımı, şirket özel rolleri ve konum/birim sınırları mevcut testlerle doğrulandı. Canlı firma kabulü yapılmadı.
 
+Güncel salt-okunur canlı kontrol (4 Kasım 13:35 UTC): `https://envantertr.com/api/status` ve `https://firma.envantertr.com/api/status` HTTP 200/ready, 122 migration/0 pending; kaynak dal 124 migration. 8 public plan, checkout kapalı. GET dışında canlı işlem yapılmadı. Exact migration ID eşleşmesi, 3 Kasım yedeğinin klonda restore kanıtı ve rollback provası yok; bu nedenle canlı yayın kapısı kapalı.
+
 A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersiz hedef). Bunlar test kanıt sınıflarıdır, bitiş yüzdesi değildir. Kaynak dalda 124 migration var; önceki canlı/backup kanıtı 122 olduğundan F1 exact-ID parity ve rehearsal olmadan yayınlanamaz. F1/F2/F3/F5/F6/F7 kapıları açık; F4 kabul testleri geçti; F8–F13 başlamadı; F14 Iyzico/şirket koşulu nedeniyle kilitli; F15 başlamadı. PR #37 hâlâ taslak; üretime yayın yapılmadı.
 
-**Sıradaki WP-088:** F5 UI matrisi: güncel UI envanterindeki en yüksek riskli akışlardan başlayarak gerçek etkileşim kabulini tamamla; PASS/FAIL/BLOCKED sayılarıyla raporla. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
+**Sıradaki WP-089:** F1: 3 Kasım yedeğinin varlığını ve geçici klonda restore edilebildiğini kanıtla; canlı DB’ye yazma ve migration çalıştırma. PASS/FAIL/BLOCKED sayılarıyla raporla. Aynı yeşil testi tekrarlama. Canlı/ödeme/Coolify değişikliği yok.
 # Güncel devam noktası — 4 Kasım 2026
 
 ## WP-082 — DONE
