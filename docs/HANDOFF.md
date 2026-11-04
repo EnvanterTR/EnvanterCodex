@@ -2,9 +2,13 @@
 
 
 
+## WP-073 — DONE
+
+D01 aksesuar zimmeti: `Asset_scope_mutations_reject_hidden_checkout_targets_and_catalog_employee_changes_atomically`, `Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return`, `Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice` ve `Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments` izole PostgreSQL'de 4/4 PASS. Tekil başarılı zimmet, birim/lokasyon/çalışan kapsamı, yabancı stok/atama reddi, rol, kısmi iade, movement/audit ve eşzamanlı stok yarışları doğrulandı. `Verify-AccessoryInventoryUi.mjs` ve `Verify-AccessoryCheckinDialog.mjs` PASS; gerçek Chromium'da zimmet formu gönderimi bu WP'de doğrulanmadı. Geçici PostgreSQL/container/network kaldırıldı. D01 `VAR`; sonraki WP: D02 sarf stok ve minimum stok uyarısı.
+
 ## WP-072 — DONE
 
-C05 lisans maliyet kaydı izole PostgreSQL kabulinde 1/1 PASS: create/update, negatif maliyet reddi, şirket kapsamlı liste/detay API’si, saklanan değer ve CSV maliyet/para birimi. UI lisans formu/detayı ve lisans sipariş tablosu maliyet alanlarını içeriyor. Test projesinde dört eski `TrustedClientIpTests` uyarısı kaldı; test başarılı. Geçici PostgreSQL/network kaldırıldı. C05 `VAR`; ayrı birleştirilmiş dönemsel maliyet raporu bu pakette doğrulanmadı. Sonraki WP: D01 aksesuar zimmeti.
+C05 lisans maliyet kaydı izole PostgreSQL kabulinde 1/1 PASS: create/update, negatif maliyet reddi, şirket kapsamlı liste/detay API’si, saklanan değer ve CSV maliyet/para birimi. UI lisans formu/detayı ve lisans sipariş tablosu maliyet alanlarını içeriyor. Test projesinde dört eski `TrustedClientIpTests` uyarısı kaldı; test başarılı. Geçici PostgreSQL/network kaldırıldı. C05 `VAR`; ayrı birleştirilmiş dönemsel maliyet raporu bu pakette doğrulanmadı.
 
 ## WP-071 — DONE
 

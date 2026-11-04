@@ -193,6 +193,31 @@
       "deployedSha": "NOT_EXPOSED_BY_CHECK",
       "overallReadiness": "NOT_READY_CHECKOUT_UNAVAILABLE",
       "note": "Health and schema-count checks are ready. Checkout remains unavailable under locked F14; matching migration counts alone do not prove migration-ID parity or the deployed SHA."
+    },
+    "accessoryAssignmentAcceptance": {
+      "status": "PASS",
+      "passed": 4,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Asset_scope_mutations_reject_hidden_checkout_targets_and_catalog_employee_changes_atomically",
+        "Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return",
+        "Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice",
+        "Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "passed": 2,
+        "tests": [
+          "Verify-AccessoryInventoryUi.mjs",
+          "Verify-AccessoryCheckinDialog.mjs"
+        ],
+        "chromiumCheckoutFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "d0f1c0a",
+      "runnerCleanup": "Temporary PostgreSQL containers and internal networks removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(four targeted accessory assignment/checkin tests)"
     }
   },
   "historicalBaseline": {
