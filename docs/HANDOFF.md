@@ -1,5 +1,11 @@
 # Güncel devam noktası — 4 Kasım 2026
 
+## WP-081 — DONE
+
+F01 çalışan arşivleme/geri yükleme dilimi `92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5` commit'inde. Önce kabul testi kırmızıydı: `Employee` entity'sinde `ArchivedAt` bulunmadı. `20261104112743_ArchiveEmployeeRecords` migration'ı eklendi; `POST /api/employees/{id}/archive` ve `/restore` şirket/lokasyon kapsamı, `people.manage`, CSRF, zorunlu neden, pasif çalışan şartı ve audit kaydıyla çalışıyor. Varsayılan liste arşivlileri gizliyor; UI filtresi arşivlileri gösteriyor ve geri yükleme pasif kaydı geri getiriyor. `Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited` izole PostgreSQL'de 1/1 PASS; `node tools/Verify-EmployeeRecordsUi.mjs` ve `git diff --check` PASS. Test DB/container/internal network kaldırıldı. Migration canlıya uygulanmadı; canlı DB/deploy/ödeme/Coolify değişmedi. F01 KISMEN: create/edit/fotoğraf/departman/lokasyon/yönetici ve arşiv UI etkileşiminin gerçek Chromium matrisi ayrıca tamamlanmalı.
+
+**Sıradaki:** F01 gerçek Chromium kabulini tamamla; ardından F02–F04 kullanıcı yaşam döngüsü ve rol kapsamı. Canlıya alma, PR açma/birleştirme ve ödeme ayrı onay/kapılara bağlı.
+
 ## WP-080 — DONE
 
 E03 bakım geçmişi ve ekleri: `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` + `Maintenance_attachments_are_validated_audited_and_included_in_company_archive` izole PostgreSQL'de 2/2 PASS. Geçmiş olayları, yükleme/liste/indirme/silme, içerik ve dosya adı doğrulaması, tenant/rol/CSRF, audit ve şirket arşivine dahil edilme doğrulandı. `Verify-MaintenanceAttachmentsUi.mjs`, `Verify-MaintenancePlanUi.mjs`, `git diff --check` PASS; test DB/network kaldırıldı. Gerçek Chromium etkileşimi F5'te. E03 `VAR`; canlı/ödeme/Coolify değişmedi. Sonraki WP: F01 kullanıcı yaşam döngüsü, profil fotoğrafı ve departman/lokasyon/yönetici bağlantıları.

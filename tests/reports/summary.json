@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T11:08:07Z",
+  "measuredAt": "2026-11-04T11:40:48Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "c070a59",
-    "workingTreeCleanAtRun": true
+    "commit": "92b7e7b",
+    "workingTreeCleanAtRun": false
   },
   "currentVerification": {
     "releaseBuild": {
@@ -26,18 +26,17 @@
     },
     "targetedPostgresSecurityAcceptance": {
       "status": "PASS",
-      "passed": 2,
+      "passed": 1,
       "failed": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
       "tests": [
-        "Asset_maintenance_start_and_completion_preserve_authorization_state_and_history",
-        "Maintenance_attachments_are_validated_audited_and_included_in_company_archive"
+        "Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited"
       ],
-      "measuredCommit": "c070a59",
+      "measuredCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
-      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Asset_maintenance_start_and_completion_preserve_authorization_state_and_history|FullyQualifiedName~Maintenance_attachments_are_validated_audited_and_included_in_company_archive",
-      "note": "Maintenance timeline plus attachment upload/list/download/delete, tenant and role boundaries, audit and archive inclusion passed."
+      "command": "deploy/testing/run-security-acceptance.ps1 (single employee archive test filter)",
+      "note": "Employee archive/restore role, tenant, CSRF, inactive-state, audit, default-list, includeArchived and restore behavior passed. Test ran against the exact source content committed as measuredCommit; working tree contained source edits while test ran."
     },
     "uiInventory": {
       "status": "CURRENT",
