@@ -124,14 +124,14 @@
       "duplicate": 0,
       "invalid": 0,
       "classification": {
-        "notRun": 89,
+        "notRun": 88,
         "partial": 14,
-        "implemented": 12
+        "implemented": 13
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
       "measuredCommit": "c51f260d6cea95d194c2bce98039b994d8dedcbd",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-070"
+      "latestStatusWp": "WP-071"
     },
     "sourceMigrationInventory": {
       "status": "PASS",
