@@ -1,6 +1,6 @@
 # EnvanterTR — geçerli durum
 
-Kaynak: depodaki `AGENTS.md` (CODEX-HEDEF-4 v4); güncelleme 2026-11-04. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz. Masaüstünde anılan `CODEX-HEDEF-4.md` bu konumda yoktu; etkin v4 metni depo `AGENTS.md` dosyasından alındı.
+Kaynak: depodaki `AGENTS.md` (CODEX-HEDEF-4 v4); güncelleme 2026-11-04. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz. `C:\Users\Lenovo\Desktop\CODEX-HEDEF-4.md` dosyası bulundu ve SHA-256 değeri depo `AGENTS.md` ile aynı (`9B19173311F8A233A4384EEC25AA0DDFFDD65C5461CBF9A834F92AB692C25099`). Kullanıcının belirttiği `Desktop\EnvanterTR\CODEX-HEDEF-4.md` yolu mevcut değil; hedefin geçerli içeriği bu iki eşleşen dosyada.
 
 | Hedef | Kapsam | Durum | Kanıt / kalan kabul |
 |---|---|---|---|
