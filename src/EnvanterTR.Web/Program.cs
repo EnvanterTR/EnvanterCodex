@@ -584,6 +584,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapAssetEndpoints();
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();
+    app.MapCompanyOnboardingEndpoints();
     app.MapCompanyTaskEndpoints();
     app.MapSupportEndpoints();
     app.MapPlatformEndpoints();

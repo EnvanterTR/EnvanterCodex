@@ -1,0 +1,22 @@
+.onboarding{margin:0 0 17px;padding:18px 20px;border-color:#d9e7f7;background:linear-gradient(110deg,#edf5ff,#fff 78%)}
+.onboarding[hidden]{display:none}
+.onboarding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.onboarding-head h2{margin:0;color:#1d2c45;font-size:.94rem}
+.onboarding-head p{margin:5px 0 0;color:#75839a;font-size:.74rem;line-height:1.5}
+.onboarding-progress{flex:none;padding:7px 9px;border:1px solid #d8e5f5;border-radius:99px;color:#315b92;background:#fff;font-size:.69rem;font-weight:750}
+.onboarding-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:0;padding:0;list-style:none}
+.onboarding-step{min-width:0;padding:11px;border:1px solid #dfe8f3;border-radius:10px;background:#ffffffc9}
+.onboarding-step h3{margin:0;color:#33445d;font-size:.72rem;line-height:1.4}
+.onboarding-step p{min-height:3em;margin:5px 0 10px;color:#78869a;font-size:.65rem;line-height:1.5}
+.onboarding-step button{min-height:31px;padding:0 9px;border:1px solid #cdddf0;border-radius:7px;color:#245b9d;background:#f5f9ff;font-size:.66rem;font-weight:750;cursor:pointer}
+.onboarding-step button:hover{background:#e8f1fd}
+.onboarding-step.is-complete{border-color:#cbe6d8;background:#f5fcf8}
+.onboarding-step.is-complete h3:before{content:"✓ ";color:#15805e}
+@media(max-width:1000px){.onboarding-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.onboarding{padding:15px}.onboarding-head{flex-direction:column;gap:8px}.onboarding-list{grid-template-columns:1fr 1fr}.onboarding-step p{min-height:0}}
+@media(max-width:390px){.onboarding-list{grid-template-columns:1fr}}
+:root[data-theme="dark"] .onboarding{border-color:#2d415c;background:linear-gradient(110deg,#182941,#141f31)}
+:root[data-theme="dark"] .onboarding-head h2,:root[data-theme="dark"] .onboarding-step h3{color:#e5edf8}
+:root[data-theme="dark"] .onboarding-head p,:root[data-theme="dark"] .onboarding-step p{color:#9cacc1}
+:root[data-theme="dark"] .onboarding-progress,:root[data-theme="dark"] .onboarding-step{border-color:#30435d;color:#c8d6e8;background:#17253a}
+:root[data-theme="dark"] .onboarding-step button{border-color:#3a5271;color:#c4dcff;background:#1b2e48}
