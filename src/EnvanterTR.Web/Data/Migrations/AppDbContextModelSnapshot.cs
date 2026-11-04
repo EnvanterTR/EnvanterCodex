@@ -49,6 +49,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsRequestable")
                         .HasColumnType("boolean");
 
@@ -2778,6 +2781,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsRequestable")
                         .HasColumnType("boolean");
 
@@ -3340,6 +3346,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ItemNumber")
                         .HasMaxLength(120)

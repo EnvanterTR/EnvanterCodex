@@ -31,11 +31,11 @@ public static class ConsumableEndpoints
 
         api.MapGet("/consumables", async ([FromQuery] string? q, [FromQuery] string? stock,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
-            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] bool includeArchived = false) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
-            var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && (includeArchived || !x.IsArchived));
             var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, UserId(user)!.Value, ct);
             if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
@@ -62,7 +62,7 @@ public static class ConsumableEndpoints
             var items = await ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
             {
                 x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
-                x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes,
+                x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsArchived,
                 x.IsRequestable, x.UpdatedAt,
                 issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
             }).ToListAsync(ct);
@@ -73,7 +73,7 @@ public static class ConsumableEndpoints
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
-            var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && !x.IsArchived);
             var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, UserId(user)!.Value, ct);
             if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
@@ -127,7 +127,7 @@ public static class ConsumableEndpoints
             if (allowedLocations is not null) itemQuery = itemQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             var item = await itemQuery
                 .Select(x => new { x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
-                    x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.UpdatedAt,
+                    x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.IsArchived, x.UpdatedAt,
                     issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0 })
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
@@ -166,6 +166,38 @@ public static class ConsumableEndpoints
             AddAudit(db, companyId, user, item.Id, "consumable.created", item.Name);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/consumables/{item.Id}", new { item.Id });
+        }).RequireAuthorization("asset.write");
+
+        api.MapDelete("/consumables/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); }
+            catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.Consumables.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            item.IsArchived = true;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Consumable", TargetId = id,
+                Action = "archived", Details = $"Sarf kaydı arşivlendi: {item.Name}" });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, item.IsArchived });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/consumables/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); }
+            catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.Consumables.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            item.IsArchived = false;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Consumable", TargetId = id,
+                Action = "restored", Details = $"Sarf kaydı arşivden geri alındı: {item.Name}" });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, item.IsArchived });
         }).RequireAuthorization("asset.write");
 
         api.MapPut("/consumables/{id:guid}", async (Guid id, UpdateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

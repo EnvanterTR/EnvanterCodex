@@ -698,6 +698,7 @@ public sealed class Accessory
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
     public bool IsRequestable { get; set; }
+    public bool IsArchived { get; set; }
     public string? PhotoFileName { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -992,6 +993,7 @@ public sealed class Consumable
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
     public bool IsRequestable { get; set; }
+    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -1241,6 +1243,7 @@ public sealed class InventoryComponent
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
+    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -286,12 +286,12 @@ public static class AssetEndpoints
         api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
             [FromQuery] string? sortDirection, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
-            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] bool includeArchived = false) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
-            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && (includeArchived || !x.IsArchived));
             var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
             if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
@@ -340,7 +340,7 @@ public static class AssetEndpoints
                     modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
                     x.ItemNumber, x.Supplier, x.Location,
-                    x.MinimumQuantity, x.TotalQuantity,
+                    x.MinimumQuantity, x.TotalQuantity, x.IsArchived,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
                     x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.IsRequestable, x.UpdatedAt
@@ -369,7 +369,7 @@ public static class AssetEndpoints
                 return;
             }
 
-            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && !x.IsArchived);
             var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
             if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
@@ -505,7 +505,7 @@ public static class AssetEndpoints
                     modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
                     x.ItemNumber, x.Supplier, x.Location,
-                    x.MinimumQuantity, x.TotalQuantity,
+                    x.MinimumQuantity, x.TotalQuantity, x.IsArchived,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = assignmentsQuery.Where(a => a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
                     x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt,
@@ -623,6 +623,41 @@ public static class AssetEndpoints
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = item.Id, Action = "updated", Details = "Aksesuar temel bilgileri güncellendi." });
             await db.SaveChangesAsync(cancellationToken);
             return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapDelete("/accessories/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || CurrentUserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); }
+            catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
+                .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), ct) ?? 0;
+            if (outstanding > 0) return Results.Conflict(new { message = "Açık zimmetleri önce iade edin; kayıt ve hareket geçmişi korunur." });
+            item.IsArchived = true;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = id,
+                Action = "archived", Details = $"Aksesuar kaydı arşivlendi: {item.Name}" });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, item.IsArchived });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/accessories/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || CurrentUserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); }
+            catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            item.IsArchived = false;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = id,
+                Action = "restored", Details = $"Aksesuar kaydı arşivden geri alındı: {item.Name}" });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { item.Id, item.IsArchived });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/accessories/{id:guid}/stock", async (Guid id, AccessoryStockRequest request,
