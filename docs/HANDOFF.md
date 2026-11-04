@@ -8,7 +8,7 @@ WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8`
 
 WP-040/041 kayıtları `a35cce4` ile PR #37'ye gönderildi. WP-042 run `41768913869` exact remote head `a35cce4` üzerinde tamamlandı; beş CI işi de `success`. Bu sonuç yerel LEDGER ve summary kaydına eklendi; doğrulama kaydı uzak dala itilmedi. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-**Sıradaki:** F0 hâlâ açık. WP-064 sonrası A–O dağılımı 92 `ÇALIŞTIRILMADI`, 16 `KISMEN`, 7 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02 VAR. B02 açık ve tamamlanmış zimmet sürelerini zaman çizelgesinde gösteriyor; hosted Chromium ve iki kaynak doğrulayıcı PASS. Sonraki paket B03 toplu zimmet/iade kapsamını tamamlamak. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
+**Sıradaki:** F0 hâlâ açık. WP-065 sonrası A–O dağılımı 92 `ÇALIŞTIRILMADI`, 15 `KISMEN`, 8 `VAR` (F14/F15 faz kapıları hariç). A01/A02/A05 kısmi; A03/A04/A06/A07/A08/B01/B02/B03 VAR. B02 süre göstergesi ve B03 toplu atama/iade Chromium ile; B03 API atomiklik, yetki, tenant ve audit kabul testleri de PASS. Sonraki paket B04 zimmet formu/PDF/dijital imza/e-posta/QR. PR #37 açık/taslak; ayrı kullanıcı onayı olmadan taslaktan çıkarma, birleştirme veya Coolify yayını yapma. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
