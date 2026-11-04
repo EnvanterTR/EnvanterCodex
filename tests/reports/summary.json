@@ -120,6 +120,16 @@
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
       "measuredCommit": "ee710088cd7a56b7176bf68218cfa6bfef7bd2ca",
       "scopeNote": "Catalog row coverage only; it does not verify runtime feature completion."
+    },
+    "sourceMigrationInventory": {
+      "status": "PASS",
+      "count": 122,
+      "first": "20261002192729_InitialSchema",
+      "last": "20261026083058_AddHandoverEmailAttempts",
+      "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
+      "measuredCommit": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
+      "databaseConnected": false,
+      "note": "Source inventory only; no live database or restored backup clone was connected."
     }
   },
   "historicalBaseline": {

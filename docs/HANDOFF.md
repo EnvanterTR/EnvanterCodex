@@ -1,13 +1,12 @@
 # Güncel devam noktası — 4 Kasım 2026
 
-PR #37 taslak/açık: https://github.com/EnvanterTR/EnvanterCodex/pull/37. Dal `codex/f2-cloud-seat-limits-20261104`; son yerel commit `56c0fae3719d109020398b4a2e7ab158584fd9a8` (CI düzeltmesi; push durumu için git kontrol et). Bu, `Verify-PlatformAdminExperience.mjs` içindeki eski Cloud “Sınırsız” beklentisini, yapılandırılmış kullanıcı kotası ve kayıtlı ek dosya ölçümlerini test edecek şekilde günceller.
+PR #37 açık ve taslak; kullanıcı son olarak yeni PR açılmamasını istedi. Çalışma dalı `codex/f2-cloud-seat-limits-20261104`; remote'daki ölçüm SHA'sı `aefde3088f8368b22aea7b43dd601c32e5a5157a`. Bu dal için Actions run `41765272026` aynı SHA'da: son kontrol zamanı 2026-11-04 03:15:27Z; Platform MFA browser, Windows deployment/backup safety, homepage gallery browser ve Linux tenant security işleri `success`; Linux PostgreSQL tenant acceptance hâlâ `in_progress`. Run sonucu tamamlanmadan CI kapısı PASS sayılmaz. Önceki `41764867297` bekleyen run GitHub tarafından yenisi başlayınca otomatik iptal edilmişti.
 
-Kanıt: eski assertion yerelde ve Actions run `41763218442` / SHA `00e4e8e` üzerinde kırmızıydı. Düzeltme ardından `tools/Verify-*.mjs` 84/84 PASS ve `git diff --check` PASS; runtime ürün kodu değişmedi. `deploy/testing/run-security-acceptance.ps1` filtresiz tam suite `0a904fa` üzerinde 298/298 PASS; Actions run `41763218442` içindeki PostgreSQL işi en son gözlemde hâlâ çalışıyordu. Yeni commit için CI, push sonrasında doğrulanmalı.
+WP-038 verifier assertion düzeltmesi `56c0fae3719d109020398b4a2e7ab158584fd9a8` ile push edildi; tam statik verifier suite'i 84/84 PASS. WP-039 hedef kataloğu denetimi 115 benzersiz A–O maddesinin 115 tekil durum satırına eşlendiğini doğruladı; `ÇALIŞTIRILMADI` 105, `KISMEN` 10. Bu satır eşlemesi özellik kabulü değildir. WP-040 kaynak migration envanteri 122 benzersiz ID gösteriyor; son ID `20261026083058_AddHandoverEmailAttempts`. Canlı DB ve restore klonu bu kontrolde bağlı değildi; bu sonuç canlı paritesi değildir.
 
-**Sıradaki:** WP-038 kanıt kayıtlarını (`LEDGER`, `PROJECT-STATUS`, `summary.json`, bu not) commit edip PR #37'ye push et; yeni SHA'nın zorunlu CI işlerini izle. Hata varsa tek hata imzasını inceleyip hedef belgedeki 3 deneme sınırını uygula. Draft PR'ı merge etme veya canlıya deploy etme. F0 katalog eşlemesi, tam F4 hostile-ID matrisi ve F2 canlı ödemesiz pilot kabulü açık. Iyzico/ödeme kilitli.
+Bu çalışma ağacında WP-040 kayıtları (`docs/LEDGER.md`, `docs/PROJECT-STATUS.md`, `tests/reports/summary.json`) commit öncesi; `git status` ile doğrula. Üretim deploy, DB yazımı, migration, ödeme/Iyzico, SMTP e-postası veya Coolify ayarı bu çalışmada yapılmadı.
 
-Kanıt özeti `tests/reports/summary.json`; paket ayrıntısı `docs/LEDGER.md` WP-038. Canlı DB, migration, deploy, ödeme, e-posta veya Coolify ayarları değiştirilmedi.
-
+**Sıradaki:** run `41765272026` PostgreSQL job'ının terminal sonucunu denetle; sonucu ve SHA'yı kayda geçir. WP-040 doküman commit'ini tamamla. PR #37'ye yeni commit push edilirse o commit için yeni CI'yı izleyip sonucu eşleştir. PR taslağını merge/deploy etme. Ardından F0'ı özellik başına somut test/kanıtla ölçmeye devam et; aynı oturumda toplam en çok 5 WP. Iyzico ve gerçek tahsilat F14 kilidinde.
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
