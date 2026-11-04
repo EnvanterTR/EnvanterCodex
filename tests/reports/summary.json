@@ -1,12 +1,14 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T04:01:21Z",
+  "measuredAt": "2026-11-04T04:20:29Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "a35cce4753ce1dfbd0829905dea979598398a680",
-    "workingTreeCleanAtRun": true,
-    "workingTreeChangesAtMeasurement": []
+    "commit": "bdf209c29a25495ec7d534ba96da23afa1648b03",
+    "workingTreeCleanAtRun": false,
+    "workingTreeChangesAtMeasurement": [
+      "docs/LEDGER.md"
+    ]
   },
   "currentVerification": {
     "releaseBuild": {
@@ -141,6 +143,23 @@
       "measuredCommit": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
       "databaseConnected": false,
       "note": "Source inventory only; no live database or restored backup clone was connected."
+    },
+    "f2HostedBrowserAcceptance": {
+      "status": "PASS",
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+      "executionCommit": "bdf209c29a25495ec7d534ba96da23afa1648b03",
+      "applicationSourceCommit": "a35cce4753ce1dfbd0829905dea979598398a680",
+      "fullHostedChromiumAndGallery": true,
+      "syntheticApiFixtures": true,
+      "productionAccess": false,
+      "databaseWrites": false,
+      "f2Assertions": [
+        "Trial mode and 15-day term submitted once with CSRF, paymentVerified=false, paymentReference=null",
+        "Platform plan create/update/validation/publication and reload",
+        "Public Cloud pricing loading/empty/error states, five locales, tenant slug suggestions"
+      ],
+      "note": "The browser acceptance uses synthetic API fixtures. It does not prove production company acceptance or database persistence."
     }
   },
   "historicalBaseline": {
