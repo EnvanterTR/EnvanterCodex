@@ -1,13 +1,16 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T00:57:31Z",
+  "measuredAt": "2026-11-04T02:30:39Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f",
+    "commit": "0a904faf923acf3043454497ef03cd97af647447",
     "workingTreeCleanAtRun": false,
     "workingTreeChangesAtMeasurement": [
-      "docs/LEDGER.md"
+      "docs/LEDGER.md",
+      "docs/HANDOFF.md",
+      "docs/PROJECT-STATUS.md",
+      "tests/reports/summary.json"
     ]
   },
   "currentVerification": {
@@ -61,13 +64,21 @@
       "command": "git diff --check"
     },
     "lastFullPostgresSecurityAcceptance": {
-      "status": "PASS",
-      "passed": 297,
-      "failed": 0,
+      "repair": "Set the test plan limit to 2, then focused test passed 1/1.",
       "isolatedDatabase": true,
+      "measuredCommit": "0a904faf923acf3043454497ef03cd97af647447",
+      "command": "./deploy/testing/run-security-acceptance.ps1",
       "productionWrites": false,
-      "evidenceCommit": "7446037f249487581f3acbe655b05c95ca92b29f",
-      "note": "Broad historical suite; not rerun on current branch. Current WP-034 has a separate 2/2 targeted acceptance result above."
+      "note": "One complete 298-test PostgreSQL security/tenant suite passed on the exact code content in measuredCommit. CI verifier path fix was also applied and its verifier passed locally.",
+      "failed": 0,
+      "priorRun": {
+        "cause": "Multi-company invitation test used a one-seat plan while target company already had one member; expected behavior was to permit the second seat.",
+        "passed": 297,
+        "failed": 1
+      },
+      "passed": 298,
+      "runnerCleanup": "Temporary database containers and network removed",
+      "status": "PASS"
     },
     "apiRouteBoundaryAcceptance": {
       "status": "PASS",

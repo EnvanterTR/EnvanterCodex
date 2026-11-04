@@ -1,3 +1,13 @@
+# Güncel devam noktası — 4 Kasım 2026
+
+PR #37 taslak olarak açık: https://github.com/EnvanterTR/EnvanterCodex/pull/37. Baş dal `codex/f2-cloud-seat-limits-20261104`; güncel kaynak commit `0a904faf923acf3043454497ef03cd97af647447`. Bu commit iki düzeltme içeriyor: Cloud plan seat-limit doğrulayıcısını güncel dosya adına bağlayan CI yolu ve çoklu-firma üyelik kabul fixture'ının iki kişilik kapasitesi.
+
+F4/M02 filtresiz `deploy/testing/run-security-acceptance.ps1` koşusu 298/298 PASS, exit 0; izole PostgreSQL konteyneri/ağı silinmeden runner tarafından kaldırıldı, production DB'ye yazım yok. Önceki koşuda 297/298 geçmişti; tek başarısızlık test fixture'ının bir koltuk tanımlarken hedef firmada zaten bir üye kurmasıydı. Fixture 2 koltuğa çıkarıldı, tek test 1/1 PASS ve tam koşu 298/298 PASS oldu. CI ilk PR koşusunda kaldırılmış `Verify-CloudUnlimitedUsers.mjs` dosya yolunu çağırdığı için başarısızdı; workflow şimdi `Verify-CloudPlanSeatLimits.mjs` çağırıyor ve yerel verifier PASS. PR üzerindeki yeni Actions koşusu henüz bekleniyor.
+
+**Şimdi:** commit `0a904fa` ve ledger/summary/status/handoff kanıt güncellemelerini PR #37'ye push et; GitHub Actions'ın beş kapısının yeni SHA'da sonuçlanmasını izle. CI başarısızsa tanıla/düzelt. Draft PR'ı merge etme ve canlıya deploy etme: yalnızca taslak PR açma yetkisi verilmiş durumda. Iyzico ve ödeme kilitli. Tam hostile-ID kiracı veri sızıntısı matrisi ve canlı müşteri kabulü hâlâ açık.
+
+Kanıt özeti `tests/reports/summary.json`; paket ayrıntısı `docs/LEDGER.md` WP-037. Canlı DB, migration, deploy, ödeme, e-posta veya Coolify ayarları değiştirilmedi.
+
 # Devam notu — 2026-11-03
 
 ## Son tamamlanan çalışma paketi
