@@ -6,6 +6,8 @@ import { chromium } from 'playwright';
 const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
+const onboardingCss = await readFile('/checkout-site/onboarding.css', 'utf8');
+const onboardingScript = await readFile('/checkout-site/onboarding.js', 'utf8');
 const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
 const appScripts = new Map(await Promise.all(['report-print.js', 'scheduled-reports.js'].map(async name => [
   `/${name}`,
@@ -32,6 +34,16 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     response.end(appHtml);
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/onboarding.css') {
+    response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+    response.end(onboardingCss);
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/onboarding.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+    response.end(onboardingScript);
     return;
   }
   if (request.method === 'GET' && url.pathname.startsWith('/assets/fonts/')) {
@@ -194,8 +206,16 @@ assert.ok(address && typeof address === 'object');
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
+const missingPageResources = [];
 page.on('pageerror', error => pageErrors.push(error.message));
 page.on('request', request => { if (new URL(request.url()).origin !== `http://127.0.0.1:${address.port}`) externalRequests.push(request.url()); });
+page.on('response', response => {
+  const url = new URL(response.url());
+  if (response.status() === 404 && url.origin === `http://127.0.0.1:${address.port}` && !url.pathname.startsWith('/api/')) {
+    missingPageResources.push(url.pathname);
+    console.error(`HTTP ${response.status()} ${response.url()}`);
+  }
+});
 page.on('console', message => { if (message.type() === 'error') console.error(`BROWSER ${message.text()}`); });
 
 try {
@@ -741,6 +761,7 @@ try {
   ]);
   assert.ok(companyMfaVerifyRequests.every(item => item.csrf === 'synthetic-viewer-csrf'));
   assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
+  assert.deepEqual(missingPageResources, [], `All linked local page resources must be served: ${missingPageResources.join(', ')}`);
   await loginPage.close();
   console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, and preserves the company MFA QR/secret/form/button after a rejected code so a retry can complete recovery-code enrollment; never silently retries credentials.');
 } finally {

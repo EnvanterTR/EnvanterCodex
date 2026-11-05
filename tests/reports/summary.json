@@ -1807,6 +1807,28 @@
       "liveTouched": false,
       "deployed": false,
       "pushed": false
+    },
+    "wp157UiFixtureStaticResources": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "redTest": {
+        "status": "FAIL_AS_EXPECTED",
+        "missingLocal404Responses": 16,
+        "paths": ["/onboarding.css", "/onboarding.js"]
+      },
+      "fix": "Copy the real onboarding.css/js assets into the isolated browser test image and serve them from the loopback mock fixture.",
+      "focusedChromium": {
+        "status": "PASS",
+        "passSummaryLines": 3,
+        "missingLocal404Responses": 0,
+        "pageErrors": 0,
+        "runnerExitCode": 0,
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local command-palette.mjs"
+      },
+      "productionTouched": false,
+      "migrationAdded": false,
+      "deployed": false,
+      "pushed": false
     }
   },
   "historicalBaseline": {

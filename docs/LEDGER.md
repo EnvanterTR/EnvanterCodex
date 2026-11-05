@@ -485,3 +485,13 @@ This continuation has completed **2/5** package slots so far (WP-154–WP-155). 
 The runner also emitted repeated browser console `404 (Not Found)` resource messages in its command-palette scenario; it did not record their request URLs, so these are **unclassified console warnings**, not counted as failed assertions. No claim that all 2,265 controls were individually exercised: F5 remains PARTIAL. No migration/live/deploy/payment/Coolify/environment/domain/routing/push change. No app code changed in this WP.
 
 Deneme: **1/3**, PASS. Package slots used in this continuation: **3/5** (WP-154–WP-156); one unfiltered PostgreSQL acceptance remains scheduled last.
+
+## WP-157 — DONE — F5 classify and remove synthetic UI 404s
+
+**Bitti tanımı:** Add response diagnostics to the isolated command-palette Chromium fixture and run only that scenario. Record each non-2xx response URL/status, classify expected fixture misses vs missing product resources, and fix any real UI resource defect only if confirmed. Keep all traffic on loopback/synthetic fixtures; no live write, migration, deploy, payment, Coolify/environment/domain/routing change, or push.
+
+The first diagnostic run identified repeated `404` responses for `/onboarding.css` and `/onboarding.js`; the source files exist at `src/EnvanterTR.Web/wwwroot/`, but the browser fixture neither copied nor served them. Added both files to `Dockerfile.hosted-checkout-browser`, served their actual contents from the loopback mock, and made the scenario fail on any non-API local 404.
+
+Final command: `docker build --tag envantertr-hosted-checkout-browser-acceptance:local --file deploy/testing/Dockerfile.hosted-checkout-browser .; docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local command-palette.mjs` → build succeeded, **3 `PASS:` summaries**, **0 local resource 404s**, exit **0**. Prior red assertion counted **16** missing asset responses across page reloads; the final run logs none. No browser page errors; external request assertion passed. Only test fixture changed; product runtime did not change. No migration/live/deploy/payment/Coolify/environment/domain/routing/push change.
+
+Denemeler: **3/3** — (1) diagnostic identified paths, (2) new red assertion failed on 16 missing responses, (3) fixture asset-copy/serve fix passed. Package slots used: **4/5** (WP-154–WP-157); one unfiltered PostgreSQL acceptance remains scheduled last.
