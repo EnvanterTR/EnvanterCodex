@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T12:06:02Z",
+  "measuredAt": "2026-11-05T13:15:02Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
-    "workingTreeCleanAtRun": false,
-    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 through WP-136 focused isolated PostgreSQL acceptances passed on code/test changes atop a302db4347a9ecf262d23312c1025dbe3e9351c3 (WP-134: 1/1 customer list/search selector; WP-135: 2/2 account photo storage/upload; WP-136: 1/1 Customer API custom-field selector). The final full suite remains reserved for the last package of this continuation."
+    "commit": "d766138fda4fda8f2201440fe9fff27e9fe08f6d",
+    "workingTreeCleanAtRun": true,
+    "note": "The final unfiltered PostgreSQL security/tenant acceptance ran once on this clean tree: 322/322 passed, 0 failed, xUnit 49.8648 minutes, runner exit 0. WP-134 through WP-136 focused isolated PostgreSQL acceptances also passed (1/1, 2/2, 1/1). WP-099 encrypted-storage and no-plaintext-in-host-logs tests both passed in the full run."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -89,7 +89,29 @@
       "behavior": "Foreign companyId removed by 303 redirect; sanitized authenticated request with forged Company B X-Company-Id returned only Company A asset custom-field definition.",
       "attempts": "Attempt 1 fixture failed because generated key exceeded the 40-character DB limit; shortened key; attempt 2 passed.",
       "cleanup": "Temporary PostgreSQL container and isolated Docker network removed",
-      "measuredBaseCommit": "bec001cfb281bfa925263e9b2ce067bc4331ed97"
+      "measuredBaseCommit": "bec001cfb281bfa925263e9b2ce067bc4331ed97",
+      "measuredCodeCommit": "23b8928"
+    },
+    "finalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "xunitDurationMinutes": 49.8648,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "measuredCommit": "d766138fda4fda8f2201440fe9fff27e9fe08f6d",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "sourceMigrationFilesChanged": false,
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "runnerCleanup": "Disposable acceptance and PostgreSQL containers plus isolated Docker network removed; post-run Docker query returned no matching resources.",
+      "stdoutLog": "C:/Users/Lenovo/AppData/Local/Temp/envantertr-full-acceptance-20261105-wp137-8b71e18d.stdout.log",
+      "stderrLog": "C:/Users/Lenovo/AppData/Local/Temp/envantertr-full-acceptance-20261105-wp137-8b71e18d.stderr.log",
+      "note": "The log contained one expected EF query error while checking the initially absent __EFMigrationsHistory table in the disposable database; xUnit reported Test Run Successful with zero failed tests."
     },
     "uiInventory": {
       "status": "CURRENT",
