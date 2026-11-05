@@ -281,3 +281,11 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - Kaynakta **127** farklı EF migration kimliği var; sonuncu `20261104190000_AddProtectedSoftwareLicenseKeys`. F1 freeze gereği yeni migration yok.
 - WP-142 tam PostgreSQL koşusunun test ettiği uygulama/test kodu bu ağaçla aynı: `src/` değişikliği yok ve `TenantSessionAcceptanceTests.TenantMatrix.cs` Git blob'u `2c4acd254b82462b781d2cde4723c9aa3d665f28`. Önceki kanıt **324/324 PASS, 0 FAIL**, xUnit 49.8462 dakika, exit 0. Bu oturum için istenen yeni tam koşu F4/F5/F6 paketlerinden sonraki son pakete ayrıldı.
 - Tam `daily-20261103T000015Z.dump` Desktop/Downloads aramasında bulunamadı. WP-101'deki sunucu hash'i geçmiş kanıt; yeniden hesaplanmadı. Restore, ilk 122 migration kimlik parity'si, beş migration provası ve tablo satır karşılaştırması yapılmadı; Coolify terminaline bu oturumdaki arayüz köprüsü erişemedi. Canlıya erişilmedi.
+
+## 2026-11-05 F1 kanıt kontrolü (WP-145)
+
+- **a:** `daily-20261103T000015Z.dump` yerel aramasında bulunmadı. Önceki WP-101 sunucu hash'i `ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d` manifest ile eşleşmişti; bu pakette yeniden hesaplanmadı.
+- **b–d BLOCKED:** Coolify terminal penceresi mevcut bilgisayar-kullanım köprüsüne bağlanamıyor; tek yerel klon durmuş ve hedef dump'tan önce yaratılmış. Klon restore, ilk 122 migration ID'sinin tam eşitliği, beş migration provası ve önce/sonra tablo satır sayıları yok. Canlı DB'ye bağlanılmadı.
+- **e PASS:** 85/85 statik doğrulayıcı. Geçmişte hata veren `Verify-HostedCheckoutBrowserAcceptance.mjs` eski `Synthetic Invited Viewer` metnini bekliyordu; mevcut fixture `Synthetic Invited Finance` kullanıyor. `Verify-NoNativeBrowserDialogs.mjs`, `index.html:8614` içindeki native `confirm()` çağrısını yakalamıştı; WP-103 bunu uygulama içi onay akışına çevirdi.
+- **f/g kanıtı:** WP-142 tam PostgreSQL koşusu 324/324 PASS; WP-099 şifreli saklama/rol/CSRF ve log plaintext testleri 2/2 PASS. Kullanıcının isteği gereği sonraki tam koşu F4/F5/F6 paketlerinden sonra bir kez yapılacak.
+- Bu kanıt kontrolü tamamlandı; F1 kapısı açık/BLOCKED kaldı. Kullanıcının açık isteğiyle migration-free F4/F5/F6 işleri devam edecek; üretim, migration, yayın, ödeme ve push yok.

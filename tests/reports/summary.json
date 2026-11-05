@@ -1408,6 +1408,57 @@
       "productionTouched": false,
       "migrationAddedOrRun": false,
       "pushed": false
+    },
+    "wp145F1EvidenceCheckpoint": {
+      "status": "DONE_CHECKPOINT_F1_GATE_BLOCKED",
+      "measuredAt": "2026-11-05",
+      "backup": {
+        "expectedFile": "daily-20261103T000015Z.dump",
+        "localDesktopDownloadsMatch": false,
+        "historicalWp101Sha256": "ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d",
+        "historicalHashMatchedManifest": true,
+        "rehashedThisPackage": false
+      },
+      "cloneAndMigrationParity": {
+        "status": "BLOCKED",
+        "localClone": "envantertr-f1-restore-20261102",
+        "localCloneState": "Exited (255); predates the Nov 3 dump",
+        "dumpRestored": false,
+        "first122MigrationIdsCompared": false,
+        "fiveMigrationRehearsalRun": false,
+        "beforeAfterRowCountsCompared": false,
+        "reason": "No local target dump and current UI bridge cannot attach to the Coolify terminal."
+      },
+      "staticValidators": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "priorFailures": [
+          {
+            "name": "Verify-HostedCheckoutBrowserAcceptance.mjs",
+            "cause": "Stale Synthetic Invited Viewer fixture expectation; current fixture is Synthetic Invited Finance."
+          },
+          {
+            "name": "Verify-NoNativeBrowserDialogs.mjs",
+            "cause": "Native confirm() at index.html:8614; replaced with the in-app confirmation flow in WP-103."
+          }
+        ]
+      },
+      "wp099Tests": {
+        "status": "EXIST_AND_PASS",
+        "count": 2,
+        "names": [
+          "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+          "Software_license_key_plaintext_never_enters_host_logs"
+        ],
+        "priorTargetedPassed": 2,
+        "includedInWp142FullRun": true
+      },
+      "finalFullRunForCurrentContinuation": "DEFERRED_UNTIL_AFTER_F4_F5_F6",
+      "productionTouched": false,
+      "migrationAddedOrRun": false,
+      "pushed": false
     }
   },
   "historicalBaseline": {

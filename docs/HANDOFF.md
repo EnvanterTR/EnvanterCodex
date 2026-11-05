@@ -7,6 +7,12 @@
 - F1 restore path remains blocked: exact Nov 3 dump is not local; prior WP-101 checksum is not a new rehash; current session cannot operate Coolify's browser terminal. No restore, ID parity, rehearsal, or table-row comparison is claimed. Do not deploy or migrate.
 - Continue with the user-requested migration-free F4/F5/F6 packages, recording evidence after each. No production changes, push, or new migration.
 
+## 2026-11-05 F1 checkpoint (WP-145)
+
+- F1 a: WP-101's prior server-side hash matched the Nov 3 manifest; not rehashed now. The named dump was not found locally. F1 b–d are blocked: no restored clone, exact first-122 migration parity, five-migration rehearsal, or row-count comparison. The Coolify terminal is not exposed as a controllable desktop window in this session.
+- F1 e: 85/85 current static verifiers pass. The two previous failures and fixes are `Verify-HostedCheckoutBrowserAcceptance.mjs` (stale fixture wording) and `Verify-NoNativeBrowserDialogs.mjs` (WP-103 replaced native `confirm()`). F1 g: existing WP-099 secret encryption/authorization and no-plaintext-log tests passed 2/2 in WP-141 and in WP-142 full run.
+- The user explicitly directed migration-free F4/F5/F6 to continue while F1 access remains blocked. Run one full PostgreSQL acceptance at the end of those packages, then report. No live changes, migration, or push.
+
 ## Güncel oturum durumu
 
 WP-082/F01, WP-083/F02, WP-084/F03, WP-086/F04, WP-087, WP-091 F5 ve WP-094 F0/A01 UI dilimleri tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme; F5 hosted Chromium kanıtına dayanır. F04'te `finance` yalnız `assets.read` yetkisiyle eklendi. WP-093/WP-094 ile A01'in toplu çöp kutusu API'si ve UI akışı tamamlandı; A01 `VAR`. Bu UI kabulinin API'si sentetiktir. WP-099/C01 korumalı lisans anahtarı akışı da tamamlandı (izole API 1/1 ve hosted Chromium PASS). Canlı firma kabulü yapılmadı.
