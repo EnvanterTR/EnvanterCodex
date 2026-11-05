@@ -271,3 +271,10 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - WP-116 full PostgreSQL run: `deploy/testing/run-security-acceptance.ps1`, exact source/test commit `58339bb8089d3b9d4132c50ae859b1dd787f53d7`, clean tree at run; 321 total / 321 passed / 0 failed, 50.5365 minutes, runner exit 0. Log: `%TEMP%\envantertr-security-acceptance-20261105-wp116.log`. Disposable test containers and network were removed. `summary.json` is updated; no tests were run after this suite, only documentation and `git diff --check`.
 - F1 restore, exact live/source migration-ID parity, five-migration clone rehearsal, and before/after table counts remain BLOCKED due lack of an authorized safe server-side restore/SQL path. Do not repeat old backup evidence as fresh proof.
 - No production DB write, migration, deployment, payment, Coolify config, environment/domain/wildcard change, or push occurred.
+
+## 2026-11-05 resumed work
+
+- WP-118 / F4 DONE: Company-A lists for its own stock/accessory/asset purchase orders omitted company-B attachment IDs; isolated PostgreSQL test 1/1 PASS, 59.9293 s, exit 0. Disposable DB/container/network removed. F4 still lacks complete hostile-ID coverage for all API routes, reports, imports, and exports.
+- WP-116 remains the last unfiltered full run (321/321 PASS on `58339bb8089d3b9d4132c50ae859b1dd787f53d7`). WP-117/WP-118 targeted F4 tests were added after it; run the requested unfiltered PostgreSQL suite only at the end of this continuation.
+- WP-114 still reports 85/85 static verifiers and 75 curated hosted-browser summaries with zero FAIL/BLOCKED; there was no active UI failure identified for a product fix. Full per-control UI acceptance remains open.
+- Migration freeze is active. No production, migration, deployment, payment, Coolify, or push action has occurred.

@@ -6,7 +6,7 @@
     "branch": "codex/f2-cloud-seat-limits-20261104",
     "commit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
     "workingTreeCleanAtRun": true,
-    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit; subsequent changes are documentation-only."
+    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit. WP-117/WP-118 added tenant-acceptance assertions afterward; a final full run for the current continuation is pending."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -748,7 +748,21 @@
       "productionWrites": false,
       "exitCode": 0,
       "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
-      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp117-final.log"
+      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp117-final.log",
+      "latestRun": {
+        "status": "PASS",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0,
+        "durationSeconds": 59.9293,
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_attachment_matrix_hides_foreign_purchase_order_files_and_preserves_rows'",
+        "measuredBaseCommit": "65fecdb633b1c1ef35982b56814c700d24efcfe4",
+        "workingTreeModifiedAtRun": true,
+        "addedAssertion": "Company A stock/accessory/asset purchase-order attachment lists return 200 and omit foreign company-B attachment IDs.",
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "runnerCleanup": "Disposable PostgreSQL container and isolated Docker network removed."
+      }
     },
     "f5CurrentUiAcceptance": {
       "status": "PASS",

@@ -164,6 +164,11 @@ public sealed partial class TenantSessionAcceptanceTests
             using var foreignParentList = await SendAsAdminAsync($"{item.Route}/{item.ForeignOrderId}/attachments");
             Assert.Equal(HttpStatusCode.NotFound, foreignParentList.StatusCode);
 
+            using var ownParentList = await SendAsAdminAsync($"{item.Route}/{item.OwnOrderId}/attachments");
+            Assert.Equal(HttpStatusCode.OK, ownParentList.StatusCode);
+            var ownParentBody = await ownParentList.Content.ReadAsStringAsync();
+            Assert.DoesNotContain(item.AttachmentId.ToString("D"), ownParentBody, StringComparison.OrdinalIgnoreCase);
+
             var attachmentPath = $"{item.Route}/{item.OwnOrderId}/attachments/{item.AttachmentId}";
             using var foreignFile = await SendAsAdminAsync($"{attachmentPath}/file");
             Assert.Equal(HttpStatusCode.NotFound, foreignFile.StatusCode);
