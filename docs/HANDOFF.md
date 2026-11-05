@@ -343,3 +343,9 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - F6: WP-099 encrypted-at-rest, tenant/license binding, role/CSRF denial and no-plaintext-in-host-logs tests passed 2/2. F6 remains partial pending live security posture, broad security and legal/KVKK review, and live-company acceptance.
 - F1 a–d: earlier WP-101 server-side backup hash matched its manifest, not re-run here. The Nov 3 dump was unavailable in the local workspace and no authorized server-side restore/SQL channel was available. Restore, exact first-122 migration-ID parity, five-migration clone rehearsal and row-count comparison remain blocked; no migration ran.
 - No production DB write, live deployment, payment, Coolify/env/domain/wildcard change, migration addition, or push occurred. Source migration freeze remains active.
+
+## 2026-11-05 WP-133
+
+- F4 API inventory pin completed. Runtime app yielded 503 endpoints / 503 method-route entries; 27 explicit public routes and 476 protected. SHA-256 fingerprint: `D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4`.
+- Existing route test checks every endpoint’s auth metadata, exact public allowlist and authorization-policy set. Targeted isolated PostgreSQL acceptance passed 1/1 after the baseline was pinned; the initial deliberately empty baseline failed with actual count/hash as expected.
+- This does not establish tenant-data isolation for all routes. Next WP: choose a concrete uncovered tenant-data route family from the API inventory, add hostile cross-company read/write assertions, and run its targeted isolated PostgreSQL test. Keep migration freeze and no-live/no-push constraints.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T11:23:55Z",
+  "measuredAt": "2026-11-05T11:40:32Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -1052,6 +1052,39 @@
       "f5": "PARTIAL: 2,265 controls inventoried; not every control was individually exercised.",
       "f6": "PARTIAL: live security posture, broad security and legal/KVKK review, and live-company acceptance remain open.",
       "f1": "BLOCKED for dump restore, exact first-122 migration-ID parity, five-migration rehearsal, and before/after row counts; prior WP-101 hash match was not recomputed in this run."
+    },
+    "wp133ApiRouteInventory": {
+      "status": "PASS",
+      "endpointCount": 503,
+      "methodRouteCount": 503,
+      "anonymousEndpointCount": 27,
+      "protectedEndpointCount": 476,
+      "inventorySha256": "D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4",
+      "test": "Every_api_endpoint_declares_an_explicit_authentication_boundary",
+      "result": {
+        "passed": 1,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "50.7343 seconds",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Every_api_endpoint_declares_an_explicit_authentication_boundary'",
+      "firstRedRun": {
+        "passed": 0,
+        "failed": 1,
+        "expectedPlaceholderCount": 0,
+        "actualEndpointCount": 503,
+        "log": "%TEMP%\\envantertr-wp133-route-inventory-red.log"
+      },
+      "greenRunLog": "%TEMP%\\envantertr-wp133-route-inventory-green.log",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "sourceBaseCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
+      "workingTreeModifiedDuringVerification": true,
+      "scopeNote": "Pins the complete mapped API route/auth metadata surface and reviewed anonymous route allowlist. Does not prove tenant data isolation for each route.",
+      "noProductionChanges": true
     }
   },
   "historicalBaseline": {

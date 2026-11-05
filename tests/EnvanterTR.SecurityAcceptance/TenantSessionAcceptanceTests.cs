@@ -30,6 +30,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace EnvanterTR.SecurityAcceptance;
 
@@ -40,6 +41,7 @@ public sealed class TenantSessionAcceptanceCollection { }
 public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
 {
     private const string TestScheme = "SecurityAcceptance";
+    private readonly ITestOutputHelper _testOutput;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _sameCompanyOtherUserId = Guid.NewGuid();
     private readonly Guid _viewerUserId = Guid.NewGuid();
@@ -2080,6 +2082,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
 
+    public TenantSessionAcceptanceTests(ITestOutputHelper testOutput)
+    {
+        _testOutput = testOutput;
+    }
+
     [Fact]
     public void Account_lockout_matches_five_failed_attempts_and_five_minutes()
     {
@@ -2097,7 +2104,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/api", StringComparison.OrdinalIgnoreCase) == true)
             .ToArray();
 
-        Assert.True(endpoints.Length >= 300, $"Expected the complete API endpoint inventory, found {endpoints.Length}.");
+        var inventory = endpoints.Select(DescribeEndpoint).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var methodRouteCount = endpoints.Sum(endpoint => Math.Max(1,
+            endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Count ?? 0));
+        var inventoryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", inventory))));
+        var publicEndpointCount = endpoints.Count(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null);
+        var protectedEndpointCount = endpoints.Length - publicEndpointCount;
+        _testOutput.WriteLine($"API_ENDPOINT_INVENTORY endpoints={endpoints.Length}; methodRoutes={methodRouteCount}; public={publicEndpointCount}; protected={protectedEndpointCount}; sha256={inventoryHash}");
+
+        Assert.True(endpoints.Length == 503, $"API endpoint count changed; review the inventory before updating its baseline. Found {endpoints.Length}.");
+        Assert.True(methodRouteCount == 503, $"HTTP method/route count changed; review the inventory before updating its baseline. Found {methodRouteCount}.");
+        Assert.True(inventoryHash == "D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4",
+            $"API method/route inventory changed; review public access and tenant policy before updating its fingerprint. Found {inventoryHash}.");
         var unprotected = endpoints.Where(endpoint =>
                 endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null &&
                 !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any())

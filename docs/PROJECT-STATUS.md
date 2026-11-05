@@ -208,3 +208,9 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - F6 yeni kanıtı: WP-099 şifreli saklama, firma/lisans bağlama, yetki/CSRF reddi ve log'a plaintext yazılmaması 2/2 izole PostgreSQL testinde PASS. Canlı güvenlik başlıkları, kapsamlı güvenlik ve hukuki/KVKK incelemesi ve canlı müşteri kabulü açık; F6 KISMEN KANITLI.
 - F1 adım a: WP-101'deki önceki SHA-256/manifest eşleşmesi korunuyor, bu devamda yeniden hesaplanmadı. Adım b–d BLOCKED: 3 Kasım dump'ı yerel çalışma alanında yok ve yetkili sunucu tarafı restore/SQL kanalı yok. Geri yükleme, ilk 122 migration ID eşitliği, beş migration provası ve tablo satır sayımı yapılmadı; canlı DB'ye erişilmedi.
 - Hiçbir migration eklenmedi/çalıştırılmadı. Canlı DB/yayın, ödeme, Coolify yapılandırması, ortam değişkenleri, domain/wildcard ve push işlemi yapılmadı. Migration dondurma kuralı sürüyor.
+
+## 2026-11-05 F4 API envanter baz çizgisi (WP-133)
+
+- Runtime endpoint envanter testi **503 API endpointi / 503 method-route** buldu: 27 açık allowlist girdisi, 476 korumalı uç; envanter SHA-256 `D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4`.
+- Rota ekleme/çıkarma/yeniden adlandırma parmak izi değiştirir ve inceleme gerektirir. Test explicit auth/allow-anonymous metadatası, tam public allowlist ve authorization policy kümesini de denetler. İzole PostgreSQL testi 1/1 PASS; WP-133.
+- Bu test rota kapsamı/auth sınırını sabitler; bütün 503 uçta firma verisi izolasyonunu kanıtlamaz. F4 KISMEN KANITLI kalır.
