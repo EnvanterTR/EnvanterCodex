@@ -290,3 +290,8 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 ## 2026-11-05 continued work (WP-120)
 
 - WP-120 / F4 DONE: `Brand_model_category_and_images_are_company_scoped_and_reusable` passed 1/1 in 58.7348 s on disposable PostgreSQL. Company-B read/upload/delete attempts against Company-A brand/model/accessory-model/supplier media returned 404; owned media workflows remained functional. Disposable DB/network were removed. This targeted slice does not close F4's all-route/report/import/export matrix.
+
+## 2026-11-05 continued work (WP-121)
+
+- WP-121 / F4 DONE: `Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data` passed 1/1, xUnit 55.2980 s. Date/status-filtered maintenance aggregates excluded other-company data. Disposable PostgreSQL/network removed. This covers one report family, not all reports.
+- WP-119 through WP-121 are the three migration-free continuation packages since the last full run. Run the requested full PostgreSQL acceptance exactly once after this update; then record totals/exit/cleanup and stop.

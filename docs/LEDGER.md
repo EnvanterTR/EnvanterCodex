@@ -235,3 +235,9 @@ On clean commit `58339bb8089d3b9d4132c50ae859b1dd787f53d7`, the full isolated Po
 **Bitti tanımı:** Run `Brand_model_category_and_images_are_company_scoped_and_reusable` against disposable PostgreSQL; owner flows succeed and another company cannot read, upload, or delete the protected catalog media; runner removes the disposable database/network.
 
 `deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Brand_model_category_and_images_are_company_scoped_and_reusable'` passed 1/1, xUnit 58.7348 s, runner exit 0. The test covered brand logo, model photo, accessory-model photo, and supplier logo; foreign-session reads, uploads, and deletes returned 404, while company-owned upload/read and model attachment workflows succeeded. Disposable PostgreSQL container and isolated network were removed. No application code, schema, migration, production DB, deployment, payment, Coolify configuration, or push changed. F4 remains partial: the suite does not yet provide an exhaustive hostile-ID matrix for every API route, report, import, and export.
+
+## WP-121 — DONE — F4 maintenance-report tenant isolation
+
+**Bitti tanımı:** Run `Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data` on disposable PostgreSQL; assert report aggregates remain company-scoped; remove the disposable DB/network.
+
+`deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data'` passed 1/1, xUnit 55.2980 s, runner exit 0. The acceptance test checks date/status-filtered maintenance counts and cost aggregates without returning the other company's maintenance data. The temporary PostgreSQL container and isolated network were removed. No product code, production DB, migration, deployment, payment, Coolify configuration, or push changed. This is one report-family slice; all report routes are not yet covered.

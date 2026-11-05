@@ -6,7 +6,7 @@
     "branch": "codex/f2-cloud-seat-limits-20261104",
     "commit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
     "workingTreeCleanAtRun": true,
-    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit. WP-117/WP-118 added tenant-acceptance assertions, and WP-119 added isolated MFA browser retry acceptance afterward; a final full run for the current continuation is pending."
+    "note": "WP-116 full PostgreSQL suite ran with a clean tree at its recorded commit. WP-117/WP-118 added tenant attachment acceptance, WP-119 added MFA retry browser acceptance, and WP-120/WP-121 added catalog media and maintenance-report tenant acceptance afterward; the current unfiltered PostgreSQL run is pending."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -841,6 +841,20 @@
       ],
       "foreignSessionAssertions": "Read, upload, and delete attempts return HTTP 404; owned media flows succeed.",
       "runnerCleanup": "Disposable PostgreSQL container and isolated network removed"
+    },
+    "f4MaintenanceReportIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 55.298,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data",
+      "measuredBaseCommit": "cb59de1",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "assertion": "Date/status-filtered maintenance counts and cost aggregates exclude the other company.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "scopeNote": "One report family only; the complete report route set is not covered."
     }
   },
   "historicalBaseline": {
