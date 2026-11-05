@@ -1829,6 +1829,31 @@
       "migrationAdded": false,
       "deployed": false,
       "pushed": false
+    },
+    "wp158FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "filtered": false,
+      "runnerExitCode": 0,
+      "total": 330,
+      "passed": 330,
+      "failed": 0,
+      "countEvidence": "WP-153 baseline 328 plus exactly two new [Fact] tests in WP-154 and WP-155; WP-156/157 changed only the browser fixture.",
+      "xunitDuration": null,
+      "xunitDurationNote": "Closing xUnit duration line was not retained by the interactive terminal output; no duration is claimed.",
+      "measuredCommit": "e82c2d12e5b469b8f25631e871f9399729167537",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "cleanup": "Compose removed disposable acceptance/PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "liveDeploymentPaymentCoolifyOrPushChanged": false
     }
   },
   "historicalBaseline": {
