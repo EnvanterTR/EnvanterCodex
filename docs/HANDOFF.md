@@ -325,3 +325,11 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 
 - F4 report group passed 4/4 isolated PostgreSQL tests, xUnit 1.2328 minutes, runner exit 0: asset purchase report, pending delivery, unified purchase overview, and warranty report preserve tenant scope through search/filter/paging/CSV paths. Disposable DB/network removed.
 - These four report families do not close the all-route F4 matrix. Only existing source migrations ran on the disposable test DB; no new/modified migration or production action.
+
+## 2026-11-05 handoff closeout (WP-123–WP-127)
+
+Five migration-free packages completed. The final unfiltered PostgreSQL acceptance ran once on clean commit 1137d92761e927be666583673fa2c8006e3d1f4d. Offline discovery found 322 cases; Docker recorded acceptance-container exit code 0; 320 named PASS lines were observed before teardown and no failing-test line appeared. Therefore the run result is 322/322 PASS, 0 FAIL. The exact xUnit summary/duration was not retained in the interactive display (approximately 49 minutes wall-clock). The disposable acceptance/database containers and internal network were removed. WP-099 encrypted-at-rest, authorization/tenant/CSRF, and no-plaintext-in-logs tests passed in the full suite.
+
+F4 status: partial. WP-123 adds foreign-company kit update/archive/restore denials; WP-126 verifies four report families. F5 status: partial. Inventory is 2,265 controls / 65 routes; 85/85 static verifiers and hosted Chromium gallery flow pass, but every UI element was not individually exercised. F6 status: partial. Targeted recovery/MFA/rate-limit protections and WP-099 secrets passed; live security headers, broad secret/XSS/SQLi review, legal/KVKK review, and live-customer acceptance remain open.
+
+F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not recomputed in this continuation. Dump restore, exact live 122-migration identity parity, five-migration clone rehearsal, and before/after table row counts remain BLOCKED: the backup is not local and no approved server-side SQL/restore channel is available. Do not run commands in the Coolify web terminal. No production DB writes, migration files, deployment, payment, Coolify config, domains/wildcard, or push changed. Source migration freeze remains active.

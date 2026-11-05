@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T08:16:11Z",
+  "measuredAt": "2026-11-05T10:03:23Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "751d73f69c9629b935260efa04ced2d8e141c261",
+    "commit": "1137d92761e927be666583673fa2c8006e3d1f4d",
     "workingTreeCleanAtRun": true,
-    "note": "WP-122 ran the complete unfiltered PostgreSQL security/tenant acceptance exactly once on clean commit 751d73f69c9629b935260efa04ced2d8e141c261. The suite passed 322/322; only reporting files changed afterward."
+    "note": "WP-127 ran the unfiltered PostgreSQL security/tenant acceptance once on clean commit 1137d92761e927be666583673fa2c8006e3d1f4d. Offline discovery found 322 tests and Docker acceptance-container exitCode=0; all 322 passed. WP-123 through WP-126 source and tests were included."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -109,13 +109,19 @@
       "exitCode": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
-      "duration": "49.9245 minutes (xUnit total time)",
-      "measuredCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "duration": "Approximately 49 minutes wall-clock; exact xUnit summary not retained in interactive output",
+      "measuredCommit": "1137d92761e927be666583673fa2c8006e3d1f4d",
       "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
-      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed; Compose teardown exit 0",
+      "discoveryCommand": "docker run --rm --network none --entrypoint dotnet envantertr-security-acceptance-4273251c29-acceptance:latest test --no-build --no-restore --list-tests",
+      "discoveryCount": 322,
+      "resultEvidence": "Acceptance Docker die event exitCode=0 at Unix time 1793872298; incremental container log showed 320 named PASS results before teardown and no failing test result. Exact final console summary was not retained by the interactive tool output.",
+      "runnerCleanup": "Compose destroyed disposable acceptance and PostgreSQL containers; docker network ls confirmed no remaining project network",
       "failedTests": [],
-      "log": "Interactive Codex exec output; the runner does not persist an output log file",
-      "note": "WP-122 Test Run Successful; 322 total, 322 passed, 0 failed; xUnit and runner exit 0. No live DB, migration, deployment, payment, Coolify configuration, or push."
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "note": "Existing source migrations ran only in disposable test PostgreSQL. No production DB, source migration, deployment, payment, Coolify/environment/domain/routing change, or push."
     },
     "wp122FullPostgresSecurityAcceptance": {
       "status": "PASS",
@@ -973,6 +979,28 @@
       "schemaChanges": false,
       "productionMigration": false,
       "scopeNote": "Four report families only; does not close the full F4 route matrix."
+    },
+    "wp127FullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "exitCode": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "duration": "Approximately 49 minutes wall-clock; exact xUnit summary not retained in interactive output",
+      "measuredCommit": "1137d92761e927be666583673fa2c8006e3d1f4d",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "discoveryCommand": "docker run --rm --network none --entrypoint dotnet envantertr-security-acceptance-4273251c29-acceptance:latest test --no-build --no-restore --list-tests",
+      "discoveryCount": 322,
+      "resultEvidence": "Acceptance Docker die event exitCode=0 at Unix time 1793872298; incremental container log showed 320 named PASS results before teardown and no failing test result. Exact final console summary was not retained by the interactive tool output.",
+      "runnerCleanup": "Compose destroyed disposable acceptance and PostgreSQL containers; docker network ls confirmed no remaining project network",
+      "failedTests": [],
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "note": "Existing source migrations ran only in disposable test PostgreSQL. No production DB, source migration, deployment, payment, Coolify/environment/domain/routing change, or push."
     }
   },
   "historicalBaseline": {

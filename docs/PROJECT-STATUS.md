@@ -191,3 +191,11 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 
 - Dört izole PostgreSQL testi 4/4 PASS; xUnit 1.2328 dakika, runner exit 0: satın alma raporu, bekleyen teslimat, birleşik satın alma ve garanti raporu. Firma filtresi, arama/sayfalama ve CSV/formül güvenliği akışlarında diğer firmaya ait satırlar dışlandı.
 - Geçici PostgreSQL DB ve ağ kaldırıldı. Bu dört rapor ailesi bütün API/rapor/dosya/import/export yollarını kapsamaz; F4 KISMEN KANITLI kalır. Canlı DB/deploy/ödeme/Coolify/push yok.
+## 2026-11-05 devam kapanışı (WP-123–WP-127)
+
+- Son beş migration-free iş paketi tamamlandı. WP-123: Company A'nın Company B kitinde update/archive/restore denemeleri 404; kayıt, reçete satırı ve audit değişmedi (izole PostgreSQL 1/1). WP-126: satın alma, bekleyen teslimat, birleşik satın alma ve garanti raporu tenant testleri 4/4 PASS.
+- WP-124: UI envanteri 2.265 kontrol / 65 rota; 85 statik doğrulayıcı 85/85 PASS. Hosted Chromium runner exit 0; galeri tam ekran/klavye/otomatik sola kayma kontrolleri PASS. 2.265 öğenin tamamı tek tek çalıştırılmadı; F5 kısmi.
+- WP-125 ve WP-127: F6 parola kurtarma, MFA, hız sınırı ve lisans sırrı kapsamı izole PostgreSQL'de doğrulandı. Son tam koşu temiz commit 1137d92761e927be666583673fa2c8006e3d1f4d üzerinde bir kez çalıştı: offline test keşfi 322; kabul konteyner çıkış kodu 0; 322/322 PASS, 0 FAIL. Test çıkış kodu Docker olay kaydıyla; toplam test sayısı aynı image'daki dotnet test --list-tests ile kanıtlandı. Tam xUnit süre özeti çıktı arayüzünde saklanmadı; duvar saati yaklaşık 49 dk. İki WP-099 kontrolü (şifreli saklama/rol/CSRF/tenant ve log'da düz metin olmaması) tam koşuda PASS.
+- F4 ve F6 kısmi; tüm API/dosya/import/export izolasyon matrisi ile canlı CSP/HTTPS, geniş secret/XSS/SQLi ve hukuki/KVKK/live-customer kabul kanıtları açık.
+- F1 adım a için önceki WP-101 sunucu SHA-256 sonucu manifestle eşleşmişti; bu devamda yeniden hash alınmadı. Restore, canlıdaki 122 migration kimliklerinin tam karşılaştırması, beş migration'ın izole prova koşusu ve tablo satır sayısı karşılaştırması BLOCKED; dump yerelde yok ve onaylı sunucu SQL/restore kanalı yok.
+- Yalnız disposable PostgreSQL test DB'si kullanıldı. Canlı DB, migration dosyaları, deploy, Coolify, ödeme, domain/wildcard ve push değiştirilmedi. Geçici Compose DB/kabul konteynerleri ve ağ kaldırıldı.
