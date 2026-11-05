@@ -1571,6 +1571,44 @@
       "paymentTouched": false,
       "coolifyTouched": false,
       "cleanup": "Disposable acceptance and PostgreSQL containers plus isolated network removed by Compose"
+    },
+    "wp149F4CompanySecurityPolicy": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Company_security_policy_ignores_forged_foreign_company_selectors",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_security_policy_ignores_forged_foreign_company_selectors'",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationSeconds": 58.5243,
+        "runnerExitCode": 0
+      },
+      "attempts": 4,
+      "failedAttempts": [
+        "Attempt 1: B-membership fixture absent; legitimate B request was 403 before assertion.",
+        "Attempt 2: Company A expiry expected value compared at unsupported sub-microsecond precision.",
+        "Attempt 3: Company B unchanged expiry expected value compared at unsupported sub-microsecond precision."
+      ],
+      "isolationAssertions": [
+        "Company A admin forged URL companyId and X-Company-Id for Company B; GET still returned A security policy.",
+        "Forged PUT changed A policy only; B policy remained unchanged.",
+        "A session expiry reflected A policy; B expiry/revocation remained unchanged.",
+        "Security-policy audit row was created only for A."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network stopped and removed by Compose.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "sourceMigrationFilesChanged": false,
+      "migrationAdded": false,
+      "productionWrites": false,
+      "liveTouched": false,
+      "deployment": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; the added tenant-policy route family does not cover the complete 503 method-route inventory."
     }
   },
   "historicalBaseline": {

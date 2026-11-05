@@ -1,5 +1,13 @@
 # Devam notu — 2026-11-04
 
+## WP-149 — 2026-11-05 F4 company-security policy isolation
+
+- Focused isolated PostgreSQL test `Company_security_policy_ignores_forged_foreign_company_selectors`: **1/1 PASS**, 58.5243 xUnit seconds, runner exit 0. A's admin could not read/write B by forging URL `companyId` and `X-Company-Id`; B policy/session/audit unchanged. PostgreSQL timestamp expectations now use microsecond precision. Disposable DB/network were removed.
+- F4 remains partial; the test adds a single route family, not complete hostile-ID coverage for all 503 mapped endpoints. WP-146 supplier matrix remains 1/1 PASS.
+- WP-147 F5 evidence remains 2,265 controls / 65 routes inventoried, hosted Chromium 75/0/0 and 85/85 static checks; not all controls individually executed; no current reproduced UI failure.
+- WP-148 WP-099/F6 full run is historical; rerun the unfiltered PostgreSQL suite exactly once after this package, then capture totals and cleanup in WP-150.
+- F1 dump rehash/restore/parity/rehearsal/row-count items remain blocked. Never deploy, write to live DB, add a migration, change Coolify, or push in this task.
+
 ## 2026-11-05 son baz çizgisi (WP-144)
 
 - Release Docker SDK build exit 0; 85/85 static verifiers PASS; UI inventory 2,265 controls / 65 routes PASS; source migrations 127, latest `20261104190000_AddProtectedSoftwareLicenseKeys`.
