@@ -175,3 +175,13 @@ Gate: F6/WP-099; migration-free. New test `Software_license_key_plaintext_never_
 ## WP-111 — DONE — final full PostgreSQL acceptance run
 
 Gate: F0/F1/F4/F5/F6; final package for this session. `deploy/testing/run-security-acceptance.ps1` completed once against source/test commit `95293ffe7a5745ca49bad5e09ac9682e7eadf9c7`: `Test Run Successful`; 320 total, 320 passed, 0 failed; runner exit 0. The run includes WP-106 reminder fixtures, WP-108 six-family tenant selector matrix, and WP-110 host-log secret-capture test. Disposable acceptance/PostgreSQL containers and isolated Docker network were removed. `tests/reports/summary.json` records this as the latest full run; historical baseline preserved. `docs/PROJECT-STATUS.md` and HANDOFF were updated. No rerun after this full suite. F1 clone restore/parity/rehearsal remain BLOCKED for lack of an authorized server-side restore/SQL channel; no live DB, migration, deploy, payment or push.
+
+## WP-112 — DONE — F1 boundary and independent migration-free continuation
+
+**Bitti tanımı:** Add a durable rule permitting only owner-authorized migration-free F4/F5/F6 work while F1 remains blocked; record fresh F1 evidence without claiming restore/parity. `git diff --check` and a rule-presence check must pass.
+
+Added `AGENTS.md` R13: independent migration-free F4/F5/F6 work may proceed on the owner's explicit instruction while F1 is blocked, but cannot close F1 or authorize release/deploy/DB work; schema changes stay BEKLEMEDE.
+
+F1 a–g checkpoint: Coolify Files Beta was read-only inspected on 2026-11-05. It showed the Nov 3 dump `daily-20261103T000015Z.dump` (453.55 KB) and a 138-byte `.sha256` sidecar containing `ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d`. This UI inspection did not recompute the archive hash. Earlier WP-101 records a server-side SHA-256 recomputation matching the manifest; that earlier evidence is not represented as a new run here. The dump was not copied. Restore, exact first-122 migration-ID comparison, five-migration isolated rehearsal, and before/after row counts remain BLOCKED: no approved server-side restore/SQL command channel is available and the stopped local clone predates the dump. The two previous static validator failures are fixed (WP-101/WP-103; WP-107 records 85/85 PASS). WP-099 ciphertext/role/CSRF acceptance and WP-110 app-log capture/no-plaintext test are already recorded as passing; no duplicate test run in this package. The requested final full PostgreSQL run is reserved for the last package of this continuation.
+
+Evidence: `git diff --check` PASS; PowerShell rule-presence check `R13` PASS. No production DB, migration, deployment, Coolify configuration, payment, or push operation.
