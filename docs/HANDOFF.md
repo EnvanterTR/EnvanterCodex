@@ -401,7 +401,7 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 
 ## 2026-11-05 new canonical target
 
-- Owner-designated `C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md` is now copied byte-for-byte to worktree-root `AGENTS.md`; both SHA-256 values are `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`. WP-143 DONE; local commit `9e7f1ec2272fee791292bab1681a722d45bfafc5`.
+- Owner-designated `C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md` is now copied byte-for-byte to worktree-root `AGENTS.md`; both SHA-256 values are `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`. WP-143 DONE; implementation commit `9409879276b42e1292a6cc06c52b48f8e0c4fc30`.
 - Follow Hedef 4 v4.0 phase order strictly. Start with F0 remeasurement; F1 is still open because the 3 Nov dump is unavailable in this workspace and no authorized restore/SQL route is present. Do not jump to later phases while F1 blocks the sequence.
 - Last full isolated PostgreSQL baseline was 324/324 PASS on the previous test snapshot (WP-142); run the required current-session F0 baseline once before relying on it. No live deployment, database write, payment action, or push is authorized by this handoff.
 
