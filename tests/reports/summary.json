@@ -1484,6 +1484,43 @@
       "migrationAdded": false,
       "pushed": false,
       "f4Status": "PARTIAL; other method-route families remain unverified"
+    },
+    "wp147F5CurrentUiReconciliation": {
+      "status": "DONE_PARTIAL_GATE",
+      "measuredAt": "2026-11-05",
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "routes": 65,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "currentBrowserMatrix": {
+        "sourceUnchangedSinceWp140": true,
+        "passed": 75,
+        "failed": 0,
+        "blocked": 0,
+        "runnerExitCode": 0,
+        "allControlsIndividuallyExecuted": false,
+        "evidencePackage": "WP-140"
+      },
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85,
+        "evidencePackage": "WP-144"
+      },
+      "reproducibleUiFailuresFound": 0,
+      "uiCodeChanged": false,
+      "f5Status": "PARTIAL; inventory controls were not all individually exercised"
     }
   },
   "historicalBaseline": {

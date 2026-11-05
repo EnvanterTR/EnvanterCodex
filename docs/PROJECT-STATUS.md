@@ -29,6 +29,8 @@ Canlıda alanı yalnız doğrudan üretim kanıtını gösterir; DOĞRULANMADI �
 
 WP-146 / F4 tedarikçi kataloğu tenant matrisi: izole PostgreSQL kabul testi **1/1 PASS**, xUnit 1.0069 dakika, runner exit 0. Company A kendi kayıtlarını gördü; yabancı update/archive/restore 404, gerçek viewer üyeliği archive isteğinde 403 verdi; kayıtlar ve yabancı audit durumu değişmedi. Disposable PostgreSQL container/network kaldırıldı. F4 hâlâ KISMEN: 503 method-route envanterinin tamamında kabul yok. Migration eklenmedi.
 
+WP-147 / F5: `node tools/Generate-UiInventory.mjs --check` PASS (**2.265 kontrol / 65 rota**). Arayüz kaynağı WP-140’tan beri değişmedi; o kaynaktaki Chromium matrisi **75 PASS / 0 FAIL / 0 BLOCKED**, static validator seti **85/85 PASS**. Yeni tekrarlanabilir FAIL yok, bu yüzden UI kodu değiştirilmedi. Tüm 2.265 kontrol tek tek çalıştırılmadı; F5 kısmi.
+
 ## Ürün gereksinimleri
 
 Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tutulur ve sayılmaz. P01/Q01 ek hedefler katalog sayımına dahil değildir. Kodda ve kabul durumu kanıt kapsamını gösterir; canlıda sütunundaki DOĞRULANMADI canlıda bulunmadığı anlamına gelmez.

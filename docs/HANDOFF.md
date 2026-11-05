@@ -431,3 +431,9 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - Attempt 1 exposed a fixture mismatch, not a product bug: request header role did not override the persisted admin membership. Set the fixture membership to viewer; attempt 2 passed. Four existing ASP.NET deprecation warnings, zero build errors.
 - No product fix, schema/migration, production, deployment, payment, Coolify/environment/domain/routing or push change. F4 remains partial across the 503 method-route inventory.
 - Current continuation: WP-143–145 synchronized and reconciled target/F1 evidence; WP-146 DONE. Next: WP-147 F5 current UI scan (fix only a reproducible failure; do not invent UI changes), then WP-148 F6 evidence and the single requested unfiltered PostgreSQL run at the very end. Keep migration freeze and no-live/no-push boundaries.
+
+## 2026-11-05 F5 current UI inventory (WP-147)
+
+- `node tools/Generate-UiInventory.mjs --check`: PASS, 2,265 controls / 65 routes, inventory matches current source. Counts: 53 links, 958 buttons, 113 forms, 627 inputs, 204 selects, 42 textareas, 109 modals, 5 tabs and 79 tables.
+- UI source did not change after WP-140; its hosted Chromium sweep was 75 PASS / 0 FAIL / 0 BLOCKED (exit 0), with static verifiers 85/85 PASS. No current reproducible UI FAIL, so no code fix was appropriate. These runs did not execute every control; F5 stays partial.
+- WP-147 DONE as a failure-reconciliation checkpoint. F6 WP099 encryption/log/role tests are already present and passed in focused and prior full runs; do not duplicate them unnecessarily. Next: run the one requested full PostgreSQL suite after final F6 verification and then write exact totals here. No live/schema/migration/push changes.
