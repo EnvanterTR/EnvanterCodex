@@ -436,4 +436,11 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 
 - `node tools/Generate-UiInventory.mjs --check`: PASS, 2,265 controls / 65 routes, inventory matches current source. Counts: 53 links, 958 buttons, 113 forms, 627 inputs, 204 selects, 42 textareas, 109 modals, 5 tabs and 79 tables.
 - UI source did not change after WP-140; its hosted Chromium sweep was 75 PASS / 0 FAIL / 0 BLOCKED (exit 0), with static verifiers 85/85 PASS. No current reproducible UI FAIL, so no code fix was appropriate. These runs did not execute every control; F5 stays partial.
-- WP-147 DONE as a failure-reconciliation checkpoint. F6 WP099 encryption/log/role tests are already present and passed in focused and prior full runs; do not duplicate them unnecessarily. Next: run the one requested full PostgreSQL suite after final F6 verification and then write exact totals here. No live/schema/migration/push changes.
+- WP-147 DONE as a failure-reconciliation checkpoint. F6 WP099 encryption/log/role tests are already present; the one requested final full PostgreSQL suite is recorded in the current WP-148 handoff below.
+
+## 2026-11-05 latest continuation handoff (WP-146–WP-148)
+
+- WP-146 through WP-148 are **3/3 DONE**. Final unfiltered `./deploy/testing/run-security-acceptance.ps1` ran once on clean source/test snapshot `c239d827a465f8a2bd67c78e4cf29eb3468e6cff`: **325 total / 325 passed / 0 failed**, xUnit **53.8500 minutes**, runner exit **0**. Both WP-099 encryption/authorization/CSRF and no-plaintext-log tests passed. Compose removed the two disposable containers and isolated network.
+- F4 remains PARTIAL: supplier catalog read/write isolation passed 1/1, with full-suite coverage also PASS; the complete 503 method-route matrix remains unverified. F5 remains PARTIAL: 2,265 controls / 65 routes inventoried, 75/0/0 latest hosted browser matrix, but not every control was individually run. F6 remains PARTIAL: isolated security acceptance passed, but live posture and wider security/legal/customer acceptance remain open.
+- F1 a–d remain BLOCKED. The Nov 3 dump was unavailable locally; its old WP-101 hash was not recomputed, and no clone restore, 122-ID comparison, five-migration rehearsal, or row-count comparison occurred. F1 e 85/85 static verifiers PASS; F1 f 325/325; F1 g the two WP-099 tests PASS.
+- No new/source migration, live DB write, production deployment, payment, Coolify configuration, or push occurred. Test-only migrations were confined to the disposable acceptance database.

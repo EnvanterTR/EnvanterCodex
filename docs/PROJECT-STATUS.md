@@ -2,6 +2,17 @@
 
 Kaynak: depo AGENTS.md (CODEX-HEDEF 4 v4), 2026-11-05; yüzde kullanılmaz. Canonical prompt: C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md; SHA-256 661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE. Faz kapıları ile ürün gereksinimleri ayrıdır; her tabloda Kodda / Canlıda / Kabul edildi sütunları bulunur.
 
+## Güncel devam kanıtı — WP-148 (2026-11-05)
+
+| Alan | Kodda | Canlıda | Kabul edildi | Kanıt / açık iş |
+|---|---|---|---|---|
+| F1 yedek ve migration provası | Migration envanteri 127; yeni migration eklenmedi | Canlı DB'ye erişilmedi/değişiklik yok | Nov 3 dump hash yeniden hesaplanmadı; klon restore, ilk 122 ID karşılaştırması, 5 migration provası ve satır sayımı BLOCKED | Hedef dump yerelde yok; önceki WP-101 hash yalnız tarihsel kanıt |
+| F4 firma izolasyonu | Tedarikçi okuma/yazma matrisi kabul testine eklendi | Canlı firma verisi değiştirilmedi | WP-146 1/1 PASS; full run içinde de PASS | F4 PARTIAL: 503 method-route envanterinin tamamı kapsanmadı |
+| F5 arayüz | UI envanteri 2.265 kontrol / 65 rota; bu dilimde UI kodu değişmedi | Canlı UI değiştirilmedi | WP-140 Chromium 75 PASS / 0 FAIL / 0 BLOCKED; WP-147 envanter kontrolü PASS | Tüm 2.265 öğe tek tek çalıştırılmadı; F5 PARTIAL |
+| F6 güvenlik | WP-099 şifreli saklama ve log testi mevcut; yeni migration yok | Canlı güvenlik ayarı değiştirilmedi | WP-148 tam izole PostgreSQL koşusu 325/325 PASS; WP-099 iki test PASS | F6 PARTIAL: canlı güvenlik duruşu, kapsamlı güvenlik/hukuk ve müşteri kabulü açık |
+
+WP-148 test kanıtı: `./deploy/testing/run-security-acceptance.ps1`, temiz kaynak/test snapshot commit `c239d827a465f8a2bd67c78e4cf29eb3468e6cff`; **325 toplam / 325 geçti / 0 kaldı**, xUnit **53.8500 dakika**, sarmalayıcı çıkış kodu **0**. Test veritabanı, yalnız izole ve geçici Compose ortamında başlatıldı; konteynerler ve ağ koşu sonunda kaldırıldı. Test hostundaki eşzamanlılık/benzersizlik/kota/boyut sınırı negatif-path logları beklenen reddetmelerdir; ilgili kabul testleri PASS. Canlıya, ödeme sistemine, Coolify'a veya yayın akışına dokunulmadı; push yapılmadı.
+
 ## Faz kapıları (A–O katalog sayımına dahil değildir)
 
 Canlıda alanı yalnız doğrudan üretim kanıtını gösterir; DOĞRULANMADI özelliğin kodda bulunmadığını değil, o gereksinim için canlı kabul kanıtı olmadığını belirtir.

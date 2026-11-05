@@ -4,9 +4,9 @@
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "d766138fda4fda8f2201440fe9fff27e9fe08f6d",
+    "commit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
     "workingTreeCleanAtRun": true,
-    "note": "The final unfiltered PostgreSQL security/tenant acceptance ran once on this clean tree: 322/322 passed, 0 failed, xUnit 49.8648 minutes, runner exit 0. WP-134 through WP-136 focused isolated PostgreSQL acceptances also passed (1/1, 2/2, 1/1). WP-099 encrypted-storage and no-plaintext-in-host-logs tests both passed in the full run."
+    "note": "WP-148 final unfiltered PostgreSQL security/tenant acceptance ran once on this clean source/test snapshot: 325/325 passed, 0 failed, xUnit 53.8500 minutes, runner exit 0. WP-099 encrypted-storage/authorization/CSRF and no-plaintext-in-host-logs tests both passed."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -94,24 +94,37 @@
     },
     "finalFullPostgresAcceptance": {
       "status": "PASS",
-      "total": 322,
-      "passed": 322,
+      "total": 325,
+      "passed": 325,
       "failed": 0,
-      "xunitDurationMinutes": 49.8648,
+      "xunitDurationMinutes": 53.85,
       "runnerExitCode": 0,
       "command": "./deploy/testing/run-security-acceptance.ps1",
-      "measuredCommit": "d766138fda4fda8f2201440fe9fff27e9fe08f6d",
+      "measuredCommit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
       "isolatedDatabase": true,
       "productionWrites": false,
+      "productionTouched": false,
       "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
       "wp099Tests": [
         "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
         "Software_license_key_plaintext_never_enters_host_logs: PASS"
       ],
-      "runnerCleanup": "Disposable acceptance and PostgreSQL containers plus isolated Docker network removed; post-run Docker query returned no matching resources.",
-      "stdoutLog": "C:/Users/Lenovo/AppData/Local/Temp/envantertr-full-acceptance-20261105-wp137-8b71e18d.stdout.log",
-      "stderrLog": "C:/Users/Lenovo/AppData/Local/Temp/envantertr-full-acceptance-20261105-wp137-8b71e18d.stderr.log",
-      "note": "The log contained one expected EF query error while checking the initially absent __EFMigrationsHistory table in the disposable database; xUnit reported Test Run Successful with zero failed tests."
+      "wp146SupplierMatrix": "Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations: PASS in full run",
+      "runnerCleanup": "Compose stopped and removed the disposable acceptance and PostgreSQL containers plus isolated network; runner exit 0.",
+      "expectedNegativePathLogs": [
+        "Concurrent purchase-order serialization conflict asserted by passing test",
+        "Duplicate membership uniqueness rejection asserted by passing test",
+        "Plan/quota rejection asserted by passing test",
+        "Kestrel oversized-request rejection asserted by passing test"
+      ],
+      "warnings": [
+        "Ephemeral DataProtection keys in disposable test host",
+        "Antiforgery no-cache header notices",
+        "Test-host request-size feature notices"
+      ],
+      "note": "xUnit reported Test Run Successful; no failed tests. All database work was confined to the temporary acceptance database. No production database, live deployment, payment, Coolify, or push action occurred."
     },
     "uiInventory": {
       "status": "CURRENT",
@@ -1453,9 +1466,10 @@
           "Software_license_key_plaintext_never_enters_host_logs"
         ],
         "priorTargetedPassed": 2,
-        "includedInWp142FullRun": true
+        "includedInWp142FullRun": true,
+        "includedInWp148FullRun": true
       },
-      "finalFullRunForCurrentContinuation": "DEFERRED_UNTIL_AFTER_F4_F5_F6",
+      "finalFullRunForCurrentContinuation": "COMPLETED_IN_WP148: 325/325 PASS, 0 FAIL, xUnit 53.8500 min, runner exit 0",
       "productionTouched": false,
       "migrationAddedOrRun": false,
       "pushed": false
@@ -1521,6 +1535,42 @@
       "reproducibleUiFailuresFound": 0,
       "uiCodeChanged": false,
       "f5Status": "PARTIAL; inventory controls were not all individually exercised"
+    },
+    "wp148F6AndFinalFullPostgresAcceptance": {
+      "status": "DONE",
+      "measuredAt": "2026-11-05",
+      "packageSequence": "WP-146 through WP-148: 3/3 DONE",
+      "measuredCommit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
+      "fullPostgresAcceptance": {
+        "total": 325,
+        "passed": 325,
+        "failed": 0,
+        "xunitDurationMinutes": 53.85,
+        "runnerExitCode": 0,
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "command": "./deploy/testing/run-security-acceptance.ps1"
+      },
+      "wp099SecurityTests": {
+        "count": 2,
+        "passed": 2,
+        "failed": 0,
+        "names": [
+          "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+          "Software_license_key_plaintext_never_enters_host_logs"
+        ]
+      },
+      "f4Status": "PARTIAL; WP-146 supplier read/write matrix passed; the full 503 method-route inventory remains unverified",
+      "f5Status": "PARTIAL; 2265 controls over 65 routes inventoried; latest hosted matrix 75 PASS / 0 FAIL / 0 BLOCKED; not every control was individually executed",
+      "f6Status": "PARTIAL; isolated secret/security acceptance passed; live posture and wider security/legal/customer acceptance remain open",
+      "f1Status": "BLOCKED for dump rehash, clone restore, first-122 ID parity, five-migration rehearsal, and row-count comparison",
+      "migrationAdded": false,
+      "sourceMigrationFilesChanged": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "cleanup": "Disposable acceptance and PostgreSQL containers plus isolated network removed by Compose"
     }
   },
   "historicalBaseline": {
