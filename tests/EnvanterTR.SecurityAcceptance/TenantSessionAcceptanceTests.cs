@@ -10767,6 +10767,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var secret = created.RootElement.GetProperty("secret").GetString()!;
         Assert.StartsWith("etr_live_", secret, StringComparison.Ordinal);
 
+        var ownAssetCustomFieldKey = $"api_a_{_userId:N}";
+        var foreignAssetCustomFieldKey = $"api_b_{_userId:N}";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -10775,6 +10777,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var accessory = await db.Accessories.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId);
             accessory.Notes = "PRIVATE-ACCESSORY-NOTES-SENTINEL";
             accessory.UnitCost = 9876.54m;
+            db.AssetCustomFieldDefinitions.AddRange(
+                new AssetCustomFieldDefinition
+                {
+                    CompanyId = _companyId, Key = ownAssetCustomFieldKey, Name = "Company A integration field", FieldType = "text"
+                },
+                new AssetCustomFieldDefinition
+                {
+                    CompanyId = _otherCompanyId, Key = foreignAssetCustomFieldKey, Name = "Company B private integration field", FieldType = "text"
+                });
             await db.SaveChangesAsync();
         }
 
@@ -10816,6 +10827,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(_ownAssetId, assets.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
             Assert.DoesNotContain(_otherCompanyAssetId, assets.RootElement.GetProperty("items").EnumerateArray()
                 .Select(x => x.GetProperty("id").GetGuid()));
+        }
+
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/asset-custom-fields?companyId={_otherCompanyId:D}", secret);
+        using (var customFieldsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/asset-custom-fields"))
+        {
+            customFieldsRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            customFieldsRequest.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            using var customFieldsResponse = await _client!.SendAsync(customFieldsRequest);
+            Assert.Equal(HttpStatusCode.OK, customFieldsResponse.StatusCode);
+            using var customFields = JsonDocument.Parse(await customFieldsResponse.Content.ReadAsStringAsync());
+            var returnedKeys = customFields.RootElement.EnumerateArray()
+                .Select(field => field.GetProperty("key").GetString()).ToArray();
+            Assert.Contains(ownAssetCustomFieldKey, returnedKeys);
+            Assert.DoesNotContain(foreignAssetCustomFieldKey, returnedKeys);
         }
 
         using (var readOnlyWriteAttempt = new HttpRequestMessage(HttpMethod.Post, "/api/v1/assets")

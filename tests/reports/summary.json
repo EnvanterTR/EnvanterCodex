@@ -6,7 +6,7 @@
     "branch": "codex/f2-cloud-seat-limits-20261104",
     "commit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
     "workingTreeCleanAtRun": false,
-    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 and WP-135 targeted acceptance ran on source atop a302db4347a9ecf262d23312c1025dbe3e9351c3. WP-134 passed 1/1 after probing the app's 303 companyId scrub redirect without following it; WP-135 passed 2/2 for account-photo storage conflict and upload validation. The full suite will be run once at the end of this continuation."
+    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 through WP-136 focused isolated PostgreSQL acceptances passed on code/test changes atop a302db4347a9ecf262d23312c1025dbe3e9351c3 (WP-134: 1/1 customer list/search selector; WP-135: 2/2 account photo storage/upload; WP-136: 1/1 Customer API custom-field selector). The final full suite remains reserved for the last package of this continuation."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -75,6 +75,21 @@
       "measuredProductCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
       "testHarnessCommit": "9f505cc",
       "note": "Sentinel API-backed Chromium verified template, non-writing preview, cancel-safe confirmation, exact-file commit, filtered export, export/import round-trip and duplicate prevention. The isolated API suite covers atomicity, CSRF, tenant/location, manager and audit behavior. This is not a live-company import."
+    },
+    "wp136CustomerApiCustomFieldIsolation": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "runnerExitCode": 0,
+      "xunitDurationSeconds": 58.0948,
+      "behavior": "Foreign companyId removed by 303 redirect; sanitized authenticated request with forged Company B X-Company-Id returned only Company A asset custom-field definition.",
+      "attempts": "Attempt 1 fixture failed because generated key exceeded the 40-character DB limit; shortened key; attempt 2 passed.",
+      "cleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "measuredBaseCommit": "bec001cfb281bfa925263e9b2ce067bc4331ed97"
     },
     "uiInventory": {
       "status": "CURRENT",

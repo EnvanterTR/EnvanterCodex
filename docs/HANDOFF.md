@@ -361,3 +361,9 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - WP-135 DONE: targeted isolated PostgreSQL acceptance **2/2 PASS**, xUnit 1.0168 min, exit 0. A forced account-photo storage path conflict returns safe 503, discloses no path and preserves the preexisting bytes; valid 2 MiB upload, too-large/invalid content rejection, replacement, read and delete also pass. Temporary DB/network removed. Source test logged its expected synthetic `/tmp` storage conflict; no production data.
 - F5 latest recorded Chromium sweep is 75 PASS / 0 FAIL / 0 BLOCKED on the measured UI source snapshot; per-control 2,265 acceptance remains incomplete. No reproducible current UI FAIL is recorded, so don't patch UI without fresh failure evidence.
 - No source/schema/migration, live DB/deploy, payment/Coolify/domain/wildcard/environment change or push. Next migration-free WP should extend a concrete uncovered F4 endpoint family; final full PostgreSQL run remains reserved for the last WP of this continuation.
+
+## 2026-11-05 F4 custom-field selector isolation (WP-136)
+
+- Targeted isolated PostgreSQL test passed **1/1** (xUnit 58.0948 s, runner exit 0). The asset-custom-fields endpoint stripped the foreign `companyId` selector from its 303 redirect; an authenticated request with forged Company B header returned only Company A's definition.
+- Attempt 1 hit fixture key max length (40); shortened the fixture key and attempt 2 passed. Disposable DB/network removed. No migration/live/deploy/payment/Coolify edit or push.
+- F4 remains partial. The 503-endpoint route inventory/auth fingerprint is pinned, but per-route tenant read/write coverage is incomplete. F5 remains partial (2,265 controls are not all individually exercised; latest source-derived sweep 75/0/0 and no current reproducible UI FAIL). F6 remains partial; targeted controls pass, while live posture/legal review/customer acceptance remain open.

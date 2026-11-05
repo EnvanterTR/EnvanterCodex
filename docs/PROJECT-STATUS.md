@@ -225,3 +225,9 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 
 - Hesap profil fotoğrafı upload kabulinde dosya/dizin çakışması güvenli `503` döndürdü; sunucu yolu yanıta sızmadı ve önceki sentinel dosya baytları değişmedi. Geçerli 2 MiB PNG, büyük dosya reddi, bozuk imza reddi, dosya değiştirme/okuma/silme akışları da kabul testinde doğrulandı.
 - `Account_photo_upload_reports_unavailable_storage_without_a_server_error` ve `Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo`: izole PostgreSQL **2/2 PASS**, xUnit 1.0168 dakika, runner exit 0; geçici DB ve ağ kaldırıldı. Bu, kullanıcının daha önce gördüğü 500 türü depolama çakışması için kaynak kabul kanıtıdır; canlıda değişiklik/yayın veya canlı kabul anlamına gelmez.
+
+## 2026-11-05 F4 Customer API özel alan izolasyonu (WP-136)
+
+- İki şirket için ayrı varlık özel-alan tanımları eklendi. `/api/v1/asset-custom-fields` isteğine yabancı `companyId` verildiğinde uygulama 303 yönlendirmesinden parametreyi çıkardı. Temizlenmiş adresle ve sahte `X-Company-Id: Company B` başlığıyla yapılan oturumlu istek yalnız Company A tanımını döndürdü; Company B tanımı yoktu.
+- `Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable`: izole PostgreSQL **1/1 PASS**, xUnit 58.0948 saniye, runner exit 0; geçici DB/ağ kaldırıldı. İlk koşuda test verisi anahtarı DB'nin 40 karakter sınırını aştı; kısa anahtarla ikinci koşu geçti.
+- Bu tek API ailesi testi tam 503 rota izolasyon matrisi değildir; F4 kısmi. Canlı DB, migration, deploy, ödeme, Coolify, ortam değişkeni, domain/wildcard ve push değişmedi.
