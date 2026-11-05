@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T06:26:06Z",
+  "measuredAt": "2026-11-05T06:39:14Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -726,6 +726,29 @@
       "productionWrites": false,
       "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
       "result": "Foreign tenant archive requests returned 404; all three rows remained unarchived; no foreign archive audit record."
+    },
+    "f4PurchaseOrderAttachmentMatrix": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "measuredBaseCommit": "5c0227af0756c4afc138780ee9bfa6ae27f7b175",
+      "workingTreeModifiedAtRun": true,
+      "testSourceFileChangedDuringVerification": true,
+      "resources": [
+        "stock purchase-order attachments",
+        "accessory purchase-order attachments",
+        "asset purchase-order attachments"
+      ],
+      "coverage": "Company A sessions cannot list company B order attachments or fetch/delete company B attachment IDs under company A parent routes; foreign files and rows remain intact.",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_attachment_matrix_hides_foreign_purchase_order_files_and_preserves_rows'",
+      "duration": "1.0029 minutes",
+      "exportAssertion": "Company A company-data.json and ZIP entries exclude company B attachment IDs/files.",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "exitCode": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp117-final.log"
     },
     "f5CurrentUiAcceptance": {
       "status": "PASS",
