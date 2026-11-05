@@ -174,3 +174,9 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - F4: `Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore` testine Company A'dan Company B aksesuar kitine güncelleme, arşivleme ve geri yükleme saldırı denemeleri eklendi; her biri 404. Yabancı kit/satır değişmedi ve audit olayı oluşmadı. İzole PostgreSQL 1/1 PASS, 58.6090 saniye, runner exit 0; geçici DB/ağ kaldırıldı.
 - Hedef SHA: `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`; AGENTS SHA: `8DF36DC6EABAF8E52FB5551732017FC361309A624A0C1D4F619D3D942B278F8A` (R13 ek kuralı nedeniyle farklı).
 - F4 genel kapısı KISMEN KANITLI kalır; tüm API, dosya, rapor, import/export matrisinin tamamı değildir. Canlı DB/deploy, migration, ödeme, Coolify, domain, ortam değişkeni, wildcard ve push değişikliği yok.
+
+## 2026-11-05 F5 UI taraması (WP-124)
+
+- Envanter denetimi PASS: 2.265 UI kontrolü / 65 rota. Kaynak doğrulayıcıları 85/85 PASS. İlk koşudaki tek FAIL, kurtarma kodu replay senaryosu zaten kabul dosyasında varken literal ifade bekleyen `Verify-PlatformMfaBrowserAcceptance.mjs` idi; beklenti mevcut senaryo metnine uyarlandı ve tam statik tarama 85/85 geçti.
+- Hosted Chromium runner exit 0; galeri orijinal ve üretilmiş slaytlar, tam ekran, Escape/focus geri yükleme, 4 slayt ve kesintisiz döngü, otomatik sola kayma, manuel kontrol, mobil taşma ve sayfa hatasız bitişi PASS olarak yazdı. Runner toplam PASS/FAIL/BLOCKED sayısını üretmedi; sayı türetilmedi. Konsolda başarısız kabul oluşturmayan 404 kaynak uyarıları görüldü.
+- F5 KISMEN KANITLI kalır: 2.265 öğe tek tek denenmedi. Bu paket yalnız yanlış pozitif kaynak doğrulayıcısını düzeltti; ürün kodu değişmedi. Canlıya/deploy/migration/ödeme/Coolify/push yok.

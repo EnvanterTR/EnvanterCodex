@@ -894,6 +894,38 @@
       "runnerExitCode": 0,
       "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
       "attempts": "Attempt 1 compile failed with CS8122 for pattern matching in an EF expression tree; predicate changed to explicit equality checks. Attempt 2 passed."
+    },
+    "f5FreshUiAcceptance": {
+      "status": "PASS",
+      "measuredBaseCommit": "c5a172db56e64382019b50410588aa3d9c00dd3c",
+      "workingTreeModifiedAtRun": true,
+      "uiInventory": {
+        "status": "PASS",
+        "controls": 2265,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "staticVerifiers": {
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "firstRunFailure": "Verify-PlatformMfaBrowserAcceptance.mjs asserted stale literal recovery-code replay text; corrected the verifier to match the existing one-time recovery/replay scenario wording."
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "runnerExitCode": 0,
+        "aggregatePassFailBlockedCounts": "Not emitted by runner; not inferred",
+        "reportedPassScope": [
+          "Fullscreen gallery, keyboard/Escape and focus restoration",
+          "Four original/generated slides, seamless clone, automatic left transition and manual controls",
+          "Mobile overflow and no page errors"
+        ],
+        "browserConsole404Warnings": "Observed; runner did not fail"
+      },
+      "productionWrites": false,
+      "schemaChanges": false,
+      "runnerCleanup": "Hosted browser runner exited 0"
     }
   },
   "historicalBaseline": {

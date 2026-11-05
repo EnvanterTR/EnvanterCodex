@@ -309,3 +309,9 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - WP-123 / F4 DONE: the accessory-kit acceptance now attempts cross-tenant update, archive, and restore as Company A against a Company B kit. All three return 404; the foreign kit, recipe line, and audit state remain unchanged. Targeted isolated PostgreSQL test passed 1/1 (58.6090 s), runner exit 0; disposable DB and network removed.
 - Attempt 1 stopped at compile error CS8122 because pattern matching was used in an EF expression tree. Replaced it with explicit equality checks; attempt 2 passed. This was one compile failure, not retried three times.
 - Canonical target and `AGENTS.md` hashes are recorded separately; R13 remains an intentional addition. No schema or production changes, deployment, payment, Coolify, or push.
+
+## 2026-11-05 continued migration-free work (WP-124)
+
+- F5 inventory check passed: 2,265 controls / 65 routes. Static verifiers pass 85/85 after correcting one stale MFA verifier regex; the browser test already covered recovery-code replay rejection.
+- Hosted Chromium `run-hosted-checkout-browser-acceptance.ps1` exit 0. It emitted PASS workflows including all public-gallery slides, fullscreen/keyboard behavior, seamless loop, auto-left motion, manual controls, mobile overflow, and no page errors. It does not publish aggregate PASS/FAIL/BLOCKED totals, so total is not claimed.
+- Browser console showed 404 resource warnings without a runner failure. F5 remains partial because the 2,265 controls were not individually executed. No live or schema changes and no push.
