@@ -724,6 +724,32 @@
       "productionWrites": false,
       "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
       "result": "Foreign tenant archive requests returned 404; all three rows remained unarchived; no foreign archive audit record."
+    },
+    "f5CurrentUiAcceptance": {
+      "status": "PASS",
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85
+      },
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "passedScenarioSummaryRows": 75,
+        "failed": 0,
+        "blocked": 0,
+        "exitCode": 0,
+        "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "log": "%TEMP%\\envantertr-f5-hosted-acceptance-20261105-wp114.log",
+        "scope": "Curated workflow summaries, not per-control acceptance."
+      },
+      "measuredCommit": "f9f4fbc94be08e9b892d59c83aca94cdda8639ab",
+      "productionWrites": false
     }
   },
   "historicalBaseline": {

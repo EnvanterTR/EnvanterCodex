@@ -193,3 +193,9 @@ Evidence: `git diff --check` PASS; PowerShell rule-presence check `R13` PASS. No
 Added a focused mutation slice to `TenantSessionAcceptanceTests.TenantMatrix.cs` for accessories, consumables, and components. Attempt 1/3 stopped at acceptance-project build because the new partial test file lacked EF/DI imports; added the three required `using` directives. Attempt 2/3: build succeeded (4 existing ASP.NET deprecation warnings, 0 errors), isolated PostgreSQL test passed 1/1 in 3 s; runner removed the disposable DB container and network. `git diff --check` PASS.
 
 WP-112 local commit: `ffb3769c8b42002f5d26e850a839416e516febb7`. WP-113 test source was modified during its run and is to be recorded in the following commit. No live DB, migration, deployment, payment, Coolify configuration, or push. F4 remains partial: this adds three archive routes and does not cover every write/file/report/export endpoint.
+
+## WP-114 — DONE — F5 current static and hosted Chromium sweep
+
+**Bitti tanımı:** Current-source static verifiers 85/85 PASS; `node tools/Generate-UiInventory.mjs --check` PASS; `deploy/testing/run-hosted-checkout-browser-acceptance.ps1` exit 0. Record only measured counts and retain the distinction between static inventory and acceptance coverage.
+
+Evidence on commit `f9f4fbc94be08e9b892d59c83aca94cdda8639ab`: 85 static verifiers PASS / 0 FAIL; inventory check PASS at 2,265 controls / 65 routes. Hosted Chromium runner exit 0; its log contains 75 `PASS:` scenario summaries, 0 `FAIL:`/`ERROR:` rows and 0 `BLOCKED:` rows. These are curated workflow summaries; they do not mean 2,265 controls were individually exercised. Log: `%TEMP%\envantertr-f5-hosted-acceptance-20261105-wp114.log`. No UI FAIL surfaced, so no product-code fix was needed. No production writes or deployment.
