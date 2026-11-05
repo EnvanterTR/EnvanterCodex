@@ -11458,7 +11458,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             foreignAsset.AssignedEmployeeId = _otherCompanyEmployeeId;
             foreignAsset.ExpectedReturnOn = today.AddDays(-1);
             var ownLicense = await db.SoftwareLicenses.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownLicenseId);
-            ownLicense.ExpirationDate = today.AddDays(5);
+            ownLicense.ExpirationDate = today.AddDays(7);
             db.AssetMaintenances.Add(new AssetMaintenance
             {
                 CompanyId = _companyId, AssetId = _ownAssetId, ResponsibleEmployeeId = _ownEmployeeId,
@@ -11471,11 +11471,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 ResponsibleEmployeeId = _ownEmployeeId, MaintenanceType = "Hidden location maintenance",
                 Description = "Must not leak to restricted location user", PlannedOn = today.AddDays(4), StartedOn = today, Status = "Scheduled"
             });
-            var visibleLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Visible location license", ExpirationDate = today.AddDays(5) };
+            var visibleLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Visible location license", ExpirationDate = today.AddDays(7) };
             db.SoftwareLicenses.Add(visibleLicense);
             db.SoftwareLicenseAssignments.Add(new SoftwareLicenseAssignment
                 { CompanyId = _companyId, LicenseId = visibleLicense.Id, EmployeeId = _ownEmployeeId, ActorUserId = _userId });
-            var hiddenLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Hidden location license", ExpirationDate = today.AddDays(5) };
+            var hiddenLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Hidden location license", ExpirationDate = today.AddDays(7) };
             db.SoftwareLicenses.Add(hiddenLicense);
             db.SoftwareLicenseAssignments.Add(new SoftwareLicenseAssignment
                 { CompanyId = _companyId, LicenseId = hiddenLicense.Id, AssetId = hiddenLocationAsset.Id, ActorUserId = _userId });
