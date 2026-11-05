@@ -750,6 +750,22 @@
       },
       "measuredCommit": "f9f4fbc94be08e9b892d59c83aca94cdda8639ab",
       "productionWrites": false
+    },
+    "f6Wp099CurrentSecurityAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped|FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "roleMatrixVerifier": "node tools/Verify-RoleMatrix.mjs: PASS (8 built-in roles)",
+      "auditRetentionVerifier": "node tools/Verify-PlatformAuditRetention.mjs: PASS",
+      "measuredCommit": "a7a346bda6ea9129b44b79bac0662531338fbefd",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed"
     }
   },
   "historicalBaseline": {

@@ -199,3 +199,9 @@ WP-112 local commit: `ffb3769c8b42002f5d26e850a839416e516febb7`. WP-113 test sou
 **Bitti tanımı:** Current-source static verifiers 85/85 PASS; `node tools/Generate-UiInventory.mjs --check` PASS; `deploy/testing/run-hosted-checkout-browser-acceptance.ps1` exit 0. Record only measured counts and retain the distinction between static inventory and acceptance coverage.
 
 Evidence on commit `f9f4fbc94be08e9b892d59c83aca94cdda8639ab`: 85 static verifiers PASS / 0 FAIL; inventory check PASS at 2,265 controls / 65 routes. Hosted Chromium runner exit 0; its log contains 75 `PASS:` scenario summaries, 0 `FAIL:`/`ERROR:` rows and 0 `BLOCKED:` rows. These are curated workflow summaries; they do not mean 2,265 controls were individually exercised. Log: `%TEMP%\envantertr-f5-hosted-acceptance-20261105-wp114.log`. No UI FAIL surfaced, so no product-code fix was needed. No production writes or deployment.
+
+## WP-115 — DONE — F6 WP-099 encryption, role, CSRF and log evidence
+
+**Bitti tanımı:** Run both protected-license acceptance tests together on latest committed source plus `Verify-RoleMatrix.mjs` and `Verify-PlatformAuditRetention.mjs`; expect 2/2 tests and both verifiers PASS.
+
+On commit `a7a346bda6ea9129b44b79bac0662531338fbefd`, targeted isolated PostgreSQL acceptance passed 2/2: `Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped` and `Software_license_key_plaintext_never_enters_host_logs`. Evidence covers ciphertext-at-rest, company/license binding, viewer and CSRF rejection, API/audit non-disclosure, no-store/reveal auditing, replace/clear, and absence of the synthetic plaintext sentinel in captured structured/formatted logs. `node tools/Verify-RoleMatrix.mjs` and `node tools/Verify-PlatformAuditRetention.mjs` PASS. Disposable PostgreSQL container and network removed. No migration or production write/deploy/payment action.
