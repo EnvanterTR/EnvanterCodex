@@ -707,6 +707,23 @@
       "committedSourceCommit": "5b4e495",
       "committedSourceBranch": "codex/f2-cloud-seat-limits-20261104",
       "pushed": false
+    },
+    "f4TenantWriteArchiveMatrix": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "tests": 1,
+      "resources": [
+        "accessories",
+        "consumables",
+        "components"
+      ],
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_write_matrix_rejects_foreign_stock_archive_and_preserves_rows'",
+      "measuredBaseCommit": "ffb3769c8b42002f5d26e850a839416e516febb7",
+      "workingTreeModifiedAtRun": true,
+      "productionWrites": false,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "result": "Foreign tenant archive requests returned 404; all three rows remained unarchived; no foreign archive audit record."
     }
   },
   "historicalBaseline": {

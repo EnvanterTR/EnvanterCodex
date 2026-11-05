@@ -1,4 +1,7 @@
 using System.Net;
+using EnvanterTR.Web.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace EnvanterTR.SecurityAcceptance;
@@ -38,5 +41,39 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.Contains(item.OwnId.ToString("D"), forgedBody, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(item.ForeignId.ToString("D"), forgedBody, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    [Fact]
+    public async Task Tenant_write_matrix_rejects_foreign_stock_archive_and_preserves_rows()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var foreignArchives = new (string Resource, string Path, Guid Id)[]
+        {
+            ("accessory", $"/api/accessories/{_otherCompanyAccessoryId}", _otherCompanyAccessoryId),
+            ("consumable", $"/api/consumables/{_otherCompanyConsumableId}", _otherCompanyConsumableId),
+            ("component", $"/api/components/{_otherCompanyComponentId}", _otherCompanyComponentId)
+        };
+
+        foreach (var item in foreignArchives)
+        {
+            using var response = await SendAsUserAsync(HttpMethod.Delete, item.Path, _userId, _companyId,
+                requestToken: requestToken, antiforgeryCookie: antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.Accessories.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyAccessoryId && x.IsArchived));
+        Assert.False(await db.Consumables.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyConsumableId && x.IsArchived));
+        Assert.False(await db.InventoryComponents.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyComponentId && x.IsArchived));
+        Assert.DoesNotContain(await db.AuditEntries.Where(x => x.CompanyId == _otherCompanyId && x.Action.Contains("archiv"))
+            .Select(x => x.TargetId).ToListAsync(), id => foreignArchives.Any(item => item.Id == id));
     }
 }
