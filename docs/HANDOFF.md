@@ -1,11 +1,12 @@
-# Devam notu — 2026-11-04
+# Devam notu — 2026-11-05
 
-## Güncel devam noktası — 2026-11-05 (WP-152)
+## Son durum — WP-153
 
-- WP-152 F4/F6 label settings/templates isolation completed. Focused isolated PostgreSQL acceptance: 1/1 PASS, xUnit 1.1827 min, exit 0; forged company selectors could not read/write foreign settings/templates, viewer writes were rejected 403. Disposable DB/network removed.
-- Current continuation has four of five package slots used (WP-149 through WP-152). Run the requested unfiltered PostgreSQL acceptance once as the final package, then write the exact result to LEDGER, PROJECT-STATUS, HANDOFF and summary.json.
-- F1 dump hash/manifest, isolated restore, exact first-122 ID parity, five-migration clone rehearsal, and before/after row counts remain blocked because the exact Nov 3 dump is unavailable locally and Coolify's terminal cannot be controlled here. Do not substitute an older dump.
-- Keep the migration freeze. No live changes, push, payment, deployment, or Coolify modifications.
+- İstenen beş iş paketi tamamlandı (WP-149–WP-153). WP-153 tek filtresiz acceptance koşusu: **328/328 PASS, 0 FAIL**, xUnit **1.0631 saat**, runner exit **0**, source/test commit `a51fefdcf97f6484854751f93a12f312134a9eb8`. Compose disposable PostgreSQL/acceptance konteynerleri ile ağı kaldırdı; son Docker listelemeleri eşleşme vermedi.
+- WP-152 label settings/templates tenant matrix tam koşuda PASS; yalnız test kodu değişti.
+- F1 a–d BLOCKED: 3 Kasım dump dosyası bulunamadı; bu oturumda hash yeniden hesaplama, izole restore, ilk 122 ID parity, beş migration rehearsal veya tablo satır sayımı yok. Daha eski hash kaydı yeni kanıt değildir.
+- F4 PARTIAL: 503 method-route matrisinin tümü yok. F5 PARTIAL: 2.265 kontrol/65 rota envanteri, browser 75/0/0; bütün kontroller bire bir çalıştırılmadı. F6 PARTIAL: izole güvenlik testleri geçti, canlı posture ve geniş hukuk/müşteri kabulü açık.
+- Migration freeze geçerli: yeni migration yok. Canlı/DB/Coolify/deploy/ödeme değişikliği ve push yapılmadı. Tam koşu yalnız bir kez çalıştırıldı.
 
 ## WP-149 — 2026-11-05 F4 company-security policy isolation
 

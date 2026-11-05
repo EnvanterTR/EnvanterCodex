@@ -4,9 +4,9 @@
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "ef5f0b9e68a55213b038e34c644f4978fe4bdd43",
+    "commit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
     "workingTreeCleanAtRun": true,
-    "note": "WP-150 unfiltered PostgreSQL acceptance ran once at the end on this source/test commit: 326/326 passed, 0 failed, xUnit 1.2223 hours, runner exit 0. WP-149 and WP-099 security cases passed."
+    "note": "WP-153 single unfiltered disposable-PostgreSQL acceptance: 328/328 passed, 0 failed; xUnit 1.0631 hours; wrapper exit 0. No live access, migration source change, or push."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -94,13 +94,13 @@
     },
     "finalFullPostgresAcceptance": {
       "status": "PASS",
-      "total": 326,
-      "passed": 326,
+      "total": 328,
+      "passed": 328,
       "failed": 0,
-      "xunitDurationHours": 1.2223,
+      "xunitDurationHours": 1.0631,
       "runnerExitCode": 0,
       "command": "./deploy/testing/run-security-acceptance.ps1",
-      "measuredCommit": "ef5f0b9e68a55213b038e34c644f4978fe4bdd43",
+      "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
       "isolatedDatabase": true,
       "productionWrites": false,
       "productionTouched": false,
@@ -108,12 +108,12 @@
       "newMigrationAdded": false,
       "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
       "includedTests": [
-        "Company_security_policy_ignores_foreign_company_selectors: PASS",
+        "Company_label_settings_and_templates_ignore_forged_foreign_company_selectors: PASS",
         "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
         "Software_license_key_plaintext_never_enters_host_logs: PASS"
       ],
-      "cleanup": "Compose stopped and removed disposable acceptance/PostgreSQL containers and isolated network; targeted post-run Docker listings had no matches.",
-      "note": "xUnit reported Test Run Successful. This was the single unfiltered PostgreSQL run requested for the continuation."
+      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "note": "Single unfiltered PostgreSQL acceptance run requested for WP-153. xUnit reported Test Run Successful; negative-path error logs occurred inside passing tests."
     },
     "uiInventory": {
       "status": "CURRENT",
@@ -1646,23 +1646,34 @@
       "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete."
     },
     "goalContinuation": {
-      "status": "IN_PROGRESS",
+      "status": "DONE_WITH_GATES_OPEN",
       "completedWorkPackages": [
         "WP-149",
         "WP-150",
-        "WP-151"
+        "WP-151",
+        "WP-152",
+        "WP-153"
       ],
-      "packageCount": 3,
+      "packageCount": 5,
       "packageLimit": 5,
+      "finalRun": {
+        "total": 328,
+        "passed": 328,
+        "failed": 0,
+        "xunitDurationHours": 1.0631,
+        "runnerExitCode": 0,
+        "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8"
+      },
       "f1StepsAtoD": "BLOCKED: Nov 3 dump not found locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
-      "f4Status": "PARTIAL; 503 method-route tenant matrix incomplete.",
-      "f5Status": "PARTIAL; 2265 controls / 65 routes; latest UI evidence 75 PASS / 0 FAIL / 0 BLOCKED; all controls not individually exercised.",
-      "f6Status": "PARTIAL; WP-099 isolated security tests pass; live posture and wider security/legal/customer acceptance remain open.",
+      "f4Status": "PARTIAL; 503 method-route tenant matrix incomplete; WP-149/151/152 targeted tests and WP-153 full suite passed.",
+      "f5Status": "PARTIAL; 2265 controls / 65 routes; latest browser evidence 75 PASS / 0 FAIL / 0 BLOCKED; not all controls individually exercised.",
+      "f6Status": "PARTIAL; isolated WP-099 security tests pass; live posture and wider security/legal/customer acceptance remain open.",
       "migrationAdded": false,
       "liveTouched": false,
       "pushed": false,
       "paymentTouched": false,
-      "coolifyTouched": false
+      "coolifyTouched": false,
+      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches."
     },
     "wp152LabelSettingsTenantMatrix": {
       "status": "PASS",
@@ -1678,6 +1689,38 @@
       "measuredTestFileBlob": "44ebddb182a5e9dea4b28b3c1e7bdfe14182fe25",
       "cleanup": "Disposable PostgreSQL container and isolated network removed.",
       "note": "Test-only change. One initial compile failure from wrong local helper overload and one fixture-role mismatch were corrected before final passing run; no application code changed."
+    },
+    "wp153FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 328,
+      "passed": 328,
+      "failed": 0,
+      "xunitDurationHours": 1.0631,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
+      "includedTests": [
+        "Company_label_settings_and_templates_ignore_forged_foreign_company_selectors: PASS",
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "note": "Single unfiltered PostgreSQL acceptance run requested for WP-153. xUnit reported Test Run Successful; negative-path error logs occurred inside passing tests.",
+      "packageCount": 5,
+      "packageLimit": 5,
+      "ledgerUpdated": true,
+      "statusDocumentsUpdated": [
+        "docs/LEDGER.md",
+        "docs/PROJECT-STATUS.md",
+        "docs/HANDOFF.md",
+        "tests/reports/summary.json"
+      ]
     }
   },
   "historicalBaseline": {
