@@ -9,6 +9,100 @@ namespace EnvanterTR.SecurityAcceptance;
 public sealed partial class TenantSessionAcceptanceTests
 {
     [Fact]
+    public async Task Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations()
+    {
+        var ownActive = new SupplierCatalogEntry
+        {
+            CompanyId = _companyId, Name = $"Own active {_userId:N}", NormalizedName = $"OWN ACTIVE {_userId:N}"
+        };
+        var ownArchived = new SupplierCatalogEntry
+        {
+            CompanyId = _companyId, Name = $"Own archived {_userId:N}", NormalizedName = $"OWN ARCHIVED {_userId:N}", IsActive = false
+        };
+        var foreignActive = new SupplierCatalogEntry
+        {
+            CompanyId = _otherCompanyId, Name = $"Foreign active {_userId:N}", NormalizedName = $"FOREIGN ACTIVE {_userId:N}"
+        };
+        var foreignArchived = new SupplierCatalogEntry
+        {
+            CompanyId = _otherCompanyId, Name = $"Foreign archived {_userId:N}", NormalizedName = $"FOREIGN ARCHIVED {_userId:N}", IsActive = false
+        };
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SupplierCatalogEntries.AddRange(ownActive, ownArchived, foreignActive, foreignArchived);
+            var foreignMembership = await db.CompanyMemberships.SingleOrDefaultAsync(x => x.CompanyId == _otherCompanyId && x.UserId == _userId);
+            if (foreignMembership is null)
+                db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            else
+                foreignMembership.RoleKey = "admin";
+            await db.SaveChangesAsync();
+        }
+
+        using (var activeList = await SendAsAdminAsync("/api/suppliers"))
+        {
+            var body = await activeList.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, activeList.StatusCode);
+            Assert.Contains(ownActive.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(ownArchived.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignActive.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignArchived.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+        }
+
+        using (var archivedList = await SendAsAdminAsync($"/api/suppliers?includeArchived=true&companyId={_otherCompanyId:D}"))
+        {
+            var body = await archivedList.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, archivedList.StatusCode);
+            Assert.Contains(ownActive.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(ownArchived.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignActive.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignArchived.Id.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+        }
+
+        using (var ownDetail = await SendAsAdminAsync($"/api/suppliers/{ownActive.Id}"))
+            Assert.Equal(HttpStatusCode.OK, ownDetail.StatusCode);
+        using (var foreignDetail = await SendAsAdminAsync($"/api/suppliers/{foreignActive.Id}"))
+            Assert.Equal(HttpStatusCode.NotFound, foreignDetail.StatusCode);
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var updateBody = System.Net.Http.Json.JsonContent.Create(new
+        {
+            name = "Foreign supplier overwritten", contactName = (string?)null, email = (string?)null,
+            phone = (string?)null, website = (string?)null, notes = "cross-company probe"
+        });
+        using (var foreignUpdate = await SendAsRoleAsync(HttpMethod.Put, $"/api/suppliers/{foreignActive.Id}", "admin",
+            updateBody, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignUpdate.StatusCode);
+        using (var foreignArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/suppliers/{foreignActive.Id}/archive", "admin",
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignArchive.StatusCode);
+        using (var foreignRestore = await SendAsRoleAsync(HttpMethod.Post, $"/api/suppliers/{foreignArchived.Id}/restore", "admin",
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRestore.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var viewerArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/suppliers/{ownActive.Id}/archive", "viewer",
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerArchive.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await verifyDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _companyId && x.Id == ownActive.Id && x.IsActive && x.Name == ownActive.Name));
+        Assert.True(await verifyDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _companyId && x.Id == ownArchived.Id && !x.IsActive && x.Name == ownArchived.Name));
+        Assert.True(await verifyDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == foreignActive.Id && x.IsActive && x.Name == foreignActive.Name));
+        Assert.True(await verifyDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == foreignArchived.Id && !x.IsActive && x.Name == foreignArchived.Name));
+        Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId &&
+            x.TargetType == "Supplier" && (x.TargetId == foreignActive.Id || x.TargetId == foreignArchived.Id)));
+    }
+
+    [Fact]
     public async Task Purchase_order_read_matrix_hides_foreign_records_for_all_order_families()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

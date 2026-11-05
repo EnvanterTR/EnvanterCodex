@@ -25,6 +25,10 @@ Canlıda alanı yalnız doğrudan üretim kanıtını gösterir; DOĞRULANMADI �
 | F14 | Iyzico gerçek ödeme | Yalnız sandbox kodu; üretim işlemi kilitli | KİLİTLİ | KİLİTLİ | Iyzico işyeri hesabı ve şirket kuruluşu yok; hedef gereği kapalı. Üretim ödeme testi için komut yok; şirket ve onaylı Iyzico hesabı olmadan başlatılmaz. |
 | F15 | Sonraki faz | ÖLÇÜLMEDİ | UYGULANABİLİR DEĞİL / sonraki ürün hattı | ÇALIŞTIRILMADI | Önceki kapılar tamamlanmadı. Kapı başlamadı; Windows/Server/Linux/Mobil için ayrı kabul komutları tanımlanmadı. |
 
+### Son paket kanıtı — 2026-11-05
+
+WP-146 / F4 tedarikçi kataloğu tenant matrisi: izole PostgreSQL kabul testi **1/1 PASS**, xUnit 1.0069 dakika, runner exit 0. Company A kendi kayıtlarını gördü; yabancı update/archive/restore 404, gerçek viewer üyeliği archive isteğinde 403 verdi; kayıtlar ve yabancı audit durumu değişmedi. Disposable PostgreSQL container/network kaldırıldı. F4 hâlâ KISMEN: 503 method-route envanterinin tamamında kabul yok. Migration eklenmedi.
+
 ## Ürün gereksinimleri
 
 Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tutulur ve sayılmaz. P01/Q01 ek hedefler katalog sayımına dahil değildir. Kodda ve kabul durumu kanıt kapsamını gösterir; canlıda sütunundaki DOĞRULANMADI canlıda bulunmadığı anlamına gelmez.

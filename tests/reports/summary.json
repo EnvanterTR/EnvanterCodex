@@ -1459,6 +1459,31 @@
       "productionTouched": false,
       "migrationAddedOrRun": false,
       "pushed": false
+    },
+    "wp146F4SupplierCatalogIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations'",
+      "passed": 1,
+      "failed": 0,
+      "xunitDuration": "1.0069 minutes",
+      "runnerExitCode": 0,
+      "attempts": 2,
+      "attempt1": "Test fixture sent viewer header but retained persisted admin membership; no product defect.",
+      "coverage": [
+        "Company-scoped active and archived supplier lists despite forged companyId",
+        "Own detail 200 and foreign detail 404",
+        "Foreign update/archive/restore return 404",
+        "Persisted viewer membership archive returns 403",
+        "All seeded supplier rows and foreign audit state remain unchanged"
+      ],
+      "isolatedPostgres": true,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "productionWrites": false,
+      "migrationAdded": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; other method-route families remain unverified"
     }
   },
   "historicalBaseline": {
