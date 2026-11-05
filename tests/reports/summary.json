@@ -4,9 +4,9 @@
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
+    "commit": "ef5f0b9e68a55213b038e34c644f4978fe4bdd43",
     "workingTreeCleanAtRun": true,
-    "note": "WP-148 final unfiltered PostgreSQL security/tenant acceptance ran once on this clean source/test snapshot: 325/325 passed, 0 failed, xUnit 53.8500 minutes, runner exit 0. WP-099 encrypted-storage/authorization/CSRF and no-plaintext-in-host-logs tests both passed."
+    "note": "WP-150 unfiltered PostgreSQL acceptance ran once at the end on this source/test commit: 326/326 passed, 0 failed, xUnit 1.2223 hours, runner exit 0. WP-149 and WP-099 security cases passed."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -94,37 +94,26 @@
     },
     "finalFullPostgresAcceptance": {
       "status": "PASS",
-      "total": 325,
-      "passed": 325,
+      "total": 326,
+      "passed": 326,
       "failed": 0,
-      "xunitDurationMinutes": 53.85,
+      "xunitDurationHours": 1.2223,
       "runnerExitCode": 0,
       "command": "./deploy/testing/run-security-acceptance.ps1",
-      "measuredCommit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
+      "measuredCommit": "ef5f0b9e68a55213b038e34c644f4978fe4bdd43",
       "isolatedDatabase": true,
       "productionWrites": false,
       "productionTouched": false,
       "sourceMigrationFilesChanged": false,
       "newMigrationAdded": false,
       "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
-      "wp099Tests": [
+      "includedTests": [
+        "Company_security_policy_ignores_foreign_company_selectors: PASS",
         "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
         "Software_license_key_plaintext_never_enters_host_logs: PASS"
       ],
-      "wp146SupplierMatrix": "Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations: PASS in full run",
-      "runnerCleanup": "Compose stopped and removed the disposable acceptance and PostgreSQL containers plus isolated network; runner exit 0.",
-      "expectedNegativePathLogs": [
-        "Concurrent purchase-order serialization conflict asserted by passing test",
-        "Duplicate membership uniqueness rejection asserted by passing test",
-        "Plan/quota rejection asserted by passing test",
-        "Kestrel oversized-request rejection asserted by passing test"
-      ],
-      "warnings": [
-        "Ephemeral DataProtection keys in disposable test host",
-        "Antiforgery no-cache header notices",
-        "Test-host request-size feature notices"
-      ],
-      "note": "xUnit reported Test Run Successful; no failed tests. All database work was confined to the temporary acceptance database. No production database, live deployment, payment, Coolify, or push action occurred."
+      "cleanup": "Compose stopped and removed disposable acceptance/PostgreSQL containers and isolated network; targeted post-run Docker listings had no matches.",
+      "note": "xUnit reported Test Run Successful. This was the single unfiltered PostgreSQL run requested for the continuation."
     },
     "uiInventory": {
       "status": "CURRENT",
@@ -1609,6 +1598,24 @@
       "coolifyTouched": false,
       "pushed": false,
       "f4Status": "PARTIAL; the added tenant-policy route family does not cover the complete 503 method-route inventory."
+    },
+    "wp150Continuation": {
+      "status": "DONE",
+      "completedWorkPackages": [
+        "WP-149",
+        "WP-150"
+      ],
+      "packageCount": 2,
+      "f1StepsAtoD": "BLOCKED: dump unavailable locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
+      "staticVerifiers": "85/85 PASS; two historical failures and causes documented in PROJECT-STATUS.md.",
+      "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete.",
+      "f5Status": "PARTIAL; inventory 2265 controls / 65 routes; latest browser matrix 75 PASS / 0 FAIL / 0 BLOCKED; not every control individually exercised.",
+      "f6Status": "PARTIAL; WP-099 isolated tests pass; live posture and broader security/legal/customer acceptance remain open.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false
     }
   },
   "historicalBaseline": {
