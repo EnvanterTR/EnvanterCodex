@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T03:16:02Z",
+  "measuredAt": "2026-11-05T03:27:03Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+    "commit": "b646263",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -126,6 +126,20 @@
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "status": "PASS",
       "note": "Test ran with the WP-106 source edits present before commit; the committed code content matches the tested source. The working tree was modified during verification."
+    },
+    "f4TenantSelectorReadMatrix": {
+      "measuredBaseCommit": "b646263",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_read_matrix_hides_foreign_records_from_detail_and_collection_routes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "families": ["assets", "employees", "software licenses", "accessories", "consumables", "components"],
+      "checks": "For each family, direct foreign detail returns 404; normal collection excludes the foreign ID; collection with forged companyId=<other tenant> still includes the caller's own ID and excludes the foreign ID.",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "status": "PASS"
     },
     "apiRouteBoundaryAcceptance": {
       "status": "PASS",
