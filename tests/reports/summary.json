@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T10:03:23Z",
+  "measuredAt": "2026-11-05T11:23:55Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "1137d92761e927be666583673fa2c8006e3d1f4d",
+    "commit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
     "workingTreeCleanAtRun": true,
-    "note": "WP-127 ran the unfiltered PostgreSQL security/tenant acceptance once on clean commit 1137d92761e927be666583673fa2c8006e3d1f4d. Offline discovery found 322 tests and Docker acceptance-container exitCode=0; all 322 passed. WP-123 through WP-126 source and tests were included."
+    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-128 through WP-131 migration-free source/test work is included."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -109,19 +109,14 @@
       "exitCode": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
-      "duration": "Approximately 49 minutes wall-clock; exact xUnit summary not retained in interactive output",
-      "measuredCommit": "1137d92761e927be666583673fa2c8006e3d1f4d",
+      "duration": "50.4233 minutes (xUnit)",
+      "measuredCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
       "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
-      "discoveryCommand": "docker run --rm --network none --entrypoint dotnet envantertr-security-acceptance-4273251c29-acceptance:latest test --no-build --no-restore --list-tests",
-      "discoveryCount": 322,
-      "resultEvidence": "Acceptance Docker die event exitCode=0 at Unix time 1793872298; incremental container log showed 320 named PASS results before teardown and no failing test result. Exact final console summary was not retained by the interactive tool output.",
-      "runnerCleanup": "Compose destroyed disposable acceptance and PostgreSQL containers; docker network ls confirmed no remaining project network",
+      "resultEvidence": "xUnit output: Test Run Successful; Total tests: 322; Passed: 322; Total time: 50.4233 Minutes; runner exit 0.",
+      "log": "%TEMP%\\envantertr-full-acceptance-20261105-wp132.log",
+      "runnerCleanup": "Compose stopped and removed the disposable acceptance/PostgreSQL containers and isolated network.",
       "failedTests": [],
-      "wp099Tests": [
-        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
-        "Software_license_key_plaintext_never_enters_host_logs"
-      ],
-      "note": "Existing source migrations ran only in disposable test PostgreSQL. No production DB, source migration, deployment, payment, Coolify/environment/domain/routing change, or push."
+      "note": "Existing migrations ran only in disposable acceptance PostgreSQL. No production DB, migration file, deployment, payment, Coolify/environment/domain/routing change, or push."
     },
     "wp122FullPostgresSecurityAcceptance": {
       "status": "PASS",
@@ -1001,6 +996,62 @@
         "Software_license_key_plaintext_never_enters_host_logs"
       ],
       "note": "Existing source migrations ran only in disposable test PostgreSQL. No production DB, source migration, deployment, payment, Coolify/environment/domain/routing change, or push."
+    },
+    "wp128To132MigrationFreeCloseout": {
+      "status": "DONE",
+      "workPackages": [
+        "WP-128",
+        "WP-129",
+        "WP-130",
+        "WP-131",
+        "WP-132"
+      ],
+      "completed": 5,
+      "maxAllowed": 5,
+      "migrationFree": true,
+      "migrationAdded": false,
+      "productionTouched": false,
+      "pushed": false,
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85,
+        "measuredPackage": "WP-128"
+      },
+      "uiInventory": {
+        "staticControls": 2265,
+        "routes": 65,
+        "status": "CURRENT",
+        "measuredPackage": "WP-128"
+      },
+      "f4ExportSelectorTest": {
+        "passed": 1,
+        "failed": 0,
+        "isolatedPostgres": true,
+        "result": "JSON and ZIP companyId tampering stayed scoped to the authenticated company."
+      },
+      "f5MfaRetryBrowser": {
+        "status": "PASS",
+        "runnerExit": 0,
+        "scope": "Synthetic company MFA invalid-code retry flow only."
+      },
+      "wp099Secrets": {
+        "passed": 2,
+        "failed": 0,
+        "isolatedPostgres": true
+      },
+      "fullPostgres": {
+        "total": 322,
+        "passed": 322,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "50.4233 minutes",
+        "measuredCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3"
+      },
+      "f4": "PARTIAL: all-route API, file, import/export and write matrix is incomplete.",
+      "f5": "PARTIAL: 2,265 controls inventoried; not every control was individually exercised.",
+      "f6": "PARTIAL: live security posture, broad security and legal/KVKK review, and live-company acceptance remain open.",
+      "f1": "BLOCKED for dump restore, exact first-122 migration-ID parity, five-migration rehearsal, and before/after row counts; prior WP-101 hash match was not recomputed in this run."
     }
   },
   "historicalBaseline": {

@@ -199,3 +199,12 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - F4 ve F6 kısmi; tüm API/dosya/import/export izolasyon matrisi ile canlı CSP/HTTPS, geniş secret/XSS/SQLi ve hukuki/KVKK/live-customer kabul kanıtları açık.
 - F1 adım a için önceki WP-101 sunucu SHA-256 sonucu manifestle eşleşmişti; bu devamda yeniden hash alınmadı. Restore, canlıdaki 122 migration kimliklerinin tam karşılaştırması, beş migration'ın izole prova koşusu ve tablo satır sayısı karşılaştırması BLOCKED; dump yerelde yok ve onaylı sunucu SQL/restore kanalı yok.
 - Yalnız disposable PostgreSQL test DB'si kullanıldı. Canlı DB, migration dosyaları, deploy, Coolify, ödeme, domain/wildcard ve push değiştirilmedi. Geçici Compose DB/kabul konteynerleri ve ağ kaldırıldı.
+
+## 2026-11-05 devam kapanışı (WP-128–WP-132)
+
+- WP-128–WP-132: 5/5 migration-free iş paketi DONE. Son tam izole PostgreSQL koşusu temiz kaynak/test commit `d5caf9208670f077939c21e9985d0ce51b3e4ac3` üzerinde bir kez tamamlandı: **322/322 PASS, 0 FAIL**, xUnit 50.4233 dakika, runner exit 0. Log: `%TEMP%\envantertr-full-acceptance-20261105-wp132.log`; geçici DB/kabul konteynerleri ve ağ kaldırıldı.
+- F4 yeni kanıtı: JSON ve ZIP firma dışa aktarımına sahte yabancı `companyId` parametresi verildi; yanıt ve varlıklar oturumdaki firmaya bağlı kaldı (izole PostgreSQL 1/1). Genel F4 durumu KISMEN KANITLI; tüm API, dosya, import/export ve yazma uçları tamamlanmadı.
+- F5 yeni durum: 2.265 kontrol / 65 rota envanteri ve 85/85 statik doğrulayıcı PASS; seçili MFA/gallery Chromium akışları PASS. 2.265 kontrol tek tek denenmedi; F5 KISMEN KANITLI.
+- F6 yeni kanıtı: WP-099 şifreli saklama, firma/lisans bağlama, yetki/CSRF reddi ve log'a plaintext yazılmaması 2/2 izole PostgreSQL testinde PASS. Canlı güvenlik başlıkları, kapsamlı güvenlik ve hukuki/KVKK incelemesi ve canlı müşteri kabulü açık; F6 KISMEN KANITLI.
+- F1 adım a: WP-101'deki önceki SHA-256/manifest eşleşmesi korunuyor, bu devamda yeniden hesaplanmadı. Adım b–d BLOCKED: 3 Kasım dump'ı yerel çalışma alanında yok ve yetkili sunucu tarafı restore/SQL kanalı yok. Geri yükleme, ilk 122 migration ID eşitliği, beş migration provası ve tablo satır sayımı yapılmadı; canlı DB'ye erişilmedi.
+- Hiçbir migration eklenmedi/çalıştırılmadı. Canlı DB/yayın, ödeme, Coolify yapılandırması, ortam değişkenleri, domain/wildcard ve push işlemi yapılmadı. Migration dondurma kuralı sürüyor.
