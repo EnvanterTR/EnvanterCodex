@@ -1742,6 +1742,36 @@
       "liveTouched": false,
       "pushed": false,
       "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
+    },
+    "wp155DepartmentHostileSelectorMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.3432,
+      "runnerExitCode": 0,
+      "attempts": 3,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Departments_ignore_forged_foreign_company_selectors_for_reads_and_writes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "assertions": [
+        "Forged companyId and X-Company-Id left Company A's catalog department visible and excluded Company B's department.",
+        "Foreign update/archive/manager/move returned 404; create beneath a foreign parent returned 400; viewer create returned 403.",
+        "Company B department row and foreign audit state remained unchanged; rejected Company A rows were not created."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "attemptNotes": [
+        "Attempt 1: assertion attempted GetGuid on a null departmentId.",
+        "Attempt 2: list rows for catalog-only departments have null departmentId; assertion did not match.",
+        "Attempt 3: assert seeded own catalog row by exact name and isCatalogEntry; PASS."
+      ],
+      "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
     }
   },
   "historicalBaseline": {
