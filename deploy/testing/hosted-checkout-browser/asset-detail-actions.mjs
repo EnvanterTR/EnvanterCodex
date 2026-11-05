@@ -3752,10 +3752,22 @@ try {
   await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
   await licenseDetail.waitFor({ state: 'visible' });
   assert.equal(await licenseKeyInput.inputValue(), '', 'Reopening detail must not restore the plaintext key.');
-  page.once('dialog', dialog => dialog.accept());
+  const licenseKeyWriteCountBeforeClear = softwareLicenseKeyWrites.length;
+  await page.locator('#licenseKeyClear').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  assert.equal((await page.locator('#licenseActionTitle').textContent()).trim(), 'Anahtarı kaldır');
+  assert.match((await page.locator('#licenseActionSummary').textContent()).trim(), /Kayıtlı lisans anahtarını kaldırmak istiyor musunuz\?/);
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseKeyWrites.length, licenseKeyWriteCountBeforeClear,
+    'Canceling the confirmation must not call the delete API.');
+  assert.equal(softwareLicenseKeys.get(softwareLicenseId), syntheticProductKey,
+    'Canceling the confirmation must retain the encrypted key.');
+  await page.locator('#licenseKeyClear').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
   const licenseKeyClearResponse = page.waitForResponse(response => response.request().method() === 'DELETE'
     && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key`);
-  await page.locator('#licenseKeyClear').click();
+  await page.locator('#licenseActionSubmit').click();
   assert.equal((await licenseKeyClearResponse).status(), 204);
   await page.waitForFunction(() => document.querySelector('#licenseKeyState')?.textContent === 'Anahtar kaydı yok.');
   assert.equal(softwareLicenseKeys.has(softwareLicenseId), false);
