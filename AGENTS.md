@@ -66,8 +66,6 @@ Değişmeyen asıl hedef: **Snipe-IT'nin işlev olarak 2026'daki daha modern, da
 
 **R12. F1 migration dondurması.** F1 kapısı `DONE` olmadan yeni EF migration oluşturma veya mevcut migration'ı değiştirme. Şema değişikliği gerektiren yeni iş `BEKLEMEDE` olarak kaydedilir; F1 tamamlanana kadar migration üretmeden sürdürülebilen bağımsız işler seçilir. F1 provası yalnızca açıkça onaylanmış, ağsız ve üretimden yalıtılmış klonda migration çalıştırabilir; canlı veritabanına migration uygulanamaz.
 
-**R13. F1 blokajında bağımsız ilerleme.** F1 yedek/restore veya migration-parity kanıtı erişim yüzünden `BLOCKED` ise, sahibinin açık devam talimatıyla migration gerektirmeyen F4/F5/F6 doğrulama ve düzeltme paketleri sürdürülebilir. Bu işler F1'i `DONE` yapmaz; F1'e bağlı release/deploy/DB işlemi açmaz. Her paket kendi kanıtıyla LEDGER'a yazılır; şema değişikliği isteyen işler `BEKLEMEDE` kalır.
-
 ### 2.2 Kullanıcıya hiç kırık öğe gösterme
 Tamamlanmamış bir özellik arayüzde GÖRÜNMEZ (özellik bayrağı ya da gizleme). Ölü (tıklayınca bir şey yapmayan) buton, boş sayfa, "yakında" yazan çalışmayan menü bırakılmaz. Bir öğe ya çalışır ya yoktur.
 

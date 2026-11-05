@@ -399,6 +399,12 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - F1 a–d remain BLOCKED: Nov 3 dump unavailable locally; authorized server-side restore/SQL access absent. Prior WP-101 hash match not re-run; no dump restore, first-122 migration-ID comparison, five-migration rehearsal, or table-row comparison was performed. F1 e 85/85 static verifiers PASS; f 324/324 PostgreSQL acceptance; g both WP-099 tests PASS.
 - No migration was added/edited, and no production database/live site/payment/Coolify/environment/domain/wildcard/routing/push was touched. Migration freeze remains active.
 
+## 2026-11-05 new canonical target
+
+- Owner-designated `C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md` is now copied byte-for-byte to worktree-root `AGENTS.md`; both SHA-256 values are `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`. WP-143 DONE; local commit `9e7f1ec2272fee791292bab1681a722d45bfafc5`.
+- Follow Hedef 4 v4.0 phase order strictly. Start with F0 remeasurement; F1 is still open because the 3 Nov dump is unavailable in this workspace and no authorized restore/SQL route is present. Do not jump to later phases while F1 blocks the sequence.
+- Last full isolated PostgreSQL baseline was 324/324 PASS on the previous test snapshot (WP-142); run the required current-session F0 baseline once before relying on it. No live deployment, database write, payment action, or push is authorized by this handoff.
+
 ## 2026-11-05 final continuation closeout (WP-133–WP-137)
 
 - Five packages completed, 5/5 DONE. The unfiltered PostgreSQL acceptance ran once on `d766138fda4fda8f2201440fe9fff27e9fe08f6d`: **322/322 PASS, 0 FAIL**, xUnit 49.8648 min, runner exit 0. Log `%TEMP%\envantertr-full-acceptance-20261105-wp137-8b71e18d.stdout.log`. Compose removed the disposable DB, acceptance container and network; post-run Docker queries showed no matching resources. WP-099 ciphertext/authorization/tenant/CSRF and no-plaintext-log tests both passed.
