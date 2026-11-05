@@ -1,11 +1,12 @@
 # Devam notu — 2026-11-06
 
-## Son durum — WP-155
+## Son durum — WP-156
 
 - WP-155 F4 department hostile-selector test: **1/1 PASS**, xUnit **1.3432 min**, exit **0** after 3 different test attempts. Company B department stayed hidden/unchanged; foreign writes returned 404/400; viewer write returned 403. Test-only code change, no migration.
 - WP-154 F4 company-unit test also remains **1/1 PASS**, xUnit **1.2999 min**, exit **0**.
+- WP-156 F5 inventory check exact match: **2,265 controls / 65 routes**. Synthetic Chromium runner exit **0** with **77 `PASS:` summary lines** and no explicit FAIL/BLOCKED summary; four product-gallery slides/fullscreen/autoplay/keyboard/mobile checks passed. Command-palette run emitted console 404 resource messages without recording URLs; classify separately, do not count these as passed controls.
 - Latest full PostgreSQL suite remains WP-153 at source/test commit a51fefdcf97f6484854751f93a12f312134a9eb8: 328/328 PASS, 0 FAIL, xUnit 1.0631 hours, exit 0. WP-154 and WP-155 targeted runs are additional and are not claimed as part of that full run.
-- This continuation has **2/5** work packages. Continue with migration-free F4/F5/F6 packages; run one unfiltered full acceptance at the end.
+- This continuation has **3/5** work packages. One unfiltered full acceptance remains scheduled last, after final migration-free F4/F6 work.
 - F1 a–d BLOCKED: exact Nov 3 dump unavailable; no rehash, restore, first-122 ID parity, five-migration rehearsal, or row counts. Do not substitute another dump.
 - F4 PARTIAL: 503 method-route matrix incomplete. F5 PARTIAL: 2,265 controls / 65 routes, latest browser 75/0/0, all controls not individually executed. F6 PARTIAL: live security posture and broad legal/customer acceptance open.
 - No live/DB/Coolify/deploy/payment changes, no migration, no push.

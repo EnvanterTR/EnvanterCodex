@@ -475,3 +475,13 @@ Deneme: **1/3**, PASS.
 Attempts: **3/3**. Attempt 1 failed on a null `departmentId` assertion; attempt 2 showed catalog-only rows intentionally have null IDs; the final assertion identifies the seeded catalog row by exact name and `isCatalogEntry` and passed.
 
 This continuation has completed **2/5** package slots so far (WP-154–WP-155). The single unfiltered PostgreSQL acceptance run remains queued for the end of this continuation.
+
+## WP-156 — DONE — F5 current UI inventory and Chromium failure triage
+
+**Bitti tanımı:** Run `node tools/Generate-UiInventory.mjs --check` and the local/synthetic hosted Chromium acceptance runner. Record exact static control/route counts and PASS/FAIL/BLOCKED scenario counts. If any reproducible UI FAIL is found, write/fix it within the three-attempt limit and rerun the affected browser case. No live write, migration, deploy, payment, Coolify/environment/domain/routing change, or push.
+
+`node tools/Generate-UiInventory.mjs --check`: **2,265 static controls / 65 routes / 10 menu groups / 53 links / 958 buttons / 113 forms / 627 inputs / 204 selects / 42 textareas / 109 modals / 5 tabs / 79 tables**, exact match with `docs/ui-inventory.md`, exit **0**. `./deploy/testing/run-hosted-checkout-browser-acceptance.ps1`: Docker build succeeded, runner exit **0**; **77 `PASS:` summary lines**, no explicit `FAIL` or `BLOCKED` summary. Synthetic browser covered checkout, session/security, MFA retry, asset and stock actions, reports, platform controls, tenant UI, and all four gallery slides/fullscreen/autoplay/keyboard/mobile behaviors. No production API/data or real payment was used.
+
+The runner also emitted repeated browser console `404 (Not Found)` resource messages in its command-palette scenario; it did not record their request URLs, so these are **unclassified console warnings**, not counted as failed assertions. No claim that all 2,265 controls were individually exercised: F5 remains PARTIAL. No migration/live/deploy/payment/Coolify/environment/domain/routing/push change. No app code changed in this WP.
+
+Deneme: **1/3**, PASS. Package slots used in this continuation: **3/5** (WP-154–WP-156); one unfiltered PostgreSQL acceptance remains scheduled last.

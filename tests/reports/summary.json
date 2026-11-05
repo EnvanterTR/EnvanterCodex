@@ -1772,6 +1772,41 @@
         "Attempt 3: assert seeded own catalog row by exact name and isCatalogEntry; PASS."
       ],
       "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
+    },
+    "wp156UiInventoryAndChromium": {
+      "status": "PASS_WITH_UNCLASSIFIED_CONSOLE_404S",
+      "measuredAt": "2026-11-06",
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "pageRoutes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "hostedChromium": {
+        "runnerExitCode": 0,
+        "passSummaryLines": 77,
+        "explicitFailSummaryLines": 0,
+        "blockedSummaryLines": 0,
+        "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "productionWrites": false,
+        "syntheticApi": true,
+        "unclassifiedConsole404s": true,
+        "note": "Command-palette scenario logged console 404 resource errors without request URLs; no failed assertion. The 2,265 controls were inventoried, not individually executed."
+      },
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "pushed": false
     }
   },
   "historicalBaseline": {
