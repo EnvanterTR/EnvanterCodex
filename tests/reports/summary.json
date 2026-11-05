@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T13:15:02Z",
+  "measuredAt": "2026-11-05",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
@@ -1173,6 +1173,158 @@
       "measuredSourceBaseCommit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
       "workingTreeModifiedDuringVerification": true,
       "noProductionChanges": true
+    },
+    "wp138PurchaseOrderReadIsolation": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Purchase_order_read_matrix_hides_foreign_records_for_all_order_families'",
+      "xunitTestSeconds": 2,
+      "confirmationRunTotalSeconds": 54.2971,
+      "runs": 2,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "covered": [
+        "stock purchase-order list/detail",
+        "accessory purchase-order list/detail",
+        "asset purchase-order list/detail",
+        "foreign companyId query selector"
+      ],
+      "assertions": "Own-company list/detail returned the seeded row; foreign details returned 404; foreign collection rows were absent; forged companyId did not reveal foreign rows.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "measuredTestFileGitBlob": "2d94cd52c7ac3880a6f1e8dc2bce8d4e50db0614",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp139PurchaseOrderWriteIsolation": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "attempt": 2,
+      "firstAttempt": "Fixture setup failed because random CreatedByUserId values violated the AspNetUsers foreign key. Removed the optional user reference; no application change.",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Purchase_order_write_matrix_rejects_foreign_cancel_and_approval_without_mutation'",
+      "xunitTestSeconds": 5,
+      "totalSeconds": 56.8786,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "mutationProbes": 6,
+      "assertions": "Cancel and approval for foreign stock/accessory/asset purchase orders returned 404; orders remained Ordered/Pending and no foreign audit rows were added.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp140CurrentUiScan": {
+      "status": "PASS",
+      "uiInventory": {
+        "staticControls": 2265,
+        "routes": 65,
+        "check": "PASS"
+      },
+      "staticVerifiers": {
+        "total": 85,
+        "passed": 85,
+        "failed": 0
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "runnerExitCode": 0,
+        "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "aggregateScenarioTotals": null,
+        "productGallery": "Fullscreen, keyboard, focus restoration, all slides, seamless clone, automatic left transition, manual controls, mobile overflow, and no page errors passed.",
+        "consoleObservation": "404 resource console messages appeared; no assertion failure or page error was reported."
+      },
+      "noReproducibleUiFailure": true,
+      "perControlAcceptanceComplete": false,
+      "productionWrites": false,
+      "noProductionChanges": true
+    },
+    "wp141Wp099SecretSecurity": {
+      "status": "PASS",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "xunitDurationMinutes": 1.0643,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped|FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "roleMatrixVerifier": "PASS",
+      "auditRetentionVerifier": "PASS",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp142FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 324,
+      "passed": 324,
+      "failed": 0,
+      "xunitDurationMinutes": 49.8462,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "baseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "testFile": "tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.TenantMatrix.cs",
+      "testFileGitBlob": "2c4acd254b82462b781d2cde4723c9aa3d665f28",
+      "workingTreeModified": true,
+      "isolatedPostgres": true,
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "runnerCleanup": "Compose stopped and removed acceptance/PostgreSQL containers and isolated network; post-run Docker queries found no matching resources.",
+      "expectedNegativePathLogs": true,
+      "productionWrites": false,
+      "migrationAdded": false,
+      "liveDeployment": false,
+      "pushed": false
+    },
+    "wp138To142MigrationFreeCloseout": {
+      "status": "DONE",
+      "workPackages": [
+        "WP-138",
+        "WP-139",
+        "WP-140",
+        "WP-141",
+        "WP-142"
+      ],
+      "completed": 5,
+      "maxAllowed": 5,
+      "migrationAdded": false,
+      "productionTouched": false,
+      "pushed": false,
+      "f4": "PARTIAL: tested purchase-order read and foreign cancel/approval isolation across stock/accessory/asset families; full 503-endpoint matrix remains open.",
+      "f5": {
+        "status": "PARTIAL",
+        "controls": 2265,
+        "routes": 65,
+        "staticVerifiersPassed": 85,
+        "staticVerifiersFailed": 0,
+        "hostedChromiumExit": 0,
+        "allControlsIndividuallyExecuted": false,
+        "reproducibleCurrentUiFailure": false
+      },
+      "f6": "PARTIAL: WP-099 protected secret controls pass; live posture, broad security/legal review and live-customer acceptance remain open.",
+      "f1": {
+        "stepsAtoD": "BLOCKED: Nov 3 dump unavailable locally and no authorized server-side restore/SQL channel; prior hash/manifest match not recomputed; no restore, first-122 ID comparison, five-migration rehearsal, or row-count comparison claimed.",
+        "stepE": "85/85 static validators PASS; prior two failures and causes documented.",
+        "stepF": "324/324 full isolated PostgreSQL tests PASS.",
+        "stepG": "Both WP-099 tests PASS."
+      }
     }
   },
   "historicalBaseline": {

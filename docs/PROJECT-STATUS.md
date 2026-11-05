@@ -241,3 +241,35 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - **F1 a:** önceki WP-101 sunucu SHA-256 `ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d` manifestle eşleşmişti; bu devamda yeniden hash alınamadı, çünkü 3 Kasım dump'ı yerel depoda yok ve onaylı sunucu tarafı dump/SQL kanalı yok. **b–d BEKLEMEDE/BLOCKED:** klona restore, ilk 122 migration ID eşitliği, beş yeni migration provası ve önce/sonra tablo satırı sayımı kanıtlanmadı. Canlı DB'ye bağlanılmadı; migration çalıştırılmadı.
 - **F1 e:** mevcut WP-128 statik taraması 85/85 PASS. Önceden başarısız iki doğrulayıcı düzeltilmiş durumda: `Verify-HostedCheckoutBrowserAcceptance.mjs` eski `Synthetic Invited Viewer` metnini bekliyordu, fixture `Synthetic Invited Finance` kullanıyor; `Verify-NoNativeBrowserDialogs.mjs` `index.html:8614` noktasındaki yerel `confirm()` kullanımını yakaladı ve WP-103'te uygulama içi onay akışıyla değiştirildi. **F1 f:** yukarıdaki 322/322 tam koşu. **F1 g:** WP-099 iki test de aynı tam koşuda geçti.
 - Hiçbir migration dosyası eklenmedi/değiştirilmedi. Canlı DB, yayın, ödeme, Coolify, ortam değişkenleri, domain/wildcard ve uzak push işlemi yapılmadı.
+
+## 2026-11-05 F4 satın alma siparişi tenant okuma matrisi (WP-138)
+
+- Stock, accessory ve asset siparişleri için iki firma kaydı oluşturuldu. Her ailede kendi sipariş detayı/listesi 200 ve içerikte görünür; diğer firmanın detay isteği 404, diğer firmanın satırı listede yok. `companyId` sahteciliği de sonucu değiştirmedi.
+- `Purchase_order_read_matrix_hides_foreign_records_for_all_order_families`: izole PostgreSQL **1/1 PASS**; ikinci kanıt koşusunda xUnit 2 s, toplam test süresi 54.2971 s, kabul sarmalayıcı çıkışı 0. Geçici DB/konteyner/ağ kaldırıldı. Dört mevcut ASP.NET deprecation uyarısı, 0 derleme hatası.
+- Yeni bir uygulama hatası görülmedi; değişiklik yalnızca kabul testi. F4 kısmi kalır: 503 API rotanın tamamında tenant izolasyonu kanıtlanmış değil. Canlı DB/yayın, migration, ödeme, Coolify ayarı, ortam/domain/routing ve push değişmedi.
+
+## 2026-11-05 F4 satın alma siparişi yabancı-yazma reddi (WP-139)
+
+- Yabancı firmaya ait stock/accessory/asset siparişlerinde iptal ve onay işlemleri geçerli CSRF ile denendi. Altı istek de 404 verdi. İzole PostgreSQL doğrulamasında üç kayıt da `Ordered`/`Pending` kaldı ve yabancı firmaya ait audit satırı oluşmadı.
+- `Purchase_order_write_matrix_rejects_foreign_cancel_and_approval_without_mutation`: **1/1 PASS**, xUnit 5 s / 56.8786 s toplam, wrapper exit 0. İlk koşu sentetik fixture'daki var olmayan `CreatedByUserId` nedeniyle FK hatası verdi; isteğe bağlı alan null yapıldı ve ikinci koşu geçti. Bu bir ürün hatası değildi. Geçici DB/ağ kaldırıldı.
+- F4 hâlâ kısmi; bütün 503 rotanın yazma/okuma matrisi tamamlanmadı. Şema/migration ve canlı sistemde değişiklik yok.
+
+## 2026-11-05 F5 güncel UI taraması (WP-140)
+
+- UI envanteri güncel: **2.265 kontrol / 65 rota** (`node tools/Generate-UiInventory.mjs --check`). Statik doğrulayıcılar **85/85 PASS, 0 FAIL**.
+- Hosted Chromium kabul koşusu çıkış 0 ile tamamlandı; raporlanan senaryolar PASS. Ürün galerisi tam ekran/klavye/focus dönüşü, slayt geçişleri, otomatik sola akış, elle gezinme ve mobil taşma kontrollerini geçti. Koşucu toplam senaryo sayısı üretmedi; birkaç 404 kaynak mesajı göründü, başarısız assertion veya page error yoktu.
+- Yeni tekrar üretilebilir UI FAIL yok; bu yüzden kod düzeltmesi yapılmadı. F5 kısmi: 2.265 öğenin her biri tek tek çalıştırılmadı. Canlı/migration/deploy/ödeme/Coolify/push işlemi yok.
+
+## 2026-11-05 F6 WP-099 korumalı lisans sırrı (WP-141)
+
+- `Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped` ve `Software_license_key_plaintext_never_enters_host_logs`: **2/2 PASS**, xUnit 1.0643 dakika, izole PostgreSQL wrapper exit 0. Şifreli saklama, firma/lisans bağlama, yetkisiz rol ve CSRF reddi, log canary kontrol edildi.
+- `Verify-RoleMatrix.mjs` ve `Verify-PlatformAuditRetention.mjs` PASS; geçici DB/ağ kaldırıldı. F6 kısmi kalır; bu sonuç canlı ortam güvenlik duruşu, hukuki/KVKK incelemesi veya müşteri kabulü değildir. Canlı sistem ve migration değişmedi.
+
+## 2026-11-05 final continuation closeout (WP-138–WP-142)
+
+- Five migration-free work packages completed: **5/5 DONE**. The final unfiltered `./deploy/testing/run-security-acceptance.ps1` ran once on base commit `5a737c1d8f4518636593f7afa03fd2f95037bc65`, with WP-138/WP-139 test additions in `TenantSessionAcceptanceTests.TenantMatrix.cs` (Git blob `2c4acd254b82462b781d2cde4723c9aa3d665f28`): **324/324 PASS, 0 FAIL**, xUnit **49.8462 minutes**, wrapper exit **0**. The two WP-099 secret-storage/authorization/log tests passed. Compose removed the disposable PostgreSQL and acceptance containers and network; post-run Docker queries found no matching resources.
+- **F4 partial:** isolated tests cover cross-company purchase-order reads and foreign cancel/approval for stock, accessory, and asset orders. This does not finish the entire 503-endpoint tenant-isolation matrix.
+- **F5 partial:** UI inventory is **2,265 controls / 65 routes**; static verifiers **85/85 PASS**; hosted Chromium exit 0. Gallery fullscreen, keyboard/focus, slides and automatic left transition passed. No reproducible current UI FAIL was found; all inventory elements were not individually exercised.
+- **F6 partial:** WP-099 secret tests and role/audit verifiers passed. Live CSP/HTTPS posture, broad security and legal/KVKK review, and live-company acceptance remain open.
+- **F1 a–d BLOCKED:** Nov 3 dump is unavailable locally and there is no authorized server-side restore/SQL channel. The prior WP-101 hash/manifest match was not recomputed here; no restore, exact first-122 migration identity comparison, five-migration rehearsal, or before/after row counts are claimed. **e:** static validators 85/85 PASS; the two old failures and causes are recorded above. **f:** 324/324 full acceptance. **g:** both WP-099 tests passed.
+- No migration was added or edited. No live database write, deployment, payment, Coolify/environment/domain/wildcard/routing change, or push occurred.

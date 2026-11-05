@@ -368,6 +368,37 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - Attempt 1 hit fixture key max length (40); shortened the fixture key and attempt 2 passed. Disposable DB/network removed. No migration/live/deploy/payment/Coolify edit or push.
 - F4 remains partial. The 503-endpoint route inventory/auth fingerprint is pinned, but per-route tenant read/write coverage is incomplete. F5 remains partial (2,265 controls are not all individually exercised; latest source-derived sweep 75/0/0 and no current reproducible UI FAIL). F6 remains partial; targeted controls pass, while live posture/legal review/customer acceptance remain open.
 
+## 2026-11-05 WP-138 — F4 purchase-order reads
+
+- Added one acceptance test covering stock, accessory, and asset purchase-order read isolation. For all three: own detail/list visible, foreign detail 404, foreign list row absent, forged `companyId` still cannot select foreign data.
+- Targeted isolated PostgreSQL acceptance passed 1/1 twice; confirmation xUnit test time 2 s, total 54.2971 s, wrapper exit 0. Disposable DB/container/network removed. Four existing ASP.NET deprecation warnings, zero build errors.
+- No app behavior fix or migration was needed; test source only. F4 remains partial across the 503-route inventory. No live/database/deploy/payment/Coolify/env/domain/routing/push changes.
+
+## 2026-11-05 WP-139 — F4 foreign purchase-order writes
+
+- Cancel and approval probes against foreign stock/accessory/asset orders all returned 404 (6/6 requests); seeded orders retained `Ordered` and `Pending`; no foreign audit rows were created.
+- Targeted isolated PostgreSQL acceptance: 1/1 PASS on retry 2; xUnit test time 5 s, total 56.8786 s, wrapper exit 0. Attempt 1's fixture used a nonexistent `CreatedByUserId`, violating an FK; changed the optional seed value to null. No product defect. Four existing deprecation warnings, zero build errors. Disposable DB/network removed.
+- Test source only; F4 remains partial. No live, schema/migration, deployment, payment, Coolify/env/domain/routing, or push changes.
+
+## 2026-11-05 WP-140 — F5 current UI scan
+
+- Inventory current: 2,265 controls / 65 routes. All 85 static validators passed, 0 failed. `run-hosted-checkout-browser-acceptance.ps1` completed with exit 0; reported Chromium workflows and separate product-gallery fullscreen/keyboard/auto-left/manual/mobile checks passed. The runner emits no aggregate scenario count. Some 404 resource console messages appeared, but no failed assertion or page error was reported.
+- No current reproducible UI failure, so no UI code fix. F5 remains partial because every catalogued control was not individually exercised. No live/schema/migration/deploy/payment/Coolify/push changes.
+
+## 2026-11-05 WP-141 — F6 license-secret controls
+
+- WP-099 encrypted storage, tenant/license binding, role/CSRF authorization and no-plaintext-log acceptance passed 2/2 on isolated PostgreSQL (xUnit 1.0643 min, wrapper exit 0). Role-matrix and audit-retention verifiers passed. Disposable DB/network removed.
+- Next package is WP-142: final unfiltered PostgreSQL acceptance, run once after WP-138–WP-141. Keep all production/migration/payment/deploy/Coolify/push boundaries unchanged.
+
+## 2026-11-05 continuation closeout (WP-138–WP-142)
+
+- This continuation used five packages, **5/5 DONE**. Final full `./deploy/testing/run-security-acceptance.ps1` ran once: **324 total / 324 passed / 0 failed**, xUnit **49.8462 minutes**, runner exit **0**. Base source commit: `5a737c1d8f4518636593f7afa03fd2f95037bc65`; WP-138/139 test-file snapshot blob: `2c4acd254b82462b781d2cde4723c9aa3d665f28`. Both WP-099 encrypted/license-role/CSRF and plaintext-log tests passed. Disposable PostgreSQL/acceptance containers and network were removed by Compose; no matching Docker resources remained.
+- F4: purchase-order read and cancel/approval matrices passed for stock/accessory/asset across two companies. F4 is still partial; the 503-endpoint tenant matrix is not complete.
+- F5: inventory is 2,265 controls / 65 routes; 85/85 source verifiers pass; hosted Chromium exit 0. Product-gallery fullscreen/keyboard/focus/slides/auto-left checks passed. No current reproducible UI FAIL was found; each control was not individually run, so F5 remains partial.
+- F6: WP-099 secret controls and static role/audit checks passed. Live CSP/HTTPS checks, wider security review, legal/KVKK review and live customer acceptance remain open.
+- F1 a–d remain BLOCKED: Nov 3 dump unavailable locally; authorized server-side restore/SQL access absent. Prior WP-101 hash match not re-run; no dump restore, first-122 migration-ID comparison, five-migration rehearsal, or table-row comparison was performed. F1 e 85/85 static verifiers PASS; f 324/324 PostgreSQL acceptance; g both WP-099 tests PASS.
+- No migration was added/edited, and no production database/live site/payment/Coolify/environment/domain/wildcard/routing/push was touched. Migration freeze remains active.
+
 ## 2026-11-05 final continuation closeout (WP-133–WP-137)
 
 - Five packages completed, 5/5 DONE. The unfiltered PostgreSQL acceptance ran once on `d766138fda4fda8f2201440fe9fff27e9fe08f6d`: **322/322 PASS, 0 FAIL**, xUnit 49.8648 min, runner exit 0. Log `%TEMP%\envantertr-full-acceptance-20261105-wp137-8b71e18d.stdout.log`. Compose removed the disposable DB, acceptance container and network; post-run Docker queries showed no matching resources. WP-099 ciphertext/authorization/tenant/CSRF and no-plaintext-log tests both passed.

@@ -9,6 +9,150 @@ namespace EnvanterTR.SecurityAcceptance;
 public sealed partial class TenantSessionAcceptanceTests
 {
     [Fact]
+    public async Task Purchase_order_read_matrix_hides_foreign_records_for_all_order_families()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var suffix = Guid.NewGuid().ToString("N");
+        var cases = new[]
+        {
+            (Name: "stock", Route: "/api/stock-orders", OwnId: Guid.NewGuid(), ForeignId: Guid.NewGuid()),
+            (Name: "accessory", Route: "/api/accessory-orders", OwnId: Guid.NewGuid(), ForeignId: Guid.NewGuid()),
+            (Name: "asset", Route: "/api/asset-orders", OwnId: Guid.NewGuid(), ForeignId: Guid.NewGuid())
+        };
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var item in cases)
+            {
+                switch (item.Name)
+                {
+                    case "stock":
+                        db.StockPurchaseOrders.AddRange(
+                            new StockPurchaseOrder { Id = item.OwnId, CompanyId = _companyId, OrderNumber = $"OWN-{item.Name}-{suffix}", Supplier = "Own supplier", OrderDate = today },
+                            new StockPurchaseOrder { Id = item.ForeignId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}", Supplier = "Foreign supplier", OrderDate = today });
+                        break;
+                    case "accessory":
+                        db.AccessoryPurchaseOrders.AddRange(
+                            new AccessoryPurchaseOrder { Id = item.OwnId, CompanyId = _companyId, OrderNumber = $"OWN-{item.Name}-{suffix}", Supplier = "Own supplier", OrderDate = today },
+                            new AccessoryPurchaseOrder { Id = item.ForeignId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}", Supplier = "Foreign supplier", OrderDate = today });
+                        break;
+                    default:
+                        db.AssetPurchaseOrders.AddRange(
+                            new AssetPurchaseOrder { Id = item.OwnId, CompanyId = _companyId, OrderNumber = $"OWN-{item.Name}-{suffix}", Supplier = "Own supplier", OrderDate = today },
+                            new AssetPurchaseOrder { Id = item.ForeignId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}", Supplier = "Foreign supplier", OrderDate = today });
+                        break;
+                }
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        foreach (var item in cases)
+        {
+            using var ownDetail = await SendAsAdminAsync($"{item.Route}/{item.OwnId}");
+            Assert.Equal(HttpStatusCode.OK, ownDetail.StatusCode);
+
+            using var foreignDetail = await SendAsAdminAsync($"{item.Route}/{item.ForeignId}");
+            Assert.Equal(HttpStatusCode.NotFound, foreignDetail.StatusCode);
+
+            var listPath = $"{item.Route}?page=1&pageSize=100";
+            using var collection = await SendAsAdminAsync(listPath);
+            var collectionBody = await collection.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, collection.StatusCode);
+            Assert.Contains(item.OwnId.ToString("D"), collectionBody, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(item.ForeignId.ToString("D"), collectionBody, StringComparison.OrdinalIgnoreCase);
+
+            using var forgedCollection = await SendAsAdminAsync($"{listPath}&companyId={_otherCompanyId:D}");
+            var forgedBody = await forgedCollection.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, forgedCollection.StatusCode);
+            Assert.Contains(item.OwnId.ToString("D"), forgedBody, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(item.ForeignId.ToString("D"), forgedBody, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task Purchase_order_write_matrix_rejects_foreign_cancel_and_approval_without_mutation()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var suffix = Guid.NewGuid().ToString("N");
+        var cases = new[]
+        {
+            (Name: "stock", Route: "/api/stock-orders", OrderId: Guid.NewGuid()),
+            (Name: "accessory", Route: "/api/accessory-orders", OrderId: Guid.NewGuid()),
+            (Name: "asset", Route: "/api/asset-orders", OrderId: Guid.NewGuid())
+        };
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var item in cases)
+            {
+                switch (item.Name)
+                {
+                    case "stock":
+                        db.StockPurchaseOrders.Add(new StockPurchaseOrder
+                        {
+                            Id = item.OrderId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}",
+                            Supplier = "Foreign supplier", OrderDate = today, Status = "Ordered", ApprovalStatus = "Pending"
+                        });
+                        break;
+                    case "accessory":
+                        db.AccessoryPurchaseOrders.Add(new AccessoryPurchaseOrder
+                        {
+                            Id = item.OrderId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}",
+                            Supplier = "Foreign supplier", OrderDate = today, Status = "Ordered", ApprovalStatus = "Pending"
+                        });
+                        break;
+                    default:
+                        db.AssetPurchaseOrders.Add(new AssetPurchaseOrder
+                        {
+                            Id = item.OrderId, CompanyId = _otherCompanyId, OrderNumber = $"FOREIGN-{item.Name}-{suffix}",
+                            Supplier = "Foreign supplier", OrderDate = today, Status = "Ordered", ApprovalStatus = "Pending"
+                        });
+                        break;
+                }
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        foreach (var item in cases)
+        {
+            using var cancel = await SendAsRoleAsync(HttpMethod.Post, $"{item.Route}/{item.OrderId}/cancel", "admin",
+                requestToken: requestToken, antiforgeryCookie: antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.NotFound, cancel.StatusCode);
+
+            using var approval = await SendAsRoleAsync(HttpMethod.Post, $"{item.Route}/{item.OrderId}/approval", "admin",
+                System.Net.Http.Json.JsonContent.Create(new { decision = "Approved", note = "Cross-company approval probe" }),
+                requestToken, antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.NotFound, approval.StatusCode);
+        }
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        foreach (var item in cases)
+        {
+            var preserved = item.Name switch
+            {
+                "stock" => await verifyDb.StockPurchaseOrders.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == item.OrderId && x.Status == "Ordered" && x.ApprovalStatus == "Pending"),
+                "accessory" => await verifyDb.AccessoryPurchaseOrders.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == item.OrderId && x.Status == "Ordered" && x.ApprovalStatus == "Pending"),
+                _ => await verifyDb.AssetPurchaseOrders.AnyAsync(x => x.CompanyId == _otherCompanyId && x.Id == item.OrderId && x.Status == "Ordered" && x.ApprovalStatus == "Pending")
+            };
+            Assert.True(preserved, $"Foreign {item.Name} order must remain unchanged after rejected writes.");
+            Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == item.OrderId));
+        }
+    }
+
+    [Fact]
     public async Task Tenant_read_matrix_hides_foreign_records_from_detail_and_collection_routes()
     {
         var cases = new (string Resource, Guid OwnId, Guid ForeignId, string CollectionPath, string DetailPath)[]
