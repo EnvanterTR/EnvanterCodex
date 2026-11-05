@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T03:27:03Z",
+  "measuredAt": "2026-11-05T03:35:52Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "b646263",
+    "commit": "29f0cdf",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -139,6 +139,22 @@
       "families": ["assets", "employees", "software licenses", "accessories", "consumables", "components"],
       "checks": "For each family, direct foreign detail returns 404; normal collection excludes the foreign ID; collection with forged companyId=<other tenant> still includes the caller's own ID and excludes the foreign ID.",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "status": "PASS"
+    },
+    "f5HostedBrowserAcceptanceSweep": {
+      "measuredBaseCommit": "29f0cdf",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+      "exitCode": 0,
+      "hostedCheckoutModule": "PASS",
+      "homepageProductGalleryModule": "PASS",
+      "uiInventoryCommand": "node tools/Generate-UiInventory.mjs --check",
+      "staticControls": 2265,
+      "routes": 65,
+      "inventoryStatus": "PASS",
+      "aggregatePassFailBlockedCounts": "Runner does not emit aggregate counts; no assertion failure surfaced before exit 0.",
+      "scopeNote": "Curated Chromium workflows only; this is not individual acceptance of all 2,265 controls or every live-company role.",
+      "productionWrites": false,
       "status": "PASS"
     },
     "apiRouteBoundaryAcceptance": {
