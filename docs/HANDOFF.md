@@ -286,3 +286,7 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - F1 steps b–d remain blocked: the Nov 3 dump cannot be safely fetched into the local isolated clone using available approved interfaces; the local clone predates the dump. No restore/parity/rehearsal/table-row proof is claimed. Step a had prior matching hash evidence (WP-101); step e's two static verifier failures are fixed (85/85, WP-107); step g is covered by WP-104/WP-110. Do not rerun blocked restore via the Coolify web terminal.
 - F4 remains partial after WP-113/WP-117/WP-118. F5 has no active UI FAIL from WP-114's curated sweep; the 2,265 controls were not individually exercised. F6 remains partial despite the targeted encryption/log and MFA retry evidence; broader KVKK/legal/live-company acceptance remains open.
 - No production database writes, migration, deployment, payment action, Coolify configuration change, domain/wildcard edit, or push occurred.
+
+## 2026-11-05 continued work (WP-120)
+
+- WP-120 / F4 DONE: `Brand_model_category_and_images_are_company_scoped_and_reusable` passed 1/1 in 58.7348 s on disposable PostgreSQL. Company-B read/upload/delete attempts against Company-A brand/model/accessory-model/supplier media returned 404; owned media workflows remained functional. Disposable DB/network were removed. This targeted slice does not close F4's all-route/report/import/export matrix.

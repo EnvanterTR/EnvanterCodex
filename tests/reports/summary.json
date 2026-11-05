@@ -822,6 +822,25 @@
       "runnerCleanup": "Temporary PostgreSQL/web/migrate/browser containers, isolated network, and test volumes removed",
       "syntaxAndDiff": "node --check and git diff --check PASS",
       "scopeNote": "This proves the retry UX in the source-built isolated browser stack; it is not live-company MFA acceptance."
+    },
+    "f4CatalogMediaTenantIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 58.7348,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Brand_model_category_and_images_are_company_scoped_and_reusable",
+      "measuredBaseCommit": "682119d",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "resources": [
+        "brand logo",
+        "model photo and attachments",
+        "accessory-model photo",
+        "supplier logo"
+      ],
+      "foreignSessionAssertions": "Read, upload, and delete attempts return HTTP 404; owned media flows succeed.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed"
     }
   },
   "historicalBaseline": {
