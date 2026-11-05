@@ -320,3 +320,8 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 
 - F6 targeted isolated PostgreSQL security suite passed 4/4, xUnit 1.2435 minutes, exit 0: reset enumeration/replay, login throttling despite forged forwarding headers, one-time company MFA enrollment, and Authenticator recovery-code replay rejection. Disposable database/network removed.
 - The test container logged its expected ephemeral Data Protection storage warning and the initial empty migration-history lookup; tests completed successfully. No source migration was added/modified; existing migrations were exercised only in the disposable test DB. F6 remains partial (CSP/HTTPS live posture, broad XSS/SQLi/secret-history scan, legal/KVKK, live customer acceptance).
+
+## 2026-11-05 continued migration-free work (WP-126)
+
+- F4 report group passed 4/4 isolated PostgreSQL tests, xUnit 1.2328 minutes, runner exit 0: asset purchase report, pending delivery, unified purchase overview, and warranty report preserve tenant scope through search/filter/paging/CSV paths. Disposable DB/network removed.
+- These four report families do not close the all-route F4 matrix. Only existing source migrations ran on the disposable test DB; no new/modified migration or production action.

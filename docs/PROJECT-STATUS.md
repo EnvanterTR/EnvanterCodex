@@ -186,3 +186,8 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - İzole PostgreSQL dört test 4/4 PASS; xUnit 1.2435 dakika, runner exit 0. Parola kurtarma hesap varlığını açıklamıyor, reset tokenı tekrar kabul edilmiyor; sahte forwarded IP hız sınırını aşmıyor; şirket MFA ilk kurulum tek kullanımlık; Authenticator kurtarma kodu replay reddi.
 - Geçici DB ve ağ kaldırıldı. Test başlatılırken izole ortamda Data Protection geçici anahtar ve boş migration-history uyarısı vardı; testler başarılı bitti. Mevcut kaynak migrationlar sadece disposable test DB'de çalıştı; yeni migration eklenmedi/değiştirilmedi.
 - F6 KISMEN KANITLI: CSP/HTTPS canlı başlık durumu, geniş XSS/SQLi ve geçmiş-geneli secret taraması, hukuki/KVKK ve canlı firma kabulü açık. Canlı DB/deploy/ödeme/Coolify/push yok.
+
+## 2026-11-05 F4 rapor izolasyon kabulü (WP-126)
+
+- Dört izole PostgreSQL testi 4/4 PASS; xUnit 1.2328 dakika, runner exit 0: satın alma raporu, bekleyen teslimat, birleşik satın alma ve garanti raporu. Firma filtresi, arama/sayfalama ve CSV/formül güvenliği akışlarında diğer firmaya ait satırlar dışlandı.
+- Geçici PostgreSQL DB ve ağ kaldırıldı. Bu dört rapor ailesi bütün API/rapor/dosya/import/export yollarını kapsamaz; F4 KISMEN KANITLI kalır. Canlı DB/deploy/ödeme/Coolify/push yok.

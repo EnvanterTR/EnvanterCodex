@@ -949,6 +949,30 @@
       "testEnvironmentWarnings": "Disposable Data Protection key persistence and initial empty migration-history lookup; no test failures.",
       "schemaChanges": false,
       "productionMigration": false
+    },
+    "f4ReportTenantIsolation": {
+      "status": "PASS",
+      "testedSourceCommit": "368e2c203f44d3196da55c86f2e99fccf7c6a87a",
+      "workingTreeAtRun": "Only WP-126 IN_PROGRESS ledger documentation had been appended; source/test files matched the recorded commit.",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "durationMinutes": 1.2328,
+      "runnerExitCode": 0,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter Asset_purchase_report_is_company_scoped_searchable_and_exports_formula_safe_csv|Pending_delivery_report_unions_order_types_and_keeps_rows_company_scoped|Unified_purchase_overview_is_filtered_paginated_exportable_and_tenant_scoped|Warranty_report_filters_paginate_export_and_remain_company_scoped",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "reportFamilies": [
+        "Asset purchase report: tenant scope, search, and formula-safe CSV",
+        "Pending delivery: unions order types without cross-company rows",
+        "Unified purchase overview: filtering, paging, export, and tenant scope",
+        "Warranty report: filters, paging, CSV, and tenant scope"
+      ],
+      "testEnvironmentWarnings": "Initial empty migration-history lookup and ephemeral Data Protection key; no test failures.",
+      "schemaChanges": false,
+      "productionMigration": false,
+      "scopeNote": "Four report families only; does not close the full F4 route matrix."
     }
   },
   "historicalBaseline": {
