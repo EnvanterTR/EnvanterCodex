@@ -1341,6 +1341,73 @@
       "pushed": false,
       "measuredBeforeCommit": "c1b3b74475b8cea458ed4b7336cb720c260b48e0",
       "commit": "9409879276b42e1292a6cc06c52b48f8e0c4fc30"
+    },
+    "wp144F0Remeasurement": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "releaseBuild": {
+        "status": "PASS",
+        "command": "docker build --no-cache --target build --tag envantertr-f0-web:wp144 .",
+        "sdk": "mcr.microsoft.com/dotnet/sdk:10.0",
+        "releaseTarget": "dotnet publish src/EnvanterTR.Web/EnvanterTR.Web.csproj -c Release --no-restore",
+        "exitCode": 0,
+        "warningOutput": 0,
+        "errorOutput": 0,
+        "imageManifestDigest": "6854c8c121d3e772d74eae2bbf5bf45ce18ed8e570275ef5c65069f36440eb05",
+        "hostDotnetInstalled": false
+      },
+      "sourceVerifiers": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "command": "node tools/Verify-*.mjs"
+      },
+      "uiInventory": {
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2265,
+        "pageRoutes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79
+      },
+      "sourceMigrationInventory": {
+        "status": "MEASURED",
+        "count": 127,
+        "latest": "20261104190000_AddProtectedSoftwareLicenseKeys",
+        "databaseConnected": false,
+        "newMigrationAdded": false
+      },
+      "previousFullPostgresRunApplicability": {
+        "status": "SAME_APPLICATION_AND_TEST_CODE",
+        "total": 324,
+        "passed": 324,
+        "failed": 0,
+        "xunitDurationMinutes": 49.8462,
+        "runnerExitCode": 0,
+        "sourceTreeUnchangedFromBase": true,
+        "acceptanceTestFileBlob": "2c4acd254b82462b781d2cde4723c9aa3d665f28",
+        "finalRunForCurrentContinuation": "DEFERRED_UNTIL_AFTER_F4_F5_F6"
+      },
+      "f1BackupRehash": {
+        "status": "BLOCKED_NOT_RECOMPUTED",
+        "expectedFile": "daily-20261103T000015Z.dump",
+        "foundInDesktopOrDownloads": false,
+        "historicalWp101Sha256": "ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d",
+        "restoreOrMigrationIdsCompared": false,
+        "note": "Coolify browser terminal could not be attached through the current computer-use bridge; prior server hash retained as historical evidence only."
+      },
+      "productionTouched": false,
+      "migrationAddedOrRun": false,
+      "pushed": false
     }
   },
   "historicalBaseline": {

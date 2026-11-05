@@ -1,5 +1,12 @@
 # Devam notu — 2026-11-04
 
+## 2026-11-05 son baz çizgisi (WP-144)
+
+- Release Docker SDK build exit 0; 85/85 static verifiers PASS; UI inventory 2,265 controls / 65 routes PASS; source migrations 127, latest `20261104190000_AddProtectedSoftwareLicenseKeys`.
+- Previous full isolated PostgreSQL evidence applies to the current app/test code snapshot: 324/324 PASS, 0 FAIL, xUnit 49.8462 min, runner exit 0. The user requested the next full run only after current F4/F5/F6 packages, so it remains queued as the final package.
+- F1 restore path remains blocked: exact Nov 3 dump is not local; prior WP-101 checksum is not a new rehash; current session cannot operate Coolify's browser terminal. No restore, ID parity, rehearsal, or table-row comparison is claimed. Do not deploy or migrate.
+- Continue with the user-requested migration-free F4/F5/F6 packages, recording evidence after each. No production changes, push, or new migration.
+
 ## Güncel oturum durumu
 
 WP-082/F01, WP-083/F02, WP-084/F03, WP-086/F04, WP-087, WP-091 F5 ve WP-094 F0/A01 UI dilimleri tamamlandı. F01/F02 sentetik Chromium + izole PostgreSQL; F03 API/security + sentetik Chromium; F04 izole PostgreSQL rol politikası ve statik eşleme; F5 hosted Chromium kanıtına dayanır. F04'te `finance` yalnız `assets.read` yetkisiyle eklendi. WP-093/WP-094 ile A01'in toplu çöp kutusu API'si ve UI akışı tamamlandı; A01 `VAR`. Bu UI kabulinin API'si sentetiktir. WP-099/C01 korumalı lisans anahtarı akışı da tamamlandı (izole API 1/1 ve hosted Chromium PASS). Canlı firma kabulü yapılmadı.

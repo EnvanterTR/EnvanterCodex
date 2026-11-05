@@ -273,3 +273,11 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - **F6 partial:** WP-099 secret tests and role/audit verifiers passed. Live CSP/HTTPS posture, broad security and legal/KVKK review, and live-company acceptance remain open.
 - **F1 a–d BLOCKED:** Nov 3 dump is unavailable locally and there is no authorized server-side restore/SQL channel. The prior WP-101 hash/manifest match was not recomputed here; no restore, exact first-122 migration identity comparison, five-migration rehearsal, or before/after row counts are claimed. **e:** static validators 85/85 PASS; the two old failures and causes are recorded above. **f:** 324/324 full acceptance. **g:** both WP-099 tests passed.
 - No migration was added or edited. No live database write, deployment, payment, Coolify/environment/domain/wildcard/routing change, or push occurred.
+
+## 2026-11-05 F0 kaynak baz çizgisi (WP-144)
+
+- Release derleme: `docker build --no-cache --target build --tag envantertr-f0-web:wp144 .` exit **0**; .NET SDK 10.0 restore ve Release publish başarılı, uyarı/hata çıktısı yok. Windows host'ta `dotnet` komutu kurulu değil. Image manifest digest `6854c8c121d3e772d74eae2bbf5bf45ce18ed8e570275ef5c65069f36440eb05`.
+- Statik doğrulayıcılar: **85 PASS / 0 FAIL**. UI envanteri: **2.265 kontrol / 65 rota**, `node tools/Generate-UiInventory.mjs --check` PASS; 53 bağlantı, 958 düğme, 113 form, 627 girdi, 204 seçim, 42 metin alanı, 109 modal, 5 sekme, 79 tablo.
+- Kaynakta **127** farklı EF migration kimliği var; sonuncu `20261104190000_AddProtectedSoftwareLicenseKeys`. F1 freeze gereği yeni migration yok.
+- WP-142 tam PostgreSQL koşusunun test ettiği uygulama/test kodu bu ağaçla aynı: `src/` değişikliği yok ve `TenantSessionAcceptanceTests.TenantMatrix.cs` Git blob'u `2c4acd254b82462b781d2cde4723c9aa3d665f28`. Önceki kanıt **324/324 PASS, 0 FAIL**, xUnit 49.8462 dakika, exit 0. Bu oturum için istenen yeni tam koşu F4/F5/F6 paketlerinden sonraki son pakete ayrıldı.
+- Tam `daily-20261103T000015Z.dump` Desktop/Downloads aramasında bulunamadı. WP-101'deki sunucu hash'i geçmiş kanıt; yeniden hesaplanmadı. Restore, ilk 122 migration kimlik parity'si, beş migration provası ve tablo satır karşılaştırması yapılmadı; Coolify terminaline bu oturumdaki arayüz köprüsü erişemedi. Canlıya erişilmedi.
