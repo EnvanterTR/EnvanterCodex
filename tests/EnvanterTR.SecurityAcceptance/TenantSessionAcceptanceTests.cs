@@ -6317,6 +6317,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownEmployee = JsonDocument.Parse(await ownEmployeeList.Content.ReadAsStringAsync()))
             Assert.Equal(employeeProfileId, Assert.Single(ownEmployee.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var otherCompanyEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, otherCompanyEmployeeList.StatusCode);
+
         using (var ownConsumableList = await SendAsUserAsync(HttpMethod.Get, "/api/consumables/import-mappings", _userId, _companyId))
         using (var ownConsumable = JsonDocument.Parse(await ownConsumableList.Content.ReadAsStringAsync()))
             Assert.Equal(consumableProfileId, Assert.Single(ownConsumable.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());

@@ -1814,7 +1814,10 @@
       "redTest": {
         "status": "FAIL_AS_EXPECTED",
         "missingLocal404Responses": 16,
-        "paths": ["/onboarding.css", "/onboarding.js"]
+        "paths": [
+          "/onboarding.css",
+          "/onboarding.js"
+        ]
       },
       "fix": "Copy the real onboarding.css/js assets into the isolated browser test image and serve them from the loopback mock fixture.",
       "focusedChromium": {
@@ -1854,6 +1857,34 @@
       ],
       "cleanup": "Compose removed disposable acceptance/PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
       "liveDeploymentPaymentCoolifyOrPushChanged": false
+    },
+    "wp159EmployeeImportMappingTenantIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Saved_asset_import_mappings_are_validated_and_private_to_their_owner",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Saved_asset_import_mappings_are_validated_and_private_to_their_owner'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.2216,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "Company A owner listing returns its employee mapping profile.",
+        "Another Company A user sees no owner-private mapping.",
+        "The same user without Company B membership receives HTTP 401 on the employee mapping route."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable database and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
     }
   },
   "historicalBaseline": {

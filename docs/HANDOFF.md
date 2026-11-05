@@ -479,3 +479,7 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - F1 a–d stay BLOCKED: target Nov 3 dump was not found in local C user storage, E drive had no match, D drive is unavailable, Coolify browser tab is inaccessible to the current browser bridge. No fresh hash, clone restore, 122-ID parity, five-migration rehearsal or row counts.
 - F4 remains PARTIAL across all 503 routes. F5 remains PARTIAL (2,265 controls / 65 routes, 75/0/0 latest UI matrix, not every control individually run). F6 remains PARTIAL pending live security posture and wider review/customer acceptance.
 - No migration added or changed, no live/production writes, deployment, payment, Coolify changes, or push. The current unfiltered full suite was WP-150; after more source changes, run one unfiltered suite at the final package boundary, then update records without rerunning.
+
+## Güncel devam — WP-159 (2026-11-06)
+
+WP-159 DONE: employee CSV import-mapping route rejects a non-member's cross-company context with HTTP 401. Focused isolated PostgreSQL run: 1/1 PASS, xUnit 1.2216 minutes, runner exit 0; disposable database/network removed. Test-only change. F4 remains PARTIAL because the 503 method-route tenant matrix is incomplete. Next: select one independent migration-free F4/F5/F6 evidence gap. The last unfiltered PostgreSQL run is WP-158 (330/330, source/test SHA e82c2d1); run a new full set once at the end of this continuation. No live, migration, deploy, payment, Coolify, or push changes.
