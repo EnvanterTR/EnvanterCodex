@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T20:32:57Z",
+  "measuredAt": "2026-11-05T03:16:02Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "97b06a2",
+    "commit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -17,12 +17,13 @@
     },
     "sourceVerifiers": {
       "status": "PASS",
-      "passed": 84,
+      "passed": 85,
       "failed": 0,
-      "total": 84,
-      "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8",
+      "total": 85,
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
       "command": "node tools/Verify-*.mjs",
-      "note": "Full local suite passed after correcting the stale Cloud-unlimited assertion; working tree content matches measured commit."
+      "workingTreeModifiedDuringVerification": true,
+      "note": "All 85 static verifiers passed on the WP-106 source snapshot. The working tree had reporting-only edits during verification; application and test source matched measuredCommit."
     },
     "targetedPostgresSecurityAcceptance": {
       "status": "PASS",
@@ -89,8 +90,8 @@
       "modals": 109,
       "tabs": 5,
       "tables": 79,
-      "measuredCommit": "97b06a2",
-      "measuredBaseCommit": "97b06a2",
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "measuredBaseCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
       "workingTreeModified": true,
       "note": "WP-099 software-license-key controls added; node tools/Generate-UiInventory.mjs --check passed on the current working tree."
     },
@@ -100,21 +101,31 @@
       "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8"
     },
     "lastFullPostgresSecurityAcceptance": {
-      "repair": "Set the test plan limit to 2, then focused test passed 1/1.",
+      "repair": "WP-106 aligned the three reminder test license expirations with the supported seven-day threshold; the targeted reminder and threshold regression passed afterward.",
       "isolatedDatabase": true,
-      "measuredCommit": "0a904faf923acf3043454497ef03cd97af647447",
-      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "measuredCommit": "b7a76c1b5a5c8024cee39db72795b8b00a4831e6",
+      "command": "deploy/testing/run-security-acceptance.ps1",
       "productionWrites": false,
-      "note": "One complete 298-test PostgreSQL security/tenant suite passed on the exact code content in measuredCommit. CI verifier path fix was also applied and its verifier passed locally.",
-      "failed": 0,
-      "priorRun": {
-        "cause": "Multi-company invitation test used a one-seat plan while target company already had one member; expected behavior was to permit the second seat.",
-        "passed": 297,
-        "failed": 1
-      },
-      "passed": 298,
+      "note": "Latest complete PostgreSQL security/tenant suite before WP-106: 319 total, 318 passed, 1 failed. The sole failure expected a license reminder for a five-day fixture, outside the supported 30/15/7/3/1-day thresholds. WP-106 changed only test fixtures and its focused regression passed 13/13; a complete suite on the updated code is pending this session's final run.",
+      "total": 319,
+      "failed": 1,
+      "passed": 318,
+      "failedTest": "Asset_return_email_reminders_include_overdue_and_upcoming_items_once_per_day_and_stay_tenant_scoped",
       "runnerCleanup": "Temporary database containers and network removed",
-      "status": "PASS"
+      "status": "FAIL"
+    },
+    "latestTargetedReminderRegression": {
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "workingTreeCleanAtRun": false,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Asset_return_email_reminders_include_overdue_and_upcoming_items_once_per_day_and_stay_tenant_scoped|FullyQualifiedName~License_reminder_is_due_only_at_the_configured_day_thresholds'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "status": "PASS",
+      "note": "Test ran with the WP-106 source edits present before commit; the committed code content matches the tested source. The working tree was modified during verification."
     },
     "apiRouteBoundaryAcceptance": {
       "status": "PASS",
