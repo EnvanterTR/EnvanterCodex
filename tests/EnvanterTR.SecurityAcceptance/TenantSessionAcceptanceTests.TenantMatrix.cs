@@ -536,4 +536,121 @@ public sealed partial class TenantSessionAcceptanceTests
         Assert.True(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _companyId && x.TargetId == _companyId && x.Action == "ProfileUpdated"));
         Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == _otherCompanyId && x.Action == "ProfileUpdated"));
     }
+
+    [Fact]
+    public async Task Company_label_settings_and_templates_ignore_forged_foreign_company_selectors()
+    {
+        var ownTemplateId = Guid.NewGuid();
+        var foreignTemplateId = Guid.NewGuid();
+        var ownSettings = new OperationalEndpoints.LabelPrintSettingsRequest("code39", "none", 70, 35, 0, 0, 3, 18,
+            "tag", true, false, false, false, false);
+        var foreignSettings = new OperationalEndpoints.LabelPrintSettingsRequest("ean13", "none", 90, 50, 0, 0, 2, 19,
+            "tag", false, false, true, true, false);
+        var ownTemplate = new OperationalEndpoints.LabelPrintTemplateRequest(ownTemplateId, "Tenant A label", "A", "A-1", "A-40",
+            new OperationalEndpoints.LabelPrintSettingsRequest("code128", "qrcode", 60, 40, 0, 0, 3, 20,
+                "tag", true, true, false, false, false));
+        var foreignTemplate = new OperationalEndpoints.LabelPrintTemplateRequest(foreignTemplateId, "Tenant B secret", "B", "B-1", "B-90",
+            new OperationalEndpoints.LabelPrintSettingsRequest("code128", "qrcode", 90, 50, 0, 0, 2, 19,
+                "tag", false, false, true, true, false));
+        var ownDocument = System.Text.Json.JsonSerializer.Serialize(new { Settings = ownSettings, Templates = new[] { ownTemplate } });
+        var foreignDocument = System.Text.Json.JsonSerializer.Serialize(new { Settings = foreignSettings, Templates = new[] { foreignTemplate } });
+
+        await using (var seedScope = _factory!.Services.CreateAsyncScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await seedDb.Companies.SingleAsync(x => x.Id == _companyId)).LabelPrintSettingsJson = ownDocument;
+            (await seedDb.Companies.SingleAsync(x => x.Id == _otherCompanyId)).LabelPrintSettingsJson = foreignDocument;
+            await seedDb.SaveChangesAsync();
+        }
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        async Task<HttpResponseMessage> SendForgedAsync(HttpMethod method, string path, HttpContent? content = null, string role = "admin")
+        {
+            using var request = new HttpRequestMessage(method, path) { Content = content };
+            request.Headers.Add("X-Acceptance-User", _userId.ToString());
+            request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+            request.Headers.Add("X-Acceptance-Role", role);
+            request.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            request.Headers.Add("X-CSRF-TOKEN", requestToken);
+            request.Headers.Add("Cookie", antiforgeryCookie);
+            return await _client!.SendAsync(request);
+        }
+
+        using (var settings = await SendForgedAsync(HttpMethod.Get, $"/api/company/label-settings?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, settings.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await settings.Content.ReadAsStringAsync());
+            Assert.Equal("code39", body.RootElement.GetProperty("settings").GetProperty("barcode1d").GetString());
+            Assert.Equal(70, body.RootElement.GetProperty("settings").GetProperty("widthMm").GetInt32());
+            Assert.DoesNotContain("ean13", body.RootElement.GetRawText(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        using (var templates = await SendForgedAsync(HttpMethod.Get, $"/api/company/label-templates?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, templates.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await templates.Content.ReadAsStringAsync());
+            Assert.Equal(ownTemplateId, body.RootElement[0].GetProperty("id").GetGuid());
+            Assert.DoesNotContain(foreignTemplateId.ToString("D"), body.RootElement.GetRawText(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Tenant B secret", body.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+
+        using (var updateSettings = await SendForgedAsync(HttpMethod.Put,
+            $"/api/company/label-settings?companyId={_otherCompanyId:D}", System.Net.Http.Json.JsonContent.Create(new
+            {
+                barcode1d = "code93", barcode2d = "none", widthMm = 75, heightMm = 36,
+                offsetXmm = 0, offsetYmm = 0, paddingMm = 2, codeSizeMm = 17, qrTarget = "tag",
+                showName = true, showSerial = false, showModel = true, showLocation = false, showStatus = false
+            })))
+            Assert.Equal(HttpStatusCode.OK, updateSettings.StatusCode);
+
+        using (var updateTemplates = await SendForgedAsync(HttpMethod.Put,
+            $"/api/company/label-templates?companyId={_otherCompanyId:D}", System.Net.Http.Json.JsonContent.Create(new
+            {
+                templates = new[] { new { id = ownTemplateId, name = "Tenant A revised", manufacturer = "A", printerModel = "A-1", productCode = "A-75", settings = new
+                {
+                    barcode1d = "code128", barcode2d = "qrcode", widthMm = 75, heightMm = 40,
+                    offsetXmm = 0, offsetYmm = 0, paddingMm = 3, codeSizeMm = 20, qrTarget = "tag",
+                    showName = true, showSerial = true, showModel = false, showLocation = false, showStatus = false
+                } } }
+            })))
+            Assert.Equal(HttpStatusCode.OK, updateTemplates.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var viewerUpdateSettings = await SendForgedAsync(HttpMethod.Put,
+            $"/api/company/label-settings?companyId={_otherCompanyId:D}", System.Net.Http.Json.JsonContent.Create(new
+            {
+                barcode1d = "code39", barcode2d = "none", widthMm = 80, heightMm = 36,
+                offsetXmm = 0, offsetYmm = 0, paddingMm = 2, codeSizeMm = 17, qrTarget = "tag",
+                showName = true, showSerial = false, showModel = true, showLocation = false, showStatus = false
+            }), "viewer"))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerUpdateSettings.StatusCode);
+
+        using (var viewerUpdateTemplates = await SendForgedAsync(HttpMethod.Put,
+            $"/api/company/label-templates?companyId={_otherCompanyId:D}", System.Net.Http.Json.JsonContent.Create(new
+            {
+                templates = Array.Empty<object>()
+            }), "viewer"))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerUpdateTemplates.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var savedOwn = await verifyDb.Companies.AsNoTracking().Where(x => x.Id == _companyId)
+            .Select(x => x.LabelPrintSettingsJson).SingleAsync();
+        var savedForeign = await verifyDb.Companies.AsNoTracking().Where(x => x.Id == _otherCompanyId)
+            .Select(x => x.LabelPrintSettingsJson).SingleAsync();
+        Assert.NotEqual(ownDocument, savedOwn);
+        Assert.Equal(foreignDocument, savedForeign);
+        using var savedOwnPayload = System.Text.Json.JsonDocument.Parse(savedOwn!);
+        Assert.Equal("code93", savedOwnPayload.RootElement.GetProperty("Settings").GetProperty("Barcode1d").GetString());
+        Assert.Equal("Tenant A revised", savedOwnPayload.RootElement.GetProperty("Templates")[0].GetProperty("Name").GetString());
+        Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == _otherCompanyId &&
+            (x.Action == "LabelSettingsUpdated" || x.Action == "LabelTemplatesUpdated")));
+    }
 }

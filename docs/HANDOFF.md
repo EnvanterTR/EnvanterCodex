@@ -1,5 +1,12 @@
 # Devam notu — 2026-11-04
 
+## Güncel devam noktası — 2026-11-05 (WP-152)
+
+- WP-152 F4/F6 label settings/templates isolation completed. Focused isolated PostgreSQL acceptance: 1/1 PASS, xUnit 1.1827 min, exit 0; forged company selectors could not read/write foreign settings/templates, viewer writes were rejected 403. Disposable DB/network removed.
+- Current continuation has four of five package slots used (WP-149 through WP-152). Run the requested unfiltered PostgreSQL acceptance once as the final package, then write the exact result to LEDGER, PROJECT-STATUS, HANDOFF and summary.json.
+- F1 dump hash/manifest, isolated restore, exact first-122 ID parity, five-migration clone rehearsal, and before/after row counts remain blocked because the exact Nov 3 dump is unavailable locally and Coolify's terminal cannot be controlled here. Do not substitute an older dump.
+- Keep the migration freeze. No live changes, push, payment, deployment, or Coolify modifications.
+
 ## WP-149 — 2026-11-05 F4 company-security policy isolation
 
 - Focused isolated PostgreSQL test `Company_security_policy_ignores_forged_foreign_company_selectors`: **1/1 PASS**, 58.5243 xUnit seconds, runner exit 0. A's admin could not read/write B by forging URL `companyId` and `X-Company-Id`; B policy/session/audit unchanged. PostgreSQL timestamp expectations now use microsecond precision. Disposable DB/network were removed.

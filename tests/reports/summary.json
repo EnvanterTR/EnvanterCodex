@@ -1663,6 +1663,21 @@
       "pushed": false,
       "paymentTouched": false,
       "coolifyTouched": false
+    },
+    "wp152LabelSettingsTenantMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.1827,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_label_settings_and_templates_ignore_forged_foreign_company_selectors'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "behavior": "Forged companyId and X-Company-Id read/write selectors stayed in Company A; Company B JSON remained unchanged; viewer PUTs for both endpoints returned 403.",
+      "measuredTestFileBlob": "44ebddb182a5e9dea4b28b3c1e7bdfe14182fe25",
+      "cleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "note": "Test-only change. One initial compile failure from wrong local helper overload and one fixture-role mismatch were corrected before final passing run; no application code changed."
     }
   },
   "historicalBaseline": {
