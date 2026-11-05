@@ -16597,6 +16597,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(_companyId, document.RootElement.GetProperty("company").GetProperty("id").GetGuid());
         Assert.DoesNotContain(_otherCompanyAssetId.ToString(), body, StringComparison.OrdinalIgnoreCase);
 
+        using (var tamperedSelectorResponse = await SendAsAdminAsync($"/api/company/export.json?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, tamperedSelectorResponse.StatusCode);
+            var tamperedBody = await tamperedSelectorResponse.Content.ReadAsStringAsync();
+            using var tamperedDocument = JsonDocument.Parse(tamperedBody);
+            Assert.Equal(_companyId, tamperedDocument.RootElement.GetProperty("company").GetProperty("id").GetGuid());
+            Assert.DoesNotContain(_otherCompanyAssetId.ToString(), tamperedBody, StringComparison.OrdinalIgnoreCase);
+        }
+
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
@@ -16624,12 +16633,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains(invalidPreview.RootElement.GetProperty("errors").EnumerateArray(),
             error => error.GetString()!.Contains("Bakım türü", StringComparison.Ordinal));
 
-        using var archiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        using var archiveResponse = await SendAsAdminAsync($"/api/company/export.zip?companyId={_otherCompanyId:D}");
         var archiveBytes = await archiveResponse.Content.ReadAsByteArrayAsync();
         Assert.True(archiveResponse.StatusCode == HttpStatusCode.OK,
             $"Company ZIP export returned {(int)archiveResponse.StatusCode}: {System.Text.Encoding.UTF8.GetString(archiveBytes)}");
         using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
-        Assert.Contains(archive.Entries, entry => entry.FullName == "company-data.json");
+        var companyDataEntry = Assert.Single(archive.Entries, entry => entry.FullName == "company-data.json");
+        await using (var companyDataStream = companyDataEntry.Open())
+        using (var companyDataBytes = new MemoryStream())
+        {
+            await companyDataStream.CopyToAsync(companyDataBytes);
+            var companyDataJson = System.Text.Encoding.UTF8.GetString(companyDataBytes.ToArray());
+            using var companyData = JsonDocument.Parse(companyDataJson);
+            Assert.Equal(_companyId, companyData.RootElement.GetProperty("company").GetProperty("id").GetGuid());
+            Assert.DoesNotContain(_otherCompanyAssetId.ToString(), companyDataJson, StringComparison.OrdinalIgnoreCase);
+        }
         Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
         var supplierLogoEntry = Assert.Single(archive.Entries,
             entry => entry.FullName == $"media/catalog/suppliers/{supplierId:N}/{supplierLogoName}");

@@ -17,6 +17,7 @@ const loginAttempts = [];
 let subscriptionMode = 'full';
 let loginMode = false;
 let companyMfaEnrollmentMode = false;
+let companyMfaVerificationFailuresRemaining = 0;
 let loginPendingMigrationCount = 0;
 let companyRole = 'viewer';
 let companySecurityPolicy = { passwordMinimumLength: 12, sessionDurationHours: 720, requireMfa: false };
@@ -76,6 +77,12 @@ const server = createServer(async (request, response) => {
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/session/company-mfa/verify' && record.csrf === 'synthetic-viewer-csrf') {
+        if (companyMfaVerificationFailuresRemaining > 0) {
+          companyMfaVerificationFailuresRemaining--;
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+          response.end(JSON.stringify({ message: 'Authenticator kodu geçersiz. Yeniden deneyin.' }));
+          return;
+        }
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify({ authenticated: true, companyId: syntheticCompanyId, role: 'admin', platformAdmin: false,
           name: 'Synthetic Admin', recoveryCodes: Array.from({ length: 10 }, (_, index) => `SYNTHETIC-RECOVERY-${index + 1}`) }));
@@ -711,18 +718,31 @@ try {
   assert.match(await loginPage.locator('#companyMfaEnrollmentQr').getAttribute('src'), /^data:image\/svg\+xml/);
   assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP');
   assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/setup')?.body?.ticket, 'synthetic-one-time-mfa-ticket');
+  companyMfaVerificationFailuresRemaining = 1;
+  await loginPage.locator('#companyMfaEnrollmentForm [name="code"]').fill('000000');
+  await loginPage.locator('#verifyCompanyMfaEnrollment').click();
+  await loginPage.locator('#companyMfaEnrollmentFeedback').getByText('Authenticator kodu geçersiz. Yeniden deneyin.').waitFor({ state: 'visible' });
+  assert.equal(await companyMfaDialog.isVisible(), true, 'An invalid enrollment code must keep the MFA challenge visible for retry.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentForm').isVisible(), true, 'The code form must remain available after a rejected code.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentQr').isVisible(), true, 'The QR code must remain available after a rejected code.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP', 'The manual setup secret must remain available for retry.');
+  assert.equal(await loginPage.locator('#verifyCompanyMfaEnrollment').isDisabled(), false, 'The verify button must be re-enabled after an invalid code.');
+  assert.equal(apiRequests.filter(item => item.path === '/api/session/company-mfa/verify').length, 1);
   await loginPage.locator('#companyMfaEnrollmentForm [name="code"]').fill('123456');
   await loginPage.locator('#verifyCompanyMfaEnrollment').click();
   await loginPage.locator('#companyMfaRecoveryPanel').waitFor({ state: 'visible' });
   assert.equal((await loginPage.locator('#companyMfaRecoveryCodes').innerText()).split('\n').length, 10);
   assert.equal(await loginPage.locator('#closeCompanyMfaEnrollment').isDisabled(), true,
     'Recovery codes must remain visible until the user explicitly acknowledges saving them.');
-  assert.deepEqual(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.body,
-    { ticket: 'synthetic-one-time-mfa-ticket', code: '123456' });
-  assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.csrf, 'synthetic-viewer-csrf');
+  const companyMfaVerifyRequests = apiRequests.filter(item => item.path === '/api/session/company-mfa/verify');
+  assert.deepEqual(companyMfaVerifyRequests.map(item => item.body), [
+    { ticket: 'synthetic-one-time-mfa-ticket', code: '000000' },
+    { ticket: 'synthetic-one-time-mfa-ticket', code: '123456' }
+  ]);
+  assert.ok(companyMfaVerifyRequests.every(item => item.csrf === 'synthetic-viewer-csrf'));
   assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
   await loginPage.close();
-  console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, tests first-time company MFA QR/secret/verification/recovery codes, and never silently retries credentials.');
+  console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, and preserves the company MFA QR/secret/form/button after a rejected code so a retry can complete recovery-code enrollment; never silently retries credentials.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
