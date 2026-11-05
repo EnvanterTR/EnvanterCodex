@@ -460,3 +460,11 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - F1 a–d remain BLOCKED: no local Nov 3 dump, no fresh hash/manifest check, restore, 122-ID parity, five-migration rehearsal, or row-count comparison. F1-e's static verifier result is 85/85 PASS; the two older failures and causes are documented in PROJECT-STATUS.
 - F4 PARTIAL: not all 503 method-route entries have tenant read/write coverage. F5 PARTIAL: 2,265 controls / 65 routes inventoried, latest UI evidence 75/0/0, but every control was not individually executed and no current reproducible FAIL was identified. F6 PARTIAL: live security posture and broader security/legal/customer acceptance remain open.
 - No new migration, live/production change, deployment, payment action, Coolify change, or push. This full suite is the last test run for this continuation; do not rerun it.
+
+## 2026-11-05 latest goal continuation (WP-149–WP-151)
+
+- Three packages completed in this goal continuation (3/5): WP-149 company-security policy tenant test **1/1 PASS**; WP-150 unfiltered PostgreSQL acceptance **326/326 PASS, 0 failed**, xUnit 1.2223 h, exit 0; WP-151 company profile/branding tenant-selector test **1/1 PASS**, xUnit 1.2243 min, exit 0.
+- WP-151 proved Company A profile/branding GET stays in A with forged companyId and X-Company-Id for B; profile PUT changed only A and created only A's profile audit row. Disposable DB/network were removed by Compose.
+- F1 a–d stay BLOCKED: target Nov 3 dump was not found in local C user storage, E drive had no match, D drive is unavailable, Coolify browser tab is inaccessible to the current browser bridge. No fresh hash, clone restore, 122-ID parity, five-migration rehearsal or row counts.
+- F4 remains PARTIAL across all 503 routes. F5 remains PARTIAL (2,265 controls / 65 routes, 75/0/0 latest UI matrix, not every control individually run). F6 remains PARTIAL pending live security posture and wider review/customer acceptance.
+- No migration added or changed, no live/production writes, deployment, payment, Coolify changes, or push. The current unfiltered full suite was WP-150; after more source changes, run one unfiltered suite at the final package boundary, then update records without rerunning.

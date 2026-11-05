@@ -446,4 +446,94 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.True(rowExists, $"Foreign {item.Name} attachment must remain unchanged after rejected requests.");
         }
     }
+
+    [Fact]
+    public async Task Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var ownName = $"Tenant A profile {suffix}";
+        var foreignName = $"Tenant B profile {suffix}";
+        var ownSlug = $"tenant-a-{suffix}";
+        var foreignSlug = $"tenant-b-{suffix}";
+
+        await using (var seedScope = _factory!.Services.CreateAsyncScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var own = await seedDb.Companies.SingleAsync(x => x.Id == _companyId);
+            var foreign = await seedDb.Companies.SingleAsync(x => x.Id == _otherCompanyId);
+            own.Name = ownName;
+            own.Slug = ownSlug;
+            own.ContactEmail = $"tenant-a-{suffix}@example.invalid";
+            own.BrandPrimaryColor = "#1769E0";
+            foreign.Name = foreignName;
+            foreign.Slug = foreignSlug;
+            foreign.ContactEmail = $"tenant-b-{suffix}@example.invalid";
+            foreign.BrandPrimaryColor = "#C62828";
+            await seedDb.SaveChangesAsync();
+        }
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        async Task<HttpResponseMessage> SendForgedAsync(HttpMethod method, string path, HttpContent? content = null)
+        {
+            using var request = new HttpRequestMessage(method, path) { Content = content };
+            request.Headers.Add("X-Acceptance-User", _userId.ToString());
+            request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+            request.Headers.Add("X-Acceptance-Role", "admin");
+            request.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            request.Headers.Add("X-CSRF-TOKEN", requestToken);
+            request.Headers.Add("Cookie", antiforgeryCookie);
+            return await _client!.SendAsync(request);
+        }
+
+        using (var profile = await SendForgedAsync(HttpMethod.Get, $"/api/company/profile?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await profile.Content.ReadAsStringAsync());
+            Assert.Equal(ownName, body.RootElement.GetProperty("name").GetString());
+            Assert.Equal(ownSlug, body.RootElement.GetProperty("slug").GetString());
+            Assert.DoesNotContain(foreignName, body.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+
+        using (var branding = await SendForgedAsync(HttpMethod.Get, $"/api/company/branding?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, branding.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await branding.Content.ReadAsStringAsync());
+            Assert.Equal(ownName, body.RootElement.GetProperty("name").GetString());
+            Assert.Equal("#1769E0", body.RootElement.GetProperty("brandPrimaryColor").GetString());
+            Assert.DoesNotContain(foreignName, body.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+
+        var updatedName = $"Tenant A updated {suffix}";
+        var updatedSlug = $"tenant-a-updated-{suffix}";
+        using (var update = await SendForgedAsync(HttpMethod.Put, $"/api/company/profile?companyId={_otherCompanyId:D}",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = updatedName,
+                slug = updatedSlug,
+                contactEmail = $"updated-a-{suffix}@example.invalid",
+                brandPrimaryColor = "#22AA66"
+            })))
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updatedOwn = await verifyDb.Companies.AsNoTracking().SingleAsync(x => x.Id == _companyId);
+        var preservedForeign = await verifyDb.Companies.AsNoTracking().SingleAsync(x => x.Id == _otherCompanyId);
+        Assert.Equal(updatedName, updatedOwn.Name);
+        Assert.Equal(updatedSlug, updatedOwn.Slug);
+        Assert.Equal("#22AA66", updatedOwn.BrandPrimaryColor);
+        Assert.Equal(foreignName, preservedForeign.Name);
+        Assert.Equal(foreignSlug, preservedForeign.Slug);
+        Assert.Equal($"tenant-b-{suffix}@example.invalid", preservedForeign.ContactEmail);
+        Assert.Equal("#C62828", preservedForeign.BrandPrimaryColor);
+        Assert.True(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _companyId && x.TargetId == _companyId && x.Action == "ProfileUpdated"));
+        Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == _otherCompanyId && x.Action == "ProfileUpdated"));
+    }
 }

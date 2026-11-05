@@ -2,16 +2,18 @@
 
 Kaynak: depo AGENTS.md (CODEX-HEDEF 4 v4), 2026-11-05; yüzde kullanılmaz. Canonical prompt: C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md; SHA-256 661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE. Faz kapıları ile ürün gereksinimleri ayrıdır; her tabloda Kodda / Canlıda / Kabul edildi sütunları bulunur.
 
-## Güncel devam kanıtı — WP-150 (2026-11-05)
+## Güncel devam kanıtı — WP-151 (2026-11-05)
 
 | Alan | Kodda | Canlıda | Kabul edildi | Kanıt / açık iş |
 |---|---|---|---|---|
 | F1 yedek ve migration provası | Migration envanteri 127; yeni migration eklenmedi | Canlı DB'ye erişilmedi/değişiklik yok | Nov 3 dump hash yeniden hesaplanmadı; klon restore, ilk 122 ID karşılaştırması, 5 migration provası ve satır sayımı BLOCKED | Hedef dump yerelde yok; önceki WP-101 hash yalnız tarihsel kanıt |
-| F4 firma izolasyonu | Tedarikçi matrisi ve firma güvenlik politikası/oturum matrisi kabul testine eklendi | Canlı firma verisi değiştirilmedi | WP-146 1/1, WP-149 1/1 ve WP-150 tam koşusunda 326/326 PASS (izole PostgreSQL) | F4 PARTIAL: 503 method-route envanterinin tamamı kapsanmadı |
+| F4 firma izolasyonu | Tedarikçi, firma güvenlik politikası/oturum ve şirket profili/marka izolasyon testleri mevcut | Canlı firma verisi değiştirilmedi | WP-146, WP-149, WP-151 hedefli testleri 1/1 PASS; WP-150 tam koşusu 326/326 PASS (izole PostgreSQL) | F4 PARTIAL: 503 method-route envanterinin tamamı kapsanmadı |
 | F5 arayüz | UI envanteri 2.265 kontrol / 65 rota; bu dilimde UI kodu değişmedi | Canlı UI değiştirilmedi | WP-140 Chromium 75 PASS / 0 FAIL / 0 BLOCKED; WP-147 envanter kontrolü PASS | Tüm 2.265 öğe tek tek çalıştırılmadı; F5 PARTIAL |
 | F6 güvenlik | WP-099 şifreli saklama ve log testi mevcut; yeni migration yok | Canlı güvenlik ayarı değiştirilmedi | WP-150 tam izole PostgreSQL koşusu 326/326 PASS; WP-099 iki test PASS | F6 PARTIAL: canlı güvenlik duruşu, kapsamlı güvenlik/hukuk ve müşteri kabulü açık |
 
 WP-150 test kanıtı: `./deploy/testing/run-security-acceptance.ps1`, kaynak/test commit `ef5f0b9e68a55213b038e34c644f4978fe4bdd43`; **326 toplam / 326 geçti / 0 kaldı**, xUnit **1.2223 saat**, runner exit **0**. Koşu bir kez çalıştırıldı. Yeni WP-149 tenant-policy testi ve WP-099 gizli anahtar testleri koşuda PASS. Disposable Compose PostgreSQL/acceptance konteynerleri ile izole ağ runner tarafından durdurulup kaldırıldı; son Docker sorgusunda eşleşen kaynak kalmadı. Test migration'ları yalnız bu geçici veritabanında yürütüldü. F1 adımları a–d hâlâ BLOCKED: dump yerelde bulunamadı; eski WP-101 hash yeniden hesaplanmadı; klon restore, ilk 122 migration kimlik karşılaştırması, beş migration provası ve satır sayımı yapılmadı. Canlıya, ödemeye, Coolify'a veya yayın akışına dokunulmadı; push yapılmadı.
+
+WP-151 F4 kanıtı: `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes'` **1/1 PASS**, xUnit **1.2243 dakika**, runner exit **0**. Firma A oturumu; sahte `companyId=Firma B` URL parametresi ve `X-Company-Id` başlığıyla profile/branding okumasında yalnız A'yı gördü. Profile yazımı A'yı ve A audit satırını değiştirdi; B'nin adı, slug'ı, e-postası, rengi ve audit durumu korundu. Test ortamı konteyneri/ağı temizlendi. Değişiklik test koduyla sınırlı; F4 yine kısmi.
 
 ## Faz kapıları (A–O katalog sayımına dahil değildir)
 

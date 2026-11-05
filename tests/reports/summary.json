@@ -1616,6 +1616,53 @@
       "pushed": false,
       "paymentTouched": false,
       "coolifyTouched": false
+    },
+    "wp151CompanyProfileBranding": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes'",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.2243,
+        "runnerExitCode": 0
+      },
+      "baseCommit": "e7d83710153b0b70bf6eb141b4412d619dd1ffe6",
+      "testSourceBlob": "2ea0baaa9c61f604cc1862e5da68fd6bb5e70b29",
+      "isolatedPostgres": true,
+      "assertions": [
+        "Company A GET /api/company/profile and /api/company/branding returned only A values with forged companyId query and X-Company-Id=B.",
+        "Company A profile PUT updated only A.",
+        "Company B profile and audit state remained unchanged; only A received ProfileUpdated audit."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Compose removed disposable PostgreSQL container and isolated network.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete."
+    },
+    "goalContinuation": {
+      "status": "IN_PROGRESS",
+      "completedWorkPackages": [
+        "WP-149",
+        "WP-150",
+        "WP-151"
+      ],
+      "packageCount": 3,
+      "packageLimit": 5,
+      "f1StepsAtoD": "BLOCKED: Nov 3 dump not found locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
+      "f4Status": "PARTIAL; 503 method-route tenant matrix incomplete.",
+      "f5Status": "PARTIAL; 2265 controls / 65 routes; latest UI evidence 75 PASS / 0 FAIL / 0 BLOCKED; all controls not individually exercised.",
+      "f6Status": "PARTIAL; WP-099 isolated security tests pass; live posture and wider security/legal/customer acceptance remain open.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false
     }
   },
   "historicalBaseline": {
