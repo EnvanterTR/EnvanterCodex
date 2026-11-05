@@ -926,6 +926,29 @@
       "productionWrites": false,
       "schemaChanges": false,
       "runnerCleanup": "Hosted browser runner exited 0"
+    },
+    "f6AccountRecoveryAndRateLimit": {
+      "status": "PASS",
+      "testedSourceCommit": "3cbf8c5bc1e251f3ab9b60e01a0955cba9fdae61",
+      "workingTreeAtRun": "Only WP-125 ledger IN_PROGRESS documentation had been appended; source/test files matched the recorded commit.",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "durationMinutes": 1.2435,
+      "runnerExitCode": 0,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use|Login_rate_limit_ignores_untrusted_forwarded_client_ip|Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use|Required_company_mfa_enrollment_is_single_use_and_authenticates_after_totp_verification",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "assertions": [
+        "Password reset gives the same generic response for existing/missing emails; only the real account receives the message; reset token replay is rejected.",
+        "Untrusted forwarded client IP cannot evade login throttling.",
+        "Company MFA enrollment is single-use and valid TOTP authenticates.",
+        "Authenticator recovery-code replay is rejected."
+      ],
+      "testEnvironmentWarnings": "Disposable Data Protection key persistence and initial empty migration-history lookup; no test failures.",
+      "schemaChanges": false,
+      "productionMigration": false
     }
   },
   "historicalBaseline": {

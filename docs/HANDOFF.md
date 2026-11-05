@@ -315,3 +315,8 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - F5 inventory check passed: 2,265 controls / 65 routes. Static verifiers pass 85/85 after correcting one stale MFA verifier regex; the browser test already covered recovery-code replay rejection.
 - Hosted Chromium `run-hosted-checkout-browser-acceptance.ps1` exit 0. It emitted PASS workflows including all public-gallery slides, fullscreen/keyboard behavior, seamless loop, auto-left motion, manual controls, mobile overflow, and no page errors. It does not publish aggregate PASS/FAIL/BLOCKED totals, so total is not claimed.
 - Browser console showed 404 resource warnings without a runner failure. F5 remains partial because the 2,265 controls were not individually executed. No live or schema changes and no push.
+
+## 2026-11-05 continued migration-free work (WP-125)
+
+- F6 targeted isolated PostgreSQL security suite passed 4/4, xUnit 1.2435 minutes, exit 0: reset enumeration/replay, login throttling despite forged forwarding headers, one-time company MFA enrollment, and Authenticator recovery-code replay rejection. Disposable database/network removed.
+- The test container logged its expected ephemeral Data Protection storage warning and the initial empty migration-history lookup; tests completed successfully. No source migration was added/modified; existing migrations were exercised only in the disposable test DB. F6 remains partial (CSP/HTTPS live posture, broad XSS/SQLi/secret-history scan, legal/KVKK, live customer acceptance).

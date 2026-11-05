@@ -180,3 +180,9 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - Envanter denetimi PASS: 2.265 UI kontrolü / 65 rota. Kaynak doğrulayıcıları 85/85 PASS. İlk koşudaki tek FAIL, kurtarma kodu replay senaryosu zaten kabul dosyasında varken literal ifade bekleyen `Verify-PlatformMfaBrowserAcceptance.mjs` idi; beklenti mevcut senaryo metnine uyarlandı ve tam statik tarama 85/85 geçti.
 - Hosted Chromium runner exit 0; galeri orijinal ve üretilmiş slaytlar, tam ekran, Escape/focus geri yükleme, 4 slayt ve kesintisiz döngü, otomatik sola kayma, manuel kontrol, mobil taşma ve sayfa hatasız bitişi PASS olarak yazdı. Runner toplam PASS/FAIL/BLOCKED sayısını üretmedi; sayı türetilmedi. Konsolda başarısız kabul oluşturmayan 404 kaynak uyarıları görüldü.
 - F5 KISMEN KANITLI kalır: 2.265 öğe tek tek denenmedi. Bu paket yalnız yanlış pozitif kaynak doğrulayıcısını düzeltti; ürün kodu değişmedi. Canlıya/deploy/migration/ödeme/Coolify/push yok.
+
+## 2026-11-05 F6 teknik güvenlik kabul paketi (WP-125)
+
+- İzole PostgreSQL dört test 4/4 PASS; xUnit 1.2435 dakika, runner exit 0. Parola kurtarma hesap varlığını açıklamıyor, reset tokenı tekrar kabul edilmiyor; sahte forwarded IP hız sınırını aşmıyor; şirket MFA ilk kurulum tek kullanımlık; Authenticator kurtarma kodu replay reddi.
+- Geçici DB ve ağ kaldırıldı. Test başlatılırken izole ortamda Data Protection geçici anahtar ve boş migration-history uyarısı vardı; testler başarılı bitti. Mevcut kaynak migrationlar sadece disposable test DB'de çalıştı; yeni migration eklenmedi/değiştirilmedi.
+- F6 KISMEN KANITLI: CSP/HTTPS canlı başlık durumu, geniş XSS/SQLi ve geçmiş-geneli secret taraması, hukuki/KVKK ve canlı firma kabulü açık. Canlı DB/deploy/ödeme/Coolify/push yok.
