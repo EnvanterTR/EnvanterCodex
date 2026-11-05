@@ -220,3 +220,8 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - Varlık, aksesuar ve çalışan listeleri ile çalışan aramasına diğer firmanın `companyId` parametresi ve sahte `X-Company-Id` başlığı verildi. Uygulama, sorgu parametresini veri uçlarına iletmeden 303 ile temizlenmiş adrese yönlendiriyor; test yönlendirme hedefinde `companyId` bulunmadığını doğruluyor. Temizlenmiş istek ve sahte başlıkla yapılan oturumlu API çağrıları Firma A'nın satırını içerdi, Firma B satırını içermedi.
 - `Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable`: izole PostgreSQL **1/1 PASS**, xUnit 57.1707 saniye, runner exit 0. Geçici PostgreSQL konteyneri ve ağ kaldırıldı. İlk denemede otomatik yönlendirme Bearer başlığını düşürdüğü için test 401 aldı; redirect-follow kapatılarak gerçek sanitizasyon 303 davranışı doğrulandı.
 - Bu ek kabul tüm 503 API rotasında veri izolasyonu kanıtı değildir; F4 KISMEN KANITLI kalır. Canlı sistem, şema/migration, Coolify, ödeme veya uzak dal değişmedi.
+
+## 2026-11-05 F6 profil fotoğrafı depolama güvenliği (WP-135)
+
+- Hesap profil fotoğrafı upload kabulinde dosya/dizin çakışması güvenli `503` döndürdü; sunucu yolu yanıta sızmadı ve önceki sentinel dosya baytları değişmedi. Geçerli 2 MiB PNG, büyük dosya reddi, bozuk imza reddi, dosya değiştirme/okuma/silme akışları da kabul testinde doğrulandı.
+- `Account_photo_upload_reports_unavailable_storage_without_a_server_error` ve `Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo`: izole PostgreSQL **2/2 PASS**, xUnit 1.0168 dakika, runner exit 0; geçici DB ve ağ kaldırıldı. Bu, kullanıcının daha önce gördüğü 500 türü depolama çakışması için kaynak kabul kanıtıdır; canlıda değişiklik/yayın veya canlı kabul anlamına gelmez.

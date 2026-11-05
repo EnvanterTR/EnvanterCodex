@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T11:57:02Z",
+  "measuredAt": "2026-11-05T12:06:02Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4",
+    "commit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
     "workingTreeCleanAtRun": false,
-    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 targeted acceptance ran on source changes atop 64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4; its initial redirect-follow probe returned 401, then its corrected 303 query-sanitization and tenant-scope acceptance passed 1/1. The full suite will be run once at the end of this continuation."
+    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 and WP-135 targeted acceptance ran on source atop a302db4347a9ecf262d23312c1025dbe3e9351c3. WP-134 passed 1/1 after probing the app's 303 companyId scrub redirect without following it; WP-135 passed 2/2 for account-photo storage conflict and upload validation. The full suite will be run once at the end of this continuation."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -1111,6 +1111,29 @@
       "buildErrors": 0,
       "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
       "measuredSourceBaseCommit": "64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp135AccountPhotoStorageAcceptance": {
+      "status": "PASS",
+      "tests": [
+        "Account_photo_upload_reports_unavailable_storage_without_a_server_error",
+        "Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo"
+      ],
+      "result": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "1.0168 minutes",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Account_photo_upload_reports_unavailable_storage_without_a_server_error|FullyQualifiedName~Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo'",
+      "assertions": "Forced storage conflict returns safe 503 without exposing its path and preserves prior bytes; valid 2 MiB, oversized, invalid image, replacement, read and delete paths pass.",
+      "expectedSyntheticErrorLog": "DirectoryNotFoundException from isolated /tmp test media conflict; no production data.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "measuredSourceBaseCommit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
       "workingTreeModifiedDuringVerification": true,
       "noProductionChanges": true
     }
