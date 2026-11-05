@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T06:39:14Z",
+  "measuredAt": "2026-11-05T08:16:11Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
+    "commit": "751d73f69c9629b935260efa04ced2d8e141c261",
     "workingTreeCleanAtRun": true,
-    "note": "WP-116 full PostgreSQL suite ran with a clean tree at its recorded commit. WP-117/WP-118 added tenant attachment acceptance, WP-119 added MFA retry browser acceptance, and WP-120/WP-121 added catalog media and maintenance-report tenant acceptance afterward; the current unfiltered PostgreSQL run is pending."
+    "note": "WP-122 ran the complete unfiltered PostgreSQL security/tenant acceptance exactly once on clean commit 751d73f69c9629b935260efa04ced2d8e141c261. The suite passed 322/322; only reporting files changed afterward."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -103,19 +103,35 @@
     },
     "lastFullPostgresSecurityAcceptance": {
       "status": "PASS",
-      "total": 321,
-      "passed": 321,
+      "total": 322,
+      "passed": 322,
       "failed": 0,
       "exitCode": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
-      "duration": "50.5365 minutes",
-      "measuredCommit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
-      "command": "deploy/testing/run-security-acceptance.ps1",
-      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed",
+      "duration": "49.9245 minutes (xUnit total time)",
+      "measuredCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed; Compose teardown exit 0",
       "failedTests": [],
-      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp116.log",
-      "note": "WP-116 latest full PostgreSQL security/tenant suite; Test Run Successful; 321 total, 321 passed, 0 failed; runner and xUnit exit 0. No live database, migration, deployment, payment, or push."
+      "log": "Interactive Codex exec output; the runner does not persist an output log file",
+      "note": "WP-122 Test Run Successful; 322 total, 322 passed, 0 failed; xUnit and runner exit 0. No live DB, migration, deployment, payment, Coolify configuration, or push."
+    },
+    "wp122FullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "exitCode": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "duration": "49.9245 minutes (xUnit total time)",
+      "measuredCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed; Compose teardown exit 0",
+      "failedTests": [],
+      "log": "Interactive Codex exec output; the runner does not persist an output log file",
+      "note": "Test Run Successful; 322 total, 322 passed, 0 failed; xUnit and runner exit 0. No live DB, migration, deployment, payment, Coolify configuration, or push."
     },
     "latestTargetedReminderRegression": {
       "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
@@ -855,6 +871,29 @@
       "assertion": "Date/status-filtered maintenance counts and cost aggregates exclude the other company.",
       "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
       "scopeNote": "One report family only; the complete report route set is not covered."
+    },
+    "f4AccessoryKitWriteIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 58.609,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore",
+      "measuredBaseCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "workingTreeModifiedAtRun": true,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "deniedOperations": [
+        "Company A PUT to Company B kit -> 404",
+        "Company A DELETE to Company B kit -> 404",
+        "Company A POST restore to Company B kit -> 404"
+      ],
+      "preservation": "Foreign kit and recipe line remained unchanged; no update/archive/restore audit event was recorded.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerExitCode": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "attempts": "Attempt 1 compile failed with CS8122 for pattern matching in an EF expression tree; predicate changed to explicit equality checks. Attempt 2 passed."
     }
   },
   "historicalBaseline": {

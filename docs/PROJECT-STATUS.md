@@ -159,3 +159,18 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - WP-115 / F6: WP-099 encryption/role/CSRF and captured-log no-plaintext tests 2/2 PASS; role-matrix and audit-retention verifiers PASS. Legal/KVKK and live-company acceptance remain open.
 - WP-116: final full isolated PostgreSQL/security run on clean source/test commit `58339bb8089d3b9d4132c50ae859b1dd787f53d7`: 321 total / 321 PASS / 0 FAIL; runner exit 0. Details and log path are in `tests/reports/summary.json` and `docs/LEDGER.md`.
 - No migration, production DB write, deploy, payment, Coolify configuration change, or push occurred.
+
+## 2026-11-05 son doğrulama (WP-122)
+
+- Tam, filtresiz PostgreSQL security/tenant koşusu `./deploy/testing/run-security-acceptance.ps1`, temiz commit `751d73f69c9629b935260efa04ced2d8e141c261`: 322 toplam / 322 PASS / 0 FAIL; xUnit 49.9245 dakika; runner çıkış kodu 0. Disposable acceptance/PostgreSQL konteynerleri ve izole Docker ağı kaldırıldı. Kanıt kaydı `docs/LEDGER.md` WP-122 ve `tests/reports/summary.json` içindedir.
+- F4: WP-117/118 satın alma eki, WP-120 katalog medyası ve WP-121 bakım raporu tenant testleri PASS; WP-122 genel security/tenant regresyonu PASS. Bütün API hostile-ID/yazma/dosya/rapor/import/export matrisi tamamlanmadı; faz KISMEN KANITLI.
+- F5: 85/85 statik doğrulayıcı PASS; 2.265 UI kontrolü / 65 rota envanteri; son hosted Chromium taraması 75 senaryo özeti, 0 FAIL, 0 BLOCKED. 2.265 kontrol tek tek çalıştırılmadığından faz KISMEN KANITLI; bu çalıştırmada UI FAIL düzeltmesi gerektiren bulgu çıkmadı.
+- F6: WP-119 MFA retry Chromium kabulü PASS; WP-115 korunan lisans anahtarı/log testleri 2/2 PASS. Daha geniş KVKK/hukuki inceleme ve canlı şirket kabulü yok; faz KISMEN KANITLI.
+- F1: 3 Kasım dump hash/manifest eşleşmesi önceki WP-101 kanıtına dayanır. Klon restore, 122 migration kimliği parity, beş migration prova ve tablo satır sayısı karşılaştırması BLOCKED; güncel kanıt üretilmedi.
+- Canlı sisteme, veritabanına, migrationlara, ödeme ayarlarına, Coolify yapılandırmasına, domain/wildcard yönlendirmesine dokunulmadı; push yapılmadı. Tam koşudan sonra yalnız rapor dosyaları düzenlendi.
+
+## 2026-11-05 devam eden migration-free kanıt (WP-123)
+
+- F4: `Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore` testine Company A'dan Company B aksesuar kitine güncelleme, arşivleme ve geri yükleme saldırı denemeleri eklendi; her biri 404. Yabancı kit/satır değişmedi ve audit olayı oluşmadı. İzole PostgreSQL 1/1 PASS, 58.6090 saniye, runner exit 0; geçici DB/ağ kaldırıldı.
+- Hedef SHA: `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`; AGENTS SHA: `8DF36DC6EABAF8E52FB5551732017FC361309A624A0C1D4F619D3D942B278F8A` (R13 ek kuralı nedeniyle farklı).
+- F4 genel kapısı KISMEN KANITLI kalır; tüm API, dosya, rapor, import/export matrisinin tamamı değildir. Canlı DB/deploy, migration, ödeme, Coolify, domain, ortam değişkeni, wildcard ve push değişikliği yok.

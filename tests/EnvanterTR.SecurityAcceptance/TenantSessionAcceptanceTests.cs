@@ -7772,6 +7772,44 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             kitId = payload.RootElement.GetProperty("id").GetGuid();
         }
 
+        var foreignKitId = Guid.NewGuid();
+        const string foreignKitName = "FOREIGN-TENANT-KIT-123";
+        await using (var seedForeignKitScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = seedForeignKitScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AccessoryKits.Add(new AccessoryKit { Id = foreignKitId, CompanyId = _otherCompanyId, Name = foreignKitName });
+            db.AccessoryKitLines.Add(new AccessoryKitLine
+            {
+                CompanyId = _otherCompanyId, AccessoryKitId = foreignKitId,
+                ItemType = "Accessory", AccessoryId = _otherCompanyAccessoryId, Quantity = 2
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var foreignUpdate = await SendAsRoleAsync(HttpMethod.Put, $"{kitPath}/{foreignKitId}", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = "Stolen kit update", description = "cross-tenant", items = item }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignUpdate.StatusCode);
+        using (var foreignArchive = await SendAsRoleAsync(HttpMethod.Delete, $"{kitPath}/{foreignKitId}", "admin",
+                   null, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignArchive.StatusCode);
+        using (var foreignRestore = await SendAsRoleAsync(HttpMethod.Post, $"{kitPath}/{foreignKitId}/restore", "admin",
+                   new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRestore.StatusCode);
+
+        await using (var verifyForeignKitScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyForeignKitScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreignKit = await db.AccessoryKits.SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == foreignKitId);
+            Assert.Equal(foreignKitName, foreignKit.Name);
+            Assert.True(foreignKit.IsActive);
+            var foreignLine = await db.AccessoryKitLines.SingleAsync(x => x.CompanyId == _otherCompanyId && x.AccessoryKitId == foreignKitId);
+            Assert.Equal(_otherCompanyAccessoryId, foreignLine.AccessoryId);
+            Assert.Equal(2, foreignLine.Quantity);
+            Assert.False(await db.AuditEntries.AnyAsync(x => x.TargetId == foreignKitId &&
+                (x.Action == "updated" || x.Action == "archived" || x.Action == "restored")));
+        }
+
         using (var duplicate = await SendAsRoleAsync(HttpMethod.Post, kitPath, "admin",
                    System.Net.Http.Json.JsonContent.Create(new { name = kitName.ToLowerInvariant(), description = (string?)null, items = item }),
                    requestToken, antiforgeryCookie))

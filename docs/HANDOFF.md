@@ -243,7 +243,7 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 
 - Follow `AGENTS.md` R12: F1 migration freeze remains active. No EF migration was added or modified.
 - `docs/PROJECT-STATUS.md` has separate phase-gate and product-requirement tables; the A–O product catalog is 115 unique IDs. F14/F15 are gates, not catalog entries. Status columns are `Kodda / Canlıda / Kabul edildi`.
-- The canonical prompt copy at `C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md` matches `AGENTS.md` SHA-256 `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`.
+- Canonical prompt SHA-256: `CODEX-HEDEF-4.md` = `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`. `AGENTS.md` = `8DF36DC6EABAF8E52FB5551732017FC361309A624A0C1D4F619D3D942B278F8A`; it intentionally differs because it includes the user-requested additive R13 migration-free F4/F5/F6 continuation rule.
 - 3 Nov backup hash/restore, exact 122 migration-ID parity, five-migration clone rehearsal, and before/after table counts remain BLOCKED because no authorized server-side Coolify shell/DB command channel is available. Do not copy customer data off-host. No production DB operation occurred.
 - Earlier WP-105 full run: 319 total, 318 PASS, 1 FAIL (license reminder test used an unsupported five-day fixture); WP-106 corrected the test fixture and targeted regression passed 13/13. This was superseded by final WP-111 run on `95293ffe7a5745ca49bad5e09ac9682e7eadf9c7`: 320 total, 320 PASS, 0 FAIL, runner exit 0. Output: `%TEMP%\envantertr-security-acceptance-20261105-wp111.log`; disposable PostgreSQL/acceptance containers and network removed.
 - Static verifiers: current 85/85 PASS. The original two failures were stale `Synthetic Invited Viewer` in `Verify-HostedCheckoutBrowserAcceptance.mjs` and native `confirm()` at `index.html:8614` for `Verify-NoNativeBrowserDialogs.mjs`; WP-101/WP-103 corrected both. `Generate-UiInventory.mjs --check`: 2,265 controls / 65 routes. This is an inventory count, not proof that all controls were exercised.
@@ -295,3 +295,17 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 
 - WP-121 / F4 DONE: `Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data` passed 1/1, xUnit 55.2980 s. Date/status-filtered maintenance aggregates excluded other-company data. Disposable PostgreSQL/network removed. This covers one report family, not all reports.
 - WP-119 through WP-121 are the three migration-free continuation packages since the last full run. Run the requested full PostgreSQL acceptance exactly once after this update; then record totals/exit/cleanup and stop.
+
+## 2026-11-05 continuation closeout (WP-122)
+
+- WP-119 F6, WP-120 F4 catalog media, and WP-121 F4 maintenance-report packages are DONE with their targeted test evidence recorded above.
+- WP-122 ran the unfiltered PostgreSQL suite once on clean commit `751d73f69c9629b935260efa04ced2d8e141c261`: 322/322 PASS, 0 FAIL, xUnit 49.9245 minutes, runner exit 0. Disposable acceptance/PostgreSQL containers and isolated network were removed. `summary.json` and `docs/LEDGER.md` record the result.
+- F4 remains partial: exhaustive hostile-ID coverage for all APIs, reports, imports, exports and writes is not established. F5 remains partial: 2,265 controls were inventoried but not individually exercised; the latest curated hosted sweep is not a full per-control matrix. F6 remains partial: legal/KVKK review and live-company acceptance are open.
+- F1 steps b–d remain BLOCKED: no safe authorized server-side path was available for restoring the Nov 3 customer dump into the isolated clone, exact 122-ID comparison, five-migration rehearsal, or before/after row counts. Do not claim these gates passed.
+- No migration, production DB write, deployment, payment, Coolify/environment/domain/wildcard change, or push occurred. After the full run, only reporting files changed; no tests were rerun.
+
+## 2026-11-05 continued migration-free work (WP-123)
+
+- WP-123 / F4 DONE: the accessory-kit acceptance now attempts cross-tenant update, archive, and restore as Company A against a Company B kit. All three return 404; the foreign kit, recipe line, and audit state remain unchanged. Targeted isolated PostgreSQL test passed 1/1 (58.6090 s), runner exit 0; disposable DB and network removed.
+- Attempt 1 stopped at compile error CS8122 because pattern matching was used in an EF expression tree. Replaced it with explicit equality checks; attempt 2 passed. This was one compile failure, not retried three times.
+- Canonical target and `AGENTS.md` hashes are recorded separately; R13 remains an intentional addition. No schema or production changes, deployment, payment, Coolify, or push.
