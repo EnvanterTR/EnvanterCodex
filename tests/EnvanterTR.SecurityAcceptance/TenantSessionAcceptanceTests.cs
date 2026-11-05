@@ -10786,6 +10786,25 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(64, storedHash.Length);
         }
 
+        using var selectorProbeClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = false
+        });
+        async Task AssertForeignCompanySelectorIsStrippedAsync(string requestUri, string apiSecret)
+        {
+            using var selectorRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            selectorRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiSecret);
+            selectorRequest.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            using var selectorResponse = await selectorProbeClient.SendAsync(selectorRequest);
+            Assert.Equal(HttpStatusCode.SeeOther, selectorResponse.StatusCode);
+            var safeLocation = selectorResponse.Headers.Location?.OriginalString;
+            Assert.False(string.IsNullOrWhiteSpace(safeLocation));
+            Assert.DoesNotContain("companyId", safeLocation!, StringComparison.OrdinalIgnoreCase);
+        }
+
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/assets?page=1&pageSize=20&companyId={_otherCompanyId:D}", secret);
         using (var assetsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/assets?page=1&pageSize=20"))
         {
             assetsRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
@@ -10821,6 +10840,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, expandedScopeResponse.StatusCode);
         using var expandedScopePayload = JsonDocument.Parse(await expandedScopeResponse.Content.ReadAsStringAsync());
         var expandedSecret = expandedScopePayload.RootElement.GetProperty("secret").GetString()!;
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/accessories?page=1&pageSize=20&companyId={_otherCompanyId:D}", expandedSecret);
         using (var accessoriesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories?page=1&pageSize=20"))
         {
             accessoriesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
@@ -10837,6 +10858,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(_otherCompanyAccessoryId, accessories.RootElement.GetProperty("items").EnumerateArray()
                 .Select(x => x.GetProperty("id").GetGuid()));
         }
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/employees?page=1&pageSize=20&companyId={_otherCompanyId:D}", expandedSecret);
         using (var employeesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/employees?page=1&pageSize=20"))
         {
             employeesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
@@ -10852,8 +10875,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(_otherCompanyEmployeeId, employees.RootElement.GetProperty("items").EnumerateArray()
                 .Select(x => x.GetProperty("id").GetGuid()));
         }
-        using (var caseInsensitiveEmployeeSearch = new HttpRequestMessage(HttpMethod.Get,
-                   $"/api/v1/employees?q={Uri.EscapeDataString($"own-{_userId:N}".ToLowerInvariant())}&page=1&pageSize=20"))
+        var employeeSearch = $"/api/v1/employees?q={Uri.EscapeDataString($"own-{_userId:N}".ToLowerInvariant())}&page=1&pageSize=20";
+        await AssertForeignCompanySelectorIsStrippedAsync($"{employeeSearch}&companyId={_otherCompanyId:D}", expandedSecret);
+        using (var caseInsensitiveEmployeeSearch = new HttpRequestMessage(HttpMethod.Get, employeeSearch))
         {
             caseInsensitiveEmployeeSearch.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
             caseInsensitiveEmployeeSearch.Headers.Add("X-Company-Id", _otherCompanyId.ToString());

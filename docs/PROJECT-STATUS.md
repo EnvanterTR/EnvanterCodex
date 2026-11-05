@@ -214,3 +214,9 @@ Sayım: A–O katalogunda 115 ID. F14/F15 faz kapıları yukarıdaki tabloda tut
 - Runtime endpoint envanter testi **503 API endpointi / 503 method-route** buldu: 27 açık allowlist girdisi, 476 korumalı uç; envanter SHA-256 `D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4`.
 - Rota ekleme/çıkarma/yeniden adlandırma parmak izi değiştirir ve inceleme gerektirir. Test explicit auth/allow-anonymous metadatası, tam public allowlist ve authorization policy kümesini de denetler. İzole PostgreSQL testi 1/1 PASS; WP-133.
 - Bu test rota kapsamı/auth sınırını sabitler; bütün 503 uçta firma verisi izolasyonunu kanıtlamaz. F4 KISMEN KANITLI kalır.
+
+## 2026-11-05 F4 Customer API sorgu seçicisi (WP-134)
+
+- Varlık, aksesuar ve çalışan listeleri ile çalışan aramasına diğer firmanın `companyId` parametresi ve sahte `X-Company-Id` başlığı verildi. Uygulama, sorgu parametresini veri uçlarına iletmeden 303 ile temizlenmiş adrese yönlendiriyor; test yönlendirme hedefinde `companyId` bulunmadığını doğruluyor. Temizlenmiş istek ve sahte başlıkla yapılan oturumlu API çağrıları Firma A'nın satırını içerdi, Firma B satırını içermedi.
+- `Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable`: izole PostgreSQL **1/1 PASS**, xUnit 57.1707 saniye, runner exit 0. Geçici PostgreSQL konteyneri ve ağ kaldırıldı. İlk denemede otomatik yönlendirme Bearer başlığını düşürdüğü için test 401 aldı; redirect-follow kapatılarak gerçek sanitizasyon 303 davranışı doğrulandı.
+- Bu ek kabul tüm 503 API rotasında veri izolasyonu kanıtı değildir; F4 KISMEN KANITLI kalır. Canlı sistem, şema/migration, Coolify, ödeme veya uzak dal değişmedi.

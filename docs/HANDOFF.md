@@ -349,3 +349,9 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 - F4 API inventory pin completed. Runtime app yielded 503 endpoints / 503 method-route entries; 27 explicit public routes and 476 protected. SHA-256 fingerprint: `D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4`.
 - Existing route test checks every endpoint’s auth metadata, exact public allowlist and authorization-policy set. Targeted isolated PostgreSQL acceptance passed 1/1 after the baseline was pinned; the initial deliberately empty baseline failed with actual count/hash as expected.
 - This does not establish tenant-data isolation for all routes. Next WP: choose a concrete uncovered tenant-data route family from the API inventory, add hostile cross-company read/write assertions, and run its targeted isolated PostgreSQL test. Keep migration freeze and no-live/no-push constraints.
+
+## 2026-11-05 F4 Customer API selector acceptance (WP-134)
+
+- WP-134 DONE: assets/accessories/employees list and employee search now probe a foreign `companyId` with forged `X-Company-Id`. The app returned a 303 with the sensitive selector removed; the authenticated request on the sanitized URL returned only Company A rows, not Company B. Isolated PostgreSQL test passed 1/1 (57.1707 s, exit 0); temporary DB/network removed. First attempt's default redirect-follow dropped the Bearer header and produced 401; disabled redirect-follow in the probe to assert the intended sanitization response.
+- F4 remains partial: broader 503-route read/write, files, reports, imports/exports coverage is not complete. Migration freeze remains active. No live DB/deployment, Coolify/environment/domain/wildcard/payment edit, or push.
+- Next: inspect current F5 UI acceptance evidence for a reproducible FAIL before opening any code-fix WP. Continue F4/F5/F6 migration-free packages; run full PostgreSQL suite once only at the final package of this continuation.

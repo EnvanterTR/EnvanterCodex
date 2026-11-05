@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T11:40:32Z",
+  "measuredAt": "2026-11-05T11:57:02Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
-    "workingTreeCleanAtRun": true,
-    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-128 through WP-131 migration-free source/test work is included."
+    "commit": "64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4",
+    "workingTreeCleanAtRun": false,
+    "note": "WP-132 ran the complete unfiltered PostgreSQL security/tenant acceptance once on clean source/test commit d5caf9208670f077939c21e9985d0ce51b3e4ac3: 322/322 passed, 0 failed, runner exit 0, xUnit 50.4233 minutes. WP-134 targeted acceptance ran on source changes atop 64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4; its initial redirect-follow probe returned 401, then its corrected 303 query-sanitization and tenant-scope acceptance passed 1/1. The full suite will be run once at the end of this continuation."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -1084,6 +1084,34 @@
       "sourceBaseCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
       "workingTreeModifiedDuringVerification": true,
       "scopeNote": "Pins the complete mapped API route/auth metadata surface and reviewed anonymous route allowlist. Does not prove tenant data isolation for each route.",
+      "noProductionChanges": true
+    },
+    "wp134CustomerApiHostileQuerySelector": {
+      "status": "PASS",
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "57.1707 seconds",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "probes": [
+        "assets list",
+        "accessories list",
+        "employees list",
+        "employee search"
+      ],
+      "assertions": "Foreign companyId plus forged X-Company-Id is redirected to a URL with companyId removed; authenticated sanitized requests return Company A rows and omit Company B rows.",
+      "firstAttempt": "Failed with 401 because the default redirect-follow dropped the Bearer header after the app's 303 query-scrubbing response. Probe now disables redirect-follow and asserts 303 plus sanitized Location.",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "measuredSourceBaseCommit": "64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4",
+      "workingTreeModifiedDuringVerification": true,
       "noProductionChanges": true
     }
   },
