@@ -103,6 +103,91 @@ public sealed partial class TenantSessionAcceptanceTests
     }
 
     [Fact]
+    public async Task Company_units_ignore_forged_foreign_company_selectors_for_reads_and_writes()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var own = new CompanyUnit
+        {
+            Id = Guid.NewGuid(), CompanyId = _companyId,
+            Name = $"Own unit {suffix}", NormalizedName = $"OWN UNIT {suffix}"
+        };
+        var foreign = new CompanyUnit
+        {
+            Id = Guid.NewGuid(), CompanyId = _otherCompanyId,
+            Name = $"Foreign unit {suffix}", NormalizedName = $"FOREIGN UNIT {suffix}"
+        };
+        await using (var seedScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyUnits.AddRange(own, foreign);
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = System.Text.Json.JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        async Task<HttpResponseMessage> SendWithForgedCompanyAsync(HttpMethod method, string path,
+            HttpContent? content = null, string role = "admin")
+        {
+            using var request = new HttpRequestMessage(method, path) { Content = content };
+            request.Headers.Add("X-Acceptance-User", _userId.ToString());
+            request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+            request.Headers.Add("X-Acceptance-Role", role);
+            request.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            request.Headers.Add("X-CSRF-TOKEN", requestToken);
+            request.Headers.Add("Cookie", antiforgeryCookie);
+            return await _client!.SendAsync(request);
+        }
+
+        using (var forgedList = await SendWithForgedCompanyAsync(HttpMethod.Get,
+                   $"/api/company-units?includeInactive=true&companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, forgedList.StatusCode);
+            using var payload = System.Text.Json.JsonDocument.Parse(await forgedList.Content.ReadAsStringAsync());
+            var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Contains(items, item => item.GetProperty("id").GetGuid() == own.Id);
+            Assert.DoesNotContain(items, item => item.GetProperty("id").GetGuid() == foreign.Id);
+            Assert.DoesNotContain(foreign.Name, payload.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+
+        using (var foreignUpdate = await SendWithForgedCompanyAsync(HttpMethod.Put, $"/api/company-units/{foreign.Id}",
+                   System.Net.Http.Json.JsonContent.Create(new { name = $"Changed {suffix}", code = "CHANGED", unitType = CompanyUnitTypes.Branch })))
+            Assert.Equal(HttpStatusCode.NotFound, foreignUpdate.StatusCode);
+
+        using (var foreignArchive = await SendWithForgedCompanyAsync(HttpMethod.Patch, $"/api/company-units/{foreign.Id}/active",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false })))
+            Assert.Equal(HttpStatusCode.NotFound, foreignArchive.StatusCode);
+
+        using (var foreignParentCreate = await SendWithForgedCompanyAsync(HttpMethod.Post, "/api/company-units",
+                   System.Net.Http.Json.JsonContent.Create(new { name = $"Forged child {suffix}", parentCompanyUnitId = foreign.Id })))
+            Assert.Equal(HttpStatusCode.BadRequest, foreignParentCreate.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using var viewerWrite = await SendWithForgedCompanyAsync(HttpMethod.Post, "/api/company-units",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"Viewer forbidden {suffix}" }), "viewer");
+        await SetCompanyRoleAsync("admin");
+        Assert.Equal(HttpStatusCode.Forbidden, viewerWrite.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var preservedForeign = await verifyDb.CompanyUnits.AsNoTracking()
+            .SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == foreign.Id);
+        Assert.Equal(foreign.Name, preservedForeign.Name);
+        Assert.True(preservedForeign.IsActive);
+        Assert.True(await verifyDb.CompanyUnits.AnyAsync(x => x.CompanyId == _companyId && x.Id == own.Id && x.Name == own.Name));
+        Assert.False(await verifyDb.CompanyUnits.AnyAsync(x => x.CompanyId == _companyId &&
+            (x.Name == $"Forged child {suffix}" || x.Name == $"Viewer forbidden {suffix}")));
+        Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == foreign.Id));
+        Assert.False(await verifyDb.AuditEntries.AnyAsync(x => x.CompanyId == _companyId && x.TargetType == "CompanyUnit" &&
+            (x.Details!.Contains($"Changed {suffix}") || x.Details.Contains($"Forged child {suffix}"))));
+    }
+
+    [Fact]
     public async Task Purchase_order_read_matrix_hides_foreign_records_for_all_order_families()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

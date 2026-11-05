@@ -1,13 +1,13 @@
 # Devam notu — 2026-11-05
 
-## Son durum — WP-153
+## Son durum — WP-154
 
-- İstenen beş iş paketi tamamlandı (WP-149–WP-153). WP-153 tek filtresiz acceptance koşusu: **328/328 PASS, 0 FAIL**, xUnit **1.0631 saat**, runner exit **0**, source/test commit `a51fefdcf97f6484854751f93a12f312134a9eb8`. Compose disposable PostgreSQL/acceptance konteynerleri ile ağı kaldırdı; son Docker listelemeleri eşleşme vermedi.
-- WP-152 label settings/templates tenant matrix tam koşuda PASS; yalnız test kodu değişti.
-- F1 a–d BLOCKED: 3 Kasım dump dosyası bulunamadı; bu oturumda hash yeniden hesaplama, izole restore, ilk 122 ID parity, beş migration rehearsal veya tablo satır sayımı yok. Daha eski hash kaydı yeni kanıt değildir.
-- F4 PARTIAL: 503 method-route matrisinin tümü yok. F5 PARTIAL: 2.265 kontrol/65 rota envanteri, browser 75/0/0; bütün kontroller bire bir çalıştırılmadı. F6 PARTIAL: izole güvenlik testleri geçti, canlı posture ve geniş hukuk/müşteri kabulü açık.
-- Migration freeze geçerli: yeni migration yok. Canlı/DB/Coolify/deploy/ödeme değişikliği ve push yapılmadı. Tam koşu yalnız bir kez çalıştırıldı.
-
+- WP-154 F4 company-unit hostile-selector test: **1/1 PASS**, xUnit **1.2999 min**, exit **0**. Foreign reads/writes were rejected; Company B row and audit stayed unchanged; viewer write returned 403. Test-only code change, no migration.
+- Latest full PostgreSQL suite remains WP-153 at source/test commit a51fefdcf97f6484854751f93a12f312134a9eb8: 328/328 PASS, 0 FAIL, xUnit 1.0631 hours, exit 0. WP-154 targeted run is additional and is not claimed as part of that full run.
+- This new continuation has **1/5** work packages. Continue with an independent migration-free F4/F5/F6 package; run one unfiltered full acceptance at the end.
+- F1 a–d BLOCKED: exact Nov 3 dump unavailable; no rehash, restore, first-122 ID parity, five-migration rehearsal, or row counts. Do not substitute another dump.
+- F4 PARTIAL: 503 method-route matrix incomplete. F5 PARTIAL: 2,265 controls / 65 routes, latest browser 75/0/0, all controls not individually executed. F6 PARTIAL: live security posture and broad legal/customer acceptance open.
+- No live/DB/Coolify/deploy/payment changes, no migration, no push.
 ## WP-149 — 2026-11-05 F4 company-security policy isolation
 
 - Focused isolated PostgreSQL test `Company_security_policy_ignores_forged_foreign_company_selectors`: **1/1 PASS**, 58.5243 xUnit seconds, runner exit 0. A's admin could not read/write B by forging URL `companyId` and `X-Company-Id`; B policy/session/audit unchanged. PostgreSQL timestamp expectations now use microsecond precision. Disposable DB/network were removed.

@@ -1646,17 +1646,13 @@
       "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete."
     },
     "goalContinuation": {
-      "status": "DONE_WITH_GATES_OPEN",
+      "status": "IN_PROGRESS",
       "completedWorkPackages": [
-        "WP-149",
-        "WP-150",
-        "WP-151",
-        "WP-152",
-        "WP-153"
+        "WP-154"
       ],
-      "packageCount": 5,
+      "packageCount": 1,
       "packageLimit": 5,
-      "finalRun": {
+      "priorFullPostgresRun": {
         "total": 328,
         "passed": 328,
         "failed": 0,
@@ -1665,7 +1661,7 @@
         "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8"
       },
       "f1StepsAtoD": "BLOCKED: Nov 3 dump not found locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
-      "f4Status": "PARTIAL; 503 method-route tenant matrix incomplete; WP-149/151/152 targeted tests and WP-153 full suite passed.",
+      "f4Status": "PARTIAL; WP-154 company-unit hostile-selector test passed; full 503 method-route tenant matrix incomplete.",
       "f5Status": "PARTIAL; 2265 controls / 65 routes; latest browser evidence 75 PASS / 0 FAIL / 0 BLOCKED; not all controls individually exercised.",
       "f6Status": "PARTIAL; isolated WP-099 security tests pass; live posture and wider security/legal/customer acceptance remain open.",
       "migrationAdded": false,
@@ -1673,7 +1669,7 @@
       "pushed": false,
       "paymentTouched": false,
       "coolifyTouched": false,
-      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches."
+      "nextWorkPackage": "WP-155: select an independent migration-free F4/F5/F6 acceptance gap; full PostgreSQL suite only at session end."
     },
     "wp152LabelSettingsTenantMatrix": {
       "status": "PASS",
@@ -1721,6 +1717,31 @@
         "docs/HANDOFF.md",
         "tests/reports/summary.json"
       ]
+    },
+    "wp154CompanyUnitHostileSelectorMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.2999,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_units_ignore_forged_foreign_company_selectors_for_reads_and_writes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "measuredProductCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+      "assertions": [
+        "A unit collection ignored forged companyId and X-Company-Id, kept A visible, and excluded B.",
+        "Foreign unit update/archive returned 404; creating under a foreign parent returned 400.",
+        "Viewer write returned 403; B unit row and foreign audit stayed unchanged; no forged A rows were created."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
     }
   },
   "historicalBaseline": {
