@@ -512,4 +512,4 @@ Deneme 1/3: initial assertion expected 200/empty items, but the fixture correctl
 
 Focused command `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Saved_asset_import_mappings_are_validated_and_private_to_their_owner'`: **1 total / 1 passed / 0 failed**, xUnit **1.2216 minutes**, runner exit **0**. A Company A user without Company B membership was rejected with 401 on `/api/employees/import-mappings`; same-company owner listing still returned its saved profile, while another same-company user saw none. Build succeeded with **4 existing ASP.NET deprecation warnings / 0 errors**. Compose removed disposable database `envantertr-security-acceptance-403d7cdad9-database-1` and network `envantertr-security-acceptance-403d7cdad9_acceptance`. Test-only change; no product code, schema/migration, live, deploy, payment, Coolify/environment/domain/routing, or push change.
 
-Durum: DONE. Deneme: 2/3. Commit: `779e8dc4d7cad9542ec8edee179e26bec8c0213e`.
+Durum: DONE. Deneme: 2/3. Commit: `23e513d368d423c7375347845812d67c0e27fba`.
