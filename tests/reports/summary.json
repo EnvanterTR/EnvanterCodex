@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T03:35:52Z",
+  "measuredAt": "2026-11-05T03:48:57Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "29f0cdf",
+    "commit": "602f4f3",
     "workingTreeCleanAtRun": false
   },
   "currentVerification": {
@@ -155,6 +155,21 @@
       "aggregatePassFailBlockedCounts": "Runner does not emit aggregate counts; no assertion failure surfaced before exit 0.",
       "scopeNote": "Curated Chromium workflows only; this is not individual acceptance of all 2,265 controls or every live-company role.",
       "productionWrites": false,
+      "status": "PASS"
+    },
+    "wp099SecretLogCaptureAcceptance": {
+      "measuredBaseCommit": "602f4f3",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "method": "A test-host ILoggerProvider was attached before startup; a warning-level canary proved capture was active. It then captured rendered and structured entries during set/reveal and verified the unique synthetic plaintext sentinel was absent. It does not require the endpoint to emit a route-specific log entry.",
+      "priorEncryptionAndRoleEvidence": "WP-104: Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped passed 1/1, including ciphertext at rest, tenant/license binding, viewer role and CSRF rejection, API/audit non-disclosure, reveal no-store, replace and clear.",
+      "failedAttempts": ["Initial build lacked Microsoft.Extensions.DependencyInjection for GetRequiredService.", "Information-level capture canary was filtered; changed canary to Warning and verified provider before capture."],
       "status": "PASS"
     },
     "apiRouteBoundaryAcceptance": {
