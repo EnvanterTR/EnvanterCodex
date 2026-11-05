@@ -239,3 +239,13 @@ WP-094 toplu çöp kutusu UI kabulini; WP-095 model EOL, WP-096/097 yıllık amo
 ## WP-099 — DONE — F0/C01 lisans anahtarı
 
 Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağlanmış ASP.NET Data Protection koruyucusuyla saklanır; liste/detay/export/audit yanıtında düz metin veya şifreli metin yer almaz. Yetkili reveal yanıtsız cache başlıklarıyla gelir ve görüntüleme audit edilir; detay penceresi kapanırken tarayıcı alanı temizlenir. İzole PostgreSQL 1/1, hosted Chromium PASS, Release build 0 warning/0 error ve EF snapshot parity PASS. Kaynak migration sayısı 127; son migration WP-099. Canlı migration/DB/deploy/ödeme/Coolify değişikliği yok. Kod commit `5b4e495` (`codex/f2-cloud-seat-limits-20261104`), yerel ve push edilmedi.
+## 2026-11-05 resumed checkpoint
+
+- Follow `AGENTS.md` R12: F1 migration freeze remains active. No EF migration was added or modified.
+- `docs/PROJECT-STATUS.md` has separate phase-gate and product-requirement tables; the A–O product catalog is 115 unique IDs. F14/F15 are gates, not catalog entries. Status columns are `Kodda / Canlıda / Kabul edildi`.
+- The canonical prompt copy at `C:\Users\Lenovo\Desktop\EnvanterTR\CODEX-HEDEF-4.md` matches `AGENTS.md` SHA-256 `661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE`.
+- 3 Nov backup hash/restore, exact 122 migration-ID parity, five-migration clone rehearsal, and before/after table counts remain BLOCKED because no authorized server-side Coolify shell/DB command channel is available. Do not copy customer data off-host. No production DB operation occurred.
+- Full disposable PostgreSQL acceptance run completed: 318 total; 317 PASS; 1 FAIL; exit 1. The failed reminder-email assertion is `Asset_return_email_reminders_include_overdue_and_upcoming_items_once_per_day_and_stay_tenant_scoped`, expected substring `License expiry` absent. Full output: `%TEMP%\envantertr-security-acceptance-20261105.log`.
+- Static verifiers: 85 total, 83 PASS / 2 FAIL: stale `Synthetic Invited Viewer` fixture expectation in `Verify-HostedCheckoutBrowserAcceptance.mjs`; native `confirm()` in `index.html:8614` for `Verify-NoNativeBrowserDialogs.mjs`.
+- Supplemental WP-099 app-log test did not reach a passing assertion after repeated targeted failures; experimental failing test was reverted. Existing encryption/tenant/role/CSRF WP-099 acceptance test remains. Record as BLOCKED; do not repeat the same logging approach.
+- No push, PR, deploy, live DB write, migration, payment, domain, environment variable, or wildcard change.
