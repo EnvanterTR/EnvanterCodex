@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T03:48:57Z",
+  "measuredAt": "2026-11-05T04:45:31Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "602f4f3",
-    "workingTreeCleanAtRun": false
+    "commit": "95293ffe7a5745ca49bad5e09ac9682e7eadf9c7",
+    "workingTreeCleanAtRun": false,
+    "note": "Final suite source/test files matched the measured commit; only docs/LEDGER.md had an in-progress WP-111 note at run start."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -101,18 +102,18 @@
       "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8"
     },
     "lastFullPostgresSecurityAcceptance": {
-      "repair": "WP-106 aligned the three reminder test license expirations with the supported seven-day threshold; the targeted reminder and threshold regression passed afterward.",
+      "status": "PASS",
+      "total": 320,
+      "passed": 320,
+      "failed": 0,
+      "exitCode": 0,
       "isolatedDatabase": true,
-      "measuredCommit": "b7a76c1b5a5c8024cee39db72795b8b00a4831e6",
-      "command": "deploy/testing/run-security-acceptance.ps1",
       "productionWrites": false,
-      "note": "Latest complete PostgreSQL security/tenant suite before WP-106: 319 total, 318 passed, 1 failed. The sole failure expected a license reminder for a five-day fixture, outside the supported 30/15/7/3/1-day thresholds. WP-106 changed only test fixtures and its focused regression passed 13/13; a complete suite on the updated code is pending this session's final run.",
-      "total": 319,
-      "failed": 1,
-      "passed": 318,
-      "failedTest": "Asset_return_email_reminders_include_overdue_and_upcoming_items_once_per_day_and_stay_tenant_scoped",
-      "runnerCleanup": "Temporary database containers and network removed",
-      "status": "FAIL"
+      "measuredCommit": "95293ffe7a5745ca49bad5e09ac9682e7eadf9c7",
+      "command": "deploy/testing/run-security-acceptance.ps1",
+      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed",
+      "failedTests": [],
+      "note": "WP-111 final full PostgreSQL security/tenant suite; Test Run Successful; 320 total, 320 passed, 0 failed. No live database, migration, deployment, payment, or push."
     },
     "latestTargetedReminderRegression": {
       "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
@@ -136,7 +137,14 @@
       "tests": 1,
       "passed": 1,
       "failed": 0,
-      "families": ["assets", "employees", "software licenses", "accessories", "consumables", "components"],
+      "families": [
+        "assets",
+        "employees",
+        "software licenses",
+        "accessories",
+        "consumables",
+        "components"
+      ],
       "checks": "For each family, direct foreign detail returns 404; normal collection excludes the foreign ID; collection with forged companyId=<other tenant> still includes the caller's own ID and excludes the foreign ID.",
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "status": "PASS"
@@ -169,7 +177,10 @@
       "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
       "method": "A test-host ILoggerProvider was attached before startup; a warning-level canary proved capture was active. It then captured rendered and structured entries during set/reveal and verified the unique synthetic plaintext sentinel was absent. It does not require the endpoint to emit a route-specific log entry.",
       "priorEncryptionAndRoleEvidence": "WP-104: Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped passed 1/1, including ciphertext at rest, tenant/license binding, viewer role and CSRF rejection, API/audit non-disclosure, reveal no-store, replace and clear.",
-      "failedAttempts": ["Initial build lacked Microsoft.Extensions.DependencyInjection for GetRequiredService.", "Information-level capture canary was filtered; changed canary to Warning and verified provider before capture."],
+      "failedAttempts": [
+        "Initial build lacked Microsoft.Extensions.DependencyInjection for GetRequiredService.",
+        "Information-level capture canary was filtered; changed canary to Warning and verified provider before capture."
+      ],
       "status": "PASS"
     },
     "apiRouteBoundaryAcceptance": {
