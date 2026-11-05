@@ -260,3 +260,13 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - Current static validators: 85/85 PASS. The two earlier failures were `Verify-HostedCheckoutBrowserAcceptance.mjs` (stale `Synthetic Invited Viewer` fixture expectation) and `Verify-NoNativeBrowserDialogs.mjs` (native `confirm()` at `index.html:8614`); both were corrected. UI inventory check remains 2,265 controls / 65 routes.
 - F1: 3 Nov dump hash matches its manifest (WP-101). Restore into isolated clone, compare 122 migration IDs, run five pending migrations in clone, and compare pre/post table counts remain BLOCKED because no authorized server-side restore/SQL command path is available. No customer dump was copied off-host.
 - No live DB write, migration, deploy, payment, environment/domain/wildcard edit, or push occurred. After WP-111, only status/ledger/handoff documentation changed; no tests were rerun. Local documentation closeout only.
+
+## 2026-11-05 continuation closeout
+
+- Completed the requested independent packages WP-112 through WP-116 (five packages total). R12 migration freeze remains in force; no new EF migration was created.
+- WP-113 F4: hostile foreign-tenant archive mutations for accessories, consumables, and components returned 404 and preserved rows/audit state; isolated PostgreSQL 1/1 PASS. F4 remains partial; this is not coverage of every write/file/report/export endpoint.
+- WP-114 F5: 85/85 static verifiers PASS, inventory 2,265 controls / 65 routes, hosted Chromium 75 PASS summaries / 0 FAIL / 0 BLOCKED, exit 0. Coverage is curated, not per-control. No current UI FAIL needed a code fix.
+- WP-115 F6: protected license-key encryption/role/CSRF and captured-log plaintext absence 2/2 PASS; role/audit verifiers PASS. Broad legal/KVKK and live acceptance remain open.
+- WP-116 full PostgreSQL run: `deploy/testing/run-security-acceptance.ps1`, exact source/test commit `58339bb8089d3b9d4132c50ae859b1dd787f53d7`, clean tree at run; 321 total / 321 passed / 0 failed, 50.5365 minutes, runner exit 0. Log: `%TEMP%\envantertr-security-acceptance-20261105-wp116.log`. Disposable test containers and network were removed. `summary.json` is updated; no tests were run after this suite, only documentation and `git diff --check`.
+- F1 restore, exact live/source migration-ID parity, five-migration clone rehearsal, and before/after table counts remain BLOCKED due lack of an authorized safe server-side restore/SQL path. Do not repeat old backup evidence as fresh proof.
+- No production DB write, migration, deployment, payment, Coolify config, environment/domain/wildcard change, or push occurred.

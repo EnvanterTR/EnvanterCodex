@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-05T04:45:31Z",
+  "measuredAt": "2026-11-05T06:26:06Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "95293ffe7a5745ca49bad5e09ac9682e7eadf9c7",
-    "workingTreeCleanAtRun": false,
-    "note": "Final suite source/test files matched the measured commit; only docs/LEDGER.md had an in-progress WP-111 note at run start."
+    "commit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
+    "workingTreeCleanAtRun": true,
+    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit; subsequent changes are documentation-only."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -103,17 +103,19 @@
     },
     "lastFullPostgresSecurityAcceptance": {
       "status": "PASS",
-      "total": 320,
-      "passed": 320,
+      "total": 321,
+      "passed": 321,
       "failed": 0,
       "exitCode": 0,
       "isolatedDatabase": true,
       "productionWrites": false,
-      "measuredCommit": "95293ffe7a5745ca49bad5e09ac9682e7eadf9c7",
+      "duration": "50.5365 minutes",
+      "measuredCommit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
       "command": "deploy/testing/run-security-acceptance.ps1",
       "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed",
       "failedTests": [],
-      "note": "WP-111 final full PostgreSQL security/tenant suite; Test Run Successful; 320 total, 320 passed, 0 failed. No live database, migration, deployment, payment, or push."
+      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp116.log",
+      "note": "WP-116 latest full PostgreSQL security/tenant suite; Test Run Successful; 321 total, 321 passed, 0 failed; runner and xUnit exit 0. No live database, migration, deployment, payment, or push."
     },
     "latestTargetedReminderRegression": {
       "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
