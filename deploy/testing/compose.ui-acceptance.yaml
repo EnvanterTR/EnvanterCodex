@@ -33,6 +33,9 @@ services:
 
   web:
     image: envantertr-product-dev-web:latest
+    build:
+      context: ../..
+      dockerfile: Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: 8080

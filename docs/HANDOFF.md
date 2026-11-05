@@ -278,3 +278,11 @@ Lisans anahtarı API/model/UI eklendi. Anahtar CompanyId ve LicenseId ile bağla
 - WP-116 remains the last unfiltered full run (321/321 PASS on `58339bb8089d3b9d4132c50ae859b1dd787f53d7`). WP-117/WP-118 targeted F4 tests were added after it; run the requested unfiltered PostgreSQL suite only at the end of this continuation.
 - WP-114 still reports 85/85 static verifiers and 75 curated hosted-browser summaries with zero FAIL/BLOCKED; there was no active UI failure identified for a product fix. Full per-control UI acceptance remains open.
 - Migration freeze is active. No production, migration, deployment, payment, Coolify, or push action has occurred.
+
+## 2026-11-05 continued work (WP-119)
+
+- WP-119 / F6 DONE: isolated platform MFA Chromium acceptance now builds the web image from current source, preventing stale-image results. Invalid Authenticator input returns retryable HTTP 400 (`twoFactorRequired`); the MFA field and secure-login action remain visible; a subsequent valid TOTP reaches the dashboard. `node --check` and `git diff --check` PASS; disposable browser/web/migrate/PostgreSQL stack and network/volumes were removed.
+- The last full PostgreSQL acceptance remains WP-116, 321/321 PASS on `58339bb8089d3b9d4132c50ae859b1dd787f53d7`. WP-117 through WP-119 occurred afterward, so run the unfiltered suite once at the end.
+- F1 steps b–d remain blocked: the Nov 3 dump cannot be safely fetched into the local isolated clone using available approved interfaces; the local clone predates the dump. No restore/parity/rehearsal/table-row proof is claimed. Step a had prior matching hash evidence (WP-101); step e's two static verifier failures are fixed (85/85, WP-107); step g is covered by WP-104/WP-110. Do not rerun blocked restore via the Coolify web terminal.
+- F4 remains partial after WP-113/WP-117/WP-118. F5 has no active UI FAIL from WP-114's curated sweep; the 2,265 controls were not individually exercised. F6 remains partial despite the targeted encryption/log and MFA retry evidence; broader KVKK/legal/live-company acceptance remains open.
+- No production database writes, migration, deployment, payment action, Coolify configuration change, domain/wildcard edit, or push occurred.

@@ -6,7 +6,7 @@
     "branch": "codex/f2-cloud-seat-limits-20261104",
     "commit": "58339bb8089d3b9d4132c50ae859b1dd787f53d7",
     "workingTreeCleanAtRun": true,
-    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit. WP-117/WP-118 added tenant-acceptance assertions afterward; a final full run for the current continuation is pending."
+    "note": "WP-116 full PostgreSQL suite ran with a clean tree at this exact commit. WP-117/WP-118 added tenant-acceptance assertions, and WP-119 added isolated MFA browser retry acceptance afterward; a final full run for the current continuation is pending."
   },
   "currentVerification": {
     "releaseBuild": {
@@ -805,6 +805,23 @@
       "isolatedDatabase": true,
       "productionWrites": false,
       "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed"
+    },
+    "f6PlatformMfaRetryAcceptance": {
+      "status": "PASS",
+      "measuredBaseCommit": "765af6ca570e09062557c5c53b4fcbadee128a4f",
+      "browser": "Chromium",
+      "command": "deploy/testing/run-platform-mfa-browser-acceptance.ps1",
+      "assertions": [
+        "The isolated stack builds web and browser images from the current checkout.",
+        "An invalid Authenticator challenge reaches the login endpoint and returns HTTP 400 with twoFactorRequired=true.",
+        "The MFA field and secure-login action remain visible after the rejected code.",
+        "A subsequent valid TOTP reaches the platform dashboard."
+      ],
+      "productionWrites": false,
+      "productionCodeChanged": false,
+      "runnerCleanup": "Temporary PostgreSQL/web/migrate/browser containers, isolated network, and test volumes removed",
+      "syntaxAndDiff": "node --check and git diff --check PASS",
+      "scopeNote": "This proves the retry UX in the source-built isolated browser stack; it is not live-company MFA acceptance."
     }
   },
   "historicalBaseline": {
