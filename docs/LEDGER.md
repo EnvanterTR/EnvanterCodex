@@ -537,3 +537,11 @@ Deneme: **1/3**, PASS.
 `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived'`: **1 total / 1 passed / 0 failed**, xUnit **1.1282 minutes**, runner exit **0**. Forged liste Firma A kategorisini içerdi, Firma B ID/adını dışladı. Yabancı PATCH ve archive POST **404** verdi. DB doğrulaması yabancı adı ve `IsArchived=false` durumunu korudu, yabancı audit oluşmadı. Mevcut linked-accessory rename/archive akışı da PASS kaldı. Build **0 errors / 4 existing warnings**; disposable DB/network kaldırıldı.
 
 Deneme: **1/3**, PASS.
+
+## WP-163 — DONE — F5 current UI inventory and static verifier reconciliation
+
+**Bitti tanımı:** Güncel kaynakta UI envanteri kontrolünü ve tüm `Verify-*.mjs` doğrulayıcılarını çalıştır; kesin sayıları kaydet. Ürün/UI değişikliği yoksa yeni davranış uydurma. Migration/live/deploy/payment/Coolify/push yok.
+
+`node tools/Generate-UiInventory.mjs --check`: PASS; **2,265 controls / 65 routes / 10 menu groups / 53 links / 958 buttons / 113 forms / 627 inputs / 204 selects / 42 textareas / 109 modals / 5 tabs / 79 tables**. Ardından sıralı `tools/Verify-*.mjs` koşusu: **85 total / 85 passed / 0 failed**, exit 0. Envanter `docs/ui-inventory.md` ile eşleşti. Bu statik/sözleşme kanıtıdır; bütün 2.265 kontrolün tek tek tarayıcı kabulü değildir, F5 PARTIAL kalır.
+
+Deneme: **1/3**, PASS.

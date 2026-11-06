@@ -1970,6 +1970,42 @@
       "coolifyTouched": false,
       "pushed": false,
       "f4Status": "PARTIAL"
+    },
+    "wp163UiInventoryAndStaticVerifiers": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "uiInventory": {
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2265,
+        "routes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79
+      },
+      "sourceVerifiers": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "command": "PowerShell ordered loop over tools/Verify-*.mjs"
+      },
+      "allControlsIndividuallyExecuted": false,
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f5Status": "PARTIAL"
     }
   },
   "historicalBaseline": {

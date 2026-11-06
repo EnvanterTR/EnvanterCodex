@@ -495,3 +495,7 @@ Customer API installed-software snapshot authorization/tenant evidence is DONE. 
 ## 2026-11-06 WP-162 handoff
 
 Accessory-category tenant matrix extension is DONE: focused **1/1 PASS**, xUnit **1.1282 min**, runner exit 0. Forged list excluded foreign category; foreign rename/archive were 404; foreign row/audit stayed unchanged; existing linked-accessory behavior passed. Disposable DB/network removed. Test-only; no migration/live/deploy/payment/Coolify/push. Next package is current UI/static verifier reconciliation, followed by exactly one unfiltered PostgreSQL run.
+
+## 2026-11-06 WP-163 handoff
+
+Current UI/static reconciliation is DONE. `Generate-UiInventory --check`: **2,265 controls / 65 routes**, exact source match. All **85/85** `Verify-*.mjs` checks passed, 0 failed. No application/UI source changed. F5 remains PARTIAL because inventory/static contracts do not individually execute all 2,265 controls. Next and final slot in this continuation: one unfiltered isolated PostgreSQL run.
