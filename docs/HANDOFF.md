@@ -491,3 +491,7 @@ Installed-software inventory tenant test is DONE: focused isolated PostgreSQL **
 ## 2026-11-06 WP-161 handoff
 
 Customer API installed-software snapshot authorization/tenant evidence is DONE. Focused `Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable` run: **1/1 PASS**, xUnit **1.1723 min**, runner exit 0. `assets:read` write=403; `assets:write` own snapshot persists and audits; foreign asset write=404 with no foreign row/audit. Disposable DB/network removed. Test-only; no migration/live/deploy/payment/Coolify/push. F4/F6 remain PARTIAL.
+
+## 2026-11-06 WP-162 handoff
+
+Accessory-category tenant matrix extension is DONE: focused **1/1 PASS**, xUnit **1.1282 min**, runner exit 0. Forged list excluded foreign category; foreign rename/archive were 404; foreign row/audit stayed unchanged; existing linked-accessory behavior passed. Disposable DB/network removed. Test-only; no migration/live/deploy/payment/Coolify/push. Next package is current UI/static verifier reconciliation, followed by exactly one unfiltered PostgreSQL run.

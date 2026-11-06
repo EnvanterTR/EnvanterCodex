@@ -18867,15 +18867,36 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var categoryId = categoryPayload.RootElement.GetProperty("id").GetGuid();
 
         var foreignCategoryId = Guid.NewGuid();
+        var foreignCategoryName = $"FOREIGN-{_userId:N}";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.AccessoryCategories.Add(new AccessoryCategory { Id = foreignCategoryId, CompanyId = _otherCompanyId, Name = $"FOREIGN-{_userId:N}" });
+            db.AccessoryCategories.Add(new AccessoryCategory { Id = foreignCategoryId, CompanyId = _otherCompanyId, Name = foreignCategoryName });
             await db.SaveChangesAsync();
+        }
+        using (var forgedList = await SendAsAdminAsync($"/api/accessory-categories?companyId={_otherCompanyId:D}"))
+        {
+            var body = await forgedList.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, forgedList.StatusCode);
+            Assert.Contains(categoryId.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignCategoryId.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignCategoryName, body, StringComparison.Ordinal);
         }
         using var crossTenantRename = await SendAsUserAsync(HttpMethod.Patch, $"/api/accessory-categories/{foreignCategoryId}", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Cross tenant" }), requestToken, antiforgeryCookie, role: "admin");
         Assert.Equal(HttpStatusCode.NotFound, crossTenantRename.StatusCode);
+        using var crossTenantArchive = await SendAsUserAsync(HttpMethod.Post, $"/api/accessory-categories/{foreignCategoryId}/archive", _userId, _companyId,
+            new StringContent("{}", Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie, role: "admin");
+        Assert.Equal(HttpStatusCode.NotFound, crossTenantArchive.StatusCode);
+
+        await using (var verifyForeignScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyForeignScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreignCategory = await db.AccessoryCategories.AsNoTracking().SingleAsync(x => x.Id == foreignCategoryId);
+            Assert.Equal(foreignCategoryName, foreignCategory.Name);
+            Assert.False(foreignCategory.IsArchived);
+            Assert.False(await db.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == foreignCategoryId));
+        }
 
         using var createAccessory = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
             System.Net.Http.Json.JsonContent.Create(new

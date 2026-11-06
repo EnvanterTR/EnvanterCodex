@@ -1942,6 +1942,34 @@
       "pushed": false,
       "f4Status": "PARTIAL",
       "f6Status": "PARTIAL"
+    },
+    "wp162AccessoryCategoryTenantMatrix": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1282,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "A forged companyId list contained Company A's category and excluded Company B's ID and name.",
+        "Foreign rename and archive requests returned HTTP 404.",
+        "The Company B row remained active and unchanged and received no audit entry."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL"
     }
   },
   "historicalBaseline": {
