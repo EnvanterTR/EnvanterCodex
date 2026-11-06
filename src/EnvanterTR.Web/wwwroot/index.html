@@ -4271,7 +4271,7 @@
         button.addEventListener('click', event => { event.stopPropagation(); applyAssetRelationshipFilter(type, value, label); });
         return button;
       }
-      const queryKey = ({ category: 'categoryId', brand: 'brandId', model: 'modelId', location: 'location' })[type];
+      const queryKey = ({ category: 'categoryId', brand: 'brandId', model: 'modelId', location: 'location', status: 'status' })[type];
       if (!queryKey) return document.createTextNode(label);
       const url = new URL('/', location.origin); url.searchParams.set(queryKey, value); link.href = `${url.pathname}${url.search}`;
       link.setAttribute('aria-label', `${label} ile ilişkili varlıkları listele`);
@@ -4279,14 +4279,43 @@
         if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
         event.preventDefault(); event.stopPropagation();
         applyAssetRelationshipFilter(type, value, label);
-        const filters = new URLSearchParams();
-        if ($('#assetCategoryFilter').value) filters.set('categoryId', $('#assetCategoryFilter').value);
-        if ($('#assetBrandFilter').value) filters.set('brandId', $('#assetBrandFilter').value);
-        if ($('#assetModelFilter').value) filters.set('modelId', $('#assetModelFilter').value);
-        if (assetLocationFilter) filters.set('location', assetLocationFilter);
-        history.pushState(null, '', `/${filters.size ? `?${filters}` : ''}`);
+        pushAssetRelationshipUrl(type);
       });
       return link;
+    }
+    function pushAssetRelationshipUrl(type) {
+      const filters = new URLSearchParams();
+      if ($('#assetCategoryFilter').value) filters.set('categoryId', $('#assetCategoryFilter').value);
+      if ($('#assetBrandFilter').value) filters.set('brandId', $('#assetBrandFilter').value);
+      if ($('#assetModelFilter').value) filters.set('modelId', $('#assetModelFilter').value);
+      if (assetLocationFilter) filters.set('location', assetLocationFilter);
+      if (type === 'status' && $('#assetStatusFilter').value) filters.set('status', $('#assetStatusFilter').value);
+      history.pushState(null, '', `/${filters.size ? `?${filters}` : ''}`);
+    }
+    const assetDrillQueryKeys = { category: 'categoryId', brand: 'brandId', model: 'modelId', location: 'location', status: 'status' };
+    function assetDrillHtml(label, type, value) {
+      const text = String(label ?? '').trim();
+      if (!text || !value || !assetDrillQueryKeys[type]) return escapeHtml(text || '—');
+      const url = new URL('/', location.origin); url.searchParams.set(assetDrillQueryKeys[type], value);
+      return `<a class="text-link relationship-link asset-drill-link" href="${escapeHtml(url.pathname + url.search)}" data-asset-drill="${type}" data-asset-drill-value="${escapeHtml(value)}" data-asset-drill-label="${escapeHtml(text)}">${escapeHtml(text)}</a>`;
+    }
+    document.addEventListener('click', event => {
+      const link = event.target.closest?.('a[data-asset-drill]');
+      if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault(); event.stopPropagation();
+      link.closest('dialog[open]')?.close();
+      applyAssetRelationshipFilter(link.dataset.assetDrill, link.dataset.assetDrillValue, link.dataset.assetDrillLabel);
+      pushAssetRelationshipUrl(link.dataset.assetDrill);
+    });
+    function decorateAssetReferenceRow(row, item, { tagIndex = -1, locationIndex = -1, employeeIndex = -1 } = {}) {
+      const cells = row.children;
+      if (tagIndex >= 0 && cells[tagIndex] && item.id && item.assetTag) { const open = document.createElement('button'); open.type = 'button'; open.className = 'text-link relationship-link'; open.textContent = item.assetTag; open.addEventListener('click', event => { event.stopPropagation(); openAsset(item.id).catch(error => notify(error.message)); }); cells[tagIndex].replaceChildren(open); }
+      if (locationIndex >= 0 && cells[locationIndex] && item.location) cells[locationIndex].replaceChildren(assetFilterLink(item.location, 'location', item.location));
+      if (employeeIndex >= 0 && cells[employeeIndex] && item.employeeId && item.employeeName) cells[employeeIndex].replaceChildren(assetFilterLink(item.employeeName, 'employee', item.employeeId));
+    }
+    function modelIdByName(name) {
+      const matches = (lookupCache.models || []).filter(model => model.name === name);
+      return matches.length === 1 ? matches[0].id : '';
     }
     function inventoryFilterLink(label, value, inputId) {
       const text = String(label ?? '').trim();
@@ -4394,9 +4423,9 @@
       const tagCell = document.createElement('td'), tagLink = document.createElement('button'); tagLink.type = 'button'; tagLink.className = 'text-link relationship-link'; tagLink.textContent = asset.assetTag; tagLink.title = asset.assetTag; tagLink.addEventListener('click', event => { event.stopPropagation(); openAsset(asset.id).catch(error => notify(error.message)); }); tagCell.append(tagLink);
       const serialCell = cell(asset.serialNumber), modelCell = document.createElement('td'); if (asset.modelId && asset.modelName) modelCell.append(assetFilterLink(asset.modelName, 'model', asset.modelId)); else modelCell.textContent = '—'; const modelNumberCell = cell(asset.modelNumber);
       const categoryCell = document.createElement('td'); if (asset.categoryId) categoryCell.append(assetFilterLink(asset.categoryName || 'Kategori', 'category', asset.categoryId)); else categoryCell.textContent = asset.categoryName || '—';
-      const statusCell = document.createElement('td'), statusPill = document.createElement('span'); applyAssetStatusPill(statusPill, asset.status); statusCell.append(statusPill);
+      const statusCell = document.createElement('td'), statusPill = document.createElement('span'); applyAssetStatusPill(statusPill, asset.status); if (asset.status) { const statusLink = assetFilterLink('', 'status', asset.status); statusLink.textContent = ''; statusLink.append(statusPill); statusLink.setAttribute('aria-label', `${statusPill.textContent} durumundaki varlıkları listele`); statusCell.append(statusLink); } else statusCell.append(statusPill);
       const employeeCell = document.createElement('td'); if (asset.assignedEmployeeId && asset.assignedEmployeeName) employeeCell.append(assetFilterLink(asset.assignedEmployeeName, 'employee', asset.assignedEmployeeId)); else employeeCell.textContent = '—';
-      const employeeNumberCell = cell(asset.employeeNumber), locationCell = document.createElement('td'); if (asset.companyUnitName) { const unitLabel = document.createElement('div'); unitLabel.className = 'muted'; unitLabel.textContent = asset.companyUnitName; unitLabel.title = translateUiText('Şirket birimi'); locationCell.append(unitLabel); } if (asset.location) locationCell.append(assetFilterLink(asset.location, 'location', asset.location)); else if (!asset.companyUnitName) locationCell.textContent = '—'; const defaultLocationCell = cell(asset.defaultLocation), manufacturerCell = cell(asset.brandName), purchaseCostCell = cell(asset.purchaseCost == null ? '—' : formatRecordedCurrency(asset.purchaseCost, asset.currency)), currentValueCell = cell(asset.currentValue == null ? '—' : formatRecordedCurrency(asset.currentValue, asset.currency)), checkoutCell = document.createElement('td'); const checkoutButton = document.createElement('button'); checkoutButton.type = 'button'; checkoutButton.className = 'btn small'; checkoutButton.textContent = translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış'); checkoutButton.disabled = !canWriteAssets() || asset.status === 'Archived'; checkoutButton.title = asset.assignedEmployeeId ? translateUiText('Zimmeti iade al') : translateUiText('Çalışana zimmetle'); checkoutButton.addEventListener('click', async event => { event.stopPropagation(); try { await openAsset(asset.id); const button = asset.assignedEmployeeId ? $('#returnAssetButton') : $('#assignAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } }); checkoutCell.append(checkoutButton);
+      const employeeNumberCell = cell(asset.employeeNumber), locationCell = document.createElement('td'); if (asset.companyUnitName) { const unitLabel = document.createElement('div'); unitLabel.className = 'muted'; unitLabel.textContent = asset.companyUnitName; unitLabel.title = translateUiText('Şirket birimi'); locationCell.append(unitLabel); } if (asset.location) locationCell.append(assetFilterLink(asset.location, 'location', asset.location)); else if (!asset.companyUnitName) locationCell.textContent = '—'; const defaultLocationCell = document.createElement('td'), manufacturerCell = document.createElement('td'), purchaseCostCell = cell(asset.purchaseCost == null ? '—' : formatRecordedCurrency(asset.purchaseCost, asset.currency)), currentValueCell = cell(asset.currentValue == null ? '—' : formatRecordedCurrency(asset.currentValue, asset.currency)), checkoutCell = document.createElement('td'); const checkoutButton = document.createElement('button'); checkoutButton.type = 'button'; checkoutButton.className = 'btn small'; checkoutButton.textContent = translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış'); checkoutButton.disabled = !canWriteAssets() || asset.status === 'Archived'; checkoutButton.title = asset.assignedEmployeeId ? translateUiText('Zimmeti iade al') : translateUiText('Çalışana zimmetle'); checkoutButton.addEventListener('click', async event => { event.stopPropagation(); try { await openAsset(asset.id); const button = asset.assignedEmployeeId ? $('#returnAssetButton') : $('#assignAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } }); checkoutCell.append(checkoutButton);
       const actions = document.createElement('td'); actions.className = 'asset-row-actions'; const actionButton = (label, handler, primary = false) => { const button = document.createElement('button'); button.type = 'button'; button.className = primary ? 'btn small primary' : 'btn small'; button.textContent = label; button.addEventListener('click', event => { event.stopPropagation(); handler(); }); actions.append(button); };
       const actionGroup = document.createElement('div'); actionGroup.className = 'asset-action-group'; actions.replaceChildren(actionGroup);
       const icons = { view: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4 4"></path></svg>', clone: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></svg>', assign: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>', return: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6"></path></svg>', audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l3 3v13H5V4h3zM9 12l2 2 4-4M9 8h4"></path></svg>', label: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h16v4M4 16v4h16v-4M6 8h12v8H6zM9 11h6"></path></svg>', edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16zM13.5 6.5l4 4"></path></svg>', archive: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"></path></svg>' };
@@ -4410,6 +4439,8 @@
         action(translateUiText('Varlığı düzenle'), 'edit', 'edit', async () => { try { await openAsset(asset.id); $('#editAssetButton').click(); } catch (error) { notify(error.message); } });
         action(translateUiText('Varlığı arşive taşı'), 'archive', 'archive', async () => { try { await openAsset(asset.id); const button = $('#trashAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } });
       }
+      if (asset.defaultLocation) defaultLocationCell.append(assetFilterLink(asset.defaultLocation, 'location', asset.defaultLocation)); else defaultLocationCell.textContent = '—';
+      if (asset.brandId && asset.brandName) manufacturerCell.append(assetFilterLink(asset.brandName, 'brand', asset.brandId)); else manufacturerCell.textContent = asset.brandName || '—';
       row.append(selectCell, idCell, companyCell, nameCell, imageCell, tagCell, serialCell, modelCell, modelNumberCell, categoryCell, statusCell, employeeCell, employeeNumberCell, locationCell, defaultLocationCell, manufacturerCell, purchaseCostCell, currentValueCell, checkoutCell, actions);
        row.addEventListener('click', () => openAsset(asset.id).catch(error => notify(error.message)));
        row.addEventListener('contextmenu', event => openAssetContextMenu(row, event));
@@ -4475,19 +4506,22 @@
     }
     function applyAssetRelationshipFilter(type, value, label) {
       if (!value) return;
+      if (type !== 'department') { $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; }
+      if (type === 'status') $('#assetStatusFilter').value = assetStatusLabelMap[value] ? value : '';
       if (type === 'category') $('#assetCategoryFilter').value = value;
       if (type === 'brand') { $('#assetBrandFilter').value = value; $('#assetModelFilter').value = ''; populateAssetModelFilter(); }
       if (type === 'model') { const model = lookupCache.models.find(item => item.id === value); if (model?.brandId) $('#assetBrandFilter').value = model.brandId; if (model?.categoryId) $('#assetCategoryFilter').value = model.categoryId; populateAssetModelFilter(value); $('#assetModelFilter').value = value; }
       if (type === 'employee') { assetEmployeeFilterId = value; assetEmployeeFilterName = label; }
       if (type === 'location') assetLocationFilter = label;
-      if (type === 'department') { $('#employeeDepartmentFilter').value = label; loadEmployees(1).catch(error => notify(error.message)); return; }
+      if (type === 'department') { $('#employeeDepartmentFilter').value = label; const employeePage = document.querySelector('.sub-item[data-page="Çalışan kayıtları"]'); if (employeePage && !employeePage.classList.contains('active')) employeePage.click(); else loadEmployees(1).catch(error => notify(error.message)); return; }
       updateAssetRelationFilter();
       const inventoryPage = document.querySelector('.sub-item[data-page="Varlıklar"]');
       if (inventoryPage) inventoryPage.click(); else loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
     }
     function restoreAssetRelationshipFiltersFromUrl() {
       const params = new URL(location.href).searchParams;
-      const categoryId = params.get('categoryId'), brandId = params.get('brandId'), modelId = params.get('modelId'), locationName = params.get('location');
+      const categoryId = params.get('categoryId'), brandId = params.get('brandId'), modelId = params.get('modelId'), locationName = params.get('location'), statusValue = params.get('status');
+      if (statusValue && assetStatusLabelMap[statusValue]) $('#assetStatusFilter').value = statusValue;
       if (categoryId && lookupCache.categories.some(item => item.id === categoryId)) $('#assetCategoryFilter').value = categoryId;
       if (brandId && lookupCache.brands.some(item => item.id === brandId)) $('#assetBrandFilter').value = brandId;
       if (modelId && lookupCache.models.some(item => item.id === modelId)) {
@@ -4503,7 +4537,7 @@
       assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
       restoreAssetRelationshipFiltersFromUrl();
       const params = new URL(location.href).searchParams;
-      if (['categoryId','brandId','modelId','location'].some(key => params.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click();
+      if (['categoryId','brandId','modelId','location','status'].some(key => params.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click();
       else loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
     });
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
@@ -5870,7 +5904,28 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const values = directoryKind === 'departments'
            ? [item.locationName || '—', item.managerName || (item.managerEmployeeId ? 'Pasif çalışan' : 'Atanmamış'), item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
           : [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, item.accessoryCount, item.accessoryAssignmentCount, item.consumableCount, item.componentCount];
-        for (const value of values) { const cell = document.createElement('td'); cell.textContent = typeof value === 'number' ? fmt.format(value) : value; row.append(cell); }
+        const locationCountFamilies = ['assets', 'assets', 'assets', 'assets', 'accessories', 'accessoryAssignments', 'consumables', 'components'];
+        const locationCountStatuses = ['', 'Deployed', 'Available', 'Maintenance'];
+        values.forEach((value, index) => {
+          const cell = document.createElement('td'), text = typeof value === 'number' ? fmt.format(value) : value;
+          const drillable = typeof value === 'number' && value > 0 && (directoryKind === 'locations' || index >= 2);
+          if (!drillable) { cell.textContent = text; row.append(cell); return; }
+          const countLink = document.createElement('button'); countLink.type = 'button'; countLink.className = 'text-link relationship-link'; countLink.textContent = text;
+          if (directoryKind === 'departments') {
+            countLink.setAttribute('aria-label', `${directoryName} ${translateUiText('departmanındaki çalışanları listele')}`);
+            countLink.addEventListener('click', () => { $('#employeeDepartmentFilter').value = item.name; $('[data-page="Çalışan kayıtları"]').click(); });
+          } else {
+            const status = locationCountStatuses[index] || '';
+            countLink.setAttribute('aria-label', `${item.name} ${translateUiText('konumundaki kayıtları listele')}`);
+            countLink.addEventListener('click', () => {
+              if (!status) { openDirectoryLocation(item, locationCountFamilies[index]); return; }
+              $('#assetWarrantyFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
+              $('#assetStatusFilter').value = status; assetLocationFilter = item.name; assetEmployeeFilterId = ''; assetEmployeeFilterName = '';
+              updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click();
+            });
+          }
+          cell.append(countLink); row.append(cell);
+        });
         if (directoryKind === 'locations') {
           const unitCell = document.createElement('td'), defaultCell = document.createElement('td'), managerCell = document.createElement('td');
           unitCell.textContent = item.isCatalogEntry ? (item.companyUnitName || '—') : '—';
@@ -6907,8 +6962,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const tag = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = item.assetTag; open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); tag.append(open);
         const name = document.createElement('td'); name.textContent = item.name;
         const state = document.createElement('td'), pill = document.createElement('span'); applyAssetStatusPill(pill, item.status); state.append(pill);
-        const location = document.createElement('td'); location.textContent = item.location || '—';
-        const employee = document.createElement('td'); employee.textContent = item.employeeName || '—';
+        const location = document.createElement('td'); if (item.location) location.append(assetFilterLink(item.location, 'location', item.location)); else location.textContent = '—';
+        const employee = document.createElement('td'); if (item.employeeId && item.employeeName) employee.append(assetFilterLink(item.employeeName, 'employee', item.employeeId)); else employee.textContent = item.employeeName || '—';
         row.append(date, tag, name, state, location, employee); rows.append(row);
       }
       warrantyReportPage = result.page || 1;
@@ -7071,6 +7126,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const row = document.createElement('tr');
         const values = [new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.occurredAt)), entry.assetTag || 'Silinmiş varlık', eventLabels[entry.eventType] || entry.eventType, entry.employeeName || '—', entry.actorName || 'Sistem', entry.details || '—'];
         for (const value of values) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }
+        if (entry.employeeId && entry.employeeName && row.children[3]) row.children[3].replaceChildren(assetFilterLink(entry.employeeName, 'employee', entry.employeeId));
         if (entry.assetId && canReadAssets()) { row.tabIndex = 0; row.setAttribute('role','button'); row.setAttribute('aria-label',`${entry.assetTag || 'Varlık'} ayrıntısını aç`); const open=()=>openAsset(entry.assetId); row.addEventListener('click',open); row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open();}}); }
         rows.append(row);
       }
@@ -7106,10 +7162,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         if (photoUrl) { const image = document.createElement('img'); image.src = photoUrl; image.alt = `${item.Name || item.name} ${translateUiText('ürün fotoğrafı')}`; image.width = 42; image.height = 36; image.loading = 'lazy'; image.decoding = 'async'; image.style.cssText = 'object-fit:contain;background:#fff;border-radius:5px;vertical-align:middle;margin-right:8px'; image.dataset.zoomable = ''; image.addEventListener('error', () => image.remove(), { once: true }); asset.append(image); }
         const assetLink = document.createElement('button'); assetLink.type = 'button'; assetLink.className = 'text-link'; assetLink.textContent = `${item.assetTag} · ${item.name}`; assetLink.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message)));
         const tag = document.createElement('small'); tag.className = 'asset-tag'; tag.textContent = item.assetTag; asset.append(assetLink, tag);
-        const model = document.createElement('td'); model.textContent = item.model || '—';
+        const model = document.createElement('td'); const assignmentModelId = item.modelId || modelIdByName(item.model); if (item.model && assignmentModelId) model.append(assetFilterLink(item.model, 'model', assignmentModelId)); else model.textContent = item.model || '—';
         const employee = document.createElement('td'), employeeLink = document.createElement('button'); employeeLink.type = 'button'; employeeLink.className = 'text-link'; employeeLink.textContent = item.employeeName; employeeLink.addEventListener('click', () => openEmployee(item.employeeId).catch(error => notify(error.message))); employee.append(employeeLink); const employeeNumber = document.createElement('small'); employeeNumber.className = 'asset-tag'; employeeNumber.textContent = item.employeeNumber; employee.append(employeeNumber);
-        const department = document.createElement('td'); department.textContent = item.department || '—';
-        const location = document.createElement('td'); location.textContent = item.location || '—';
+        const department = document.createElement('td'); if (item.department) department.append(assetFilterLink(item.department, 'department', item.department)); else department.textContent = '—';
+        const location = document.createElement('td'); if (item.location) location.append(assetFilterLink(item.location, 'location', item.location)); else location.textContent = '—';
         const expected = document.createElement('td'); expected.textContent = item.expectedReturnOn ? formatCheckoutDate(item.expectedReturnOn) : translateUiText('Tarih belirtilmemiş'); if (item.expectedReturnOn && item.expectedReturnOn < result.asOf) expected.className = 'pill warn';
         const action = document.createElement('td'), actions = document.createElement('div'); actions.className = 'row-actions';
         const open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = translateUiText('Ayrıntıyı aç'); open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); actions.append(open);
@@ -7209,6 +7265,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           const audited = new Intl.DateTimeFormat(selectedLocale,{dateStyle:'medium',timeStyle:'short'}).format(new Date(item.lastAuditedAt));
           const values = [audited,item.assetTag,item.name,item.location||'Konum belirtilmemiş',item.employeeName||'Zimmet dışı',translateUiText(item.outcome==='Passed'?'Uygun':'Uygun değil / bulgu var')];
           for(const value of values){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}
+          decorateAssetReferenceRow(row, item, { tagIndex: 1, locationIndex: 3, employeeIndex: 4 });
           const actionCell=document.createElement('td'),open=document.createElement('button');open.type='button';open.className='btn small';open.textContent='Varlığı aç';open.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));actionCell.append(open);row.append(actionCell);
           rows.append(row);
           if(item.details){const details=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=7;cell.className='muted';cell.textContent=item.details;details.append(cell);rows.append(details);}
@@ -7218,6 +7275,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const planDate = item.nextAuditOn ? new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${item.nextAuditOn}T12:00:00Z`)) : 'Planlanmadı';
         const values = [planDate, item.assetTag, item.name, item.location || 'Konum belirtilmemiş', item.employeeName || 'Zimmet dışı', item.nextAuditOn ? overdue ? 'Gecikti' : 'Planlandı' : 'Plan gerekli'];
         for (const value of values) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }
+        decorateAssetReferenceRow(row, item, { tagIndex: 1, locationIndex: 3, employeeIndex: 4 });
         const actionCell = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = translateUiText('Ayrıntıyı aç'); open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); actionCell.append(open);
         if (canWriteAssets()) {
           const recordAudit = document.createElement('button'); recordAudit.type = 'button'; recordAudit.className = 'btn small primary'; recordAudit.textContent = translateUiText('Denetimi kaydet');
@@ -10719,7 +10777,10 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       const host = $('#catalogRows'); host.replaceChildren();
       if (!rows.length) { host.innerHTML = `<tr><td colspan="4">${translateUiText(catalogRows.length ? 'Aramayla eşleşen kayıt bulunamadı.' : 'Henüz tanım yok. Yukarıdan ilk kaydı ekleyin.')}</td></tr>`; return; }
       for (const item of rows) {
-        const usage = catalogKind === 'brands' ? `${fmt.format(item.assetCount)} ${translateUiText('varlık')} · ${fmt.format(item.modelCount)} ${translateUiText('model')}` : catalogKind === 'categories' ? `${fmt.format(item.assetCount)} ${translateUiText('varlık')} · ${fmt.format(item.modelCount || 0)} ${translateUiText('model')}` : `${fmt.format(item.assetCount)} ${translateUiText('varlık')}`;
+        const catalogDrillType = ({ brands: 'brand', categories: 'category', models: 'model' })[catalogKind];
+        const assetUsageText = `${fmt.format(item.assetCount)} ${translateUiText('varlık')}`;
+        const assetUsage = item.assetCount > 0 && catalogDrillType ? assetDrillHtml(assetUsageText, catalogDrillType, item.id) : escapeHtml(assetUsageText);
+        const usage = catalogKind === 'brands' ? `${assetUsage} · ${fmt.format(item.modelCount)} ${translateUiText('model')}` : catalogKind === 'categories' ? `${assetUsage} · ${fmt.format(item.modelCount || 0)} ${translateUiText('model')}` : assetUsage;
         const relation = catalogKind === 'models' ? `<button class="btn small" data-model-details="${item.id}" type="button">${translateUiText('Ayrıntılar')}</button> ${item.hasPhoto ? `<img src="/api/models/${item.id}/photo" alt="${escapeHtml(item.name)} model görseli" style="width:54px;height:42px;object-fit:contain;vertical-align:middle;margin-right:8px">` : ''}${escapeHtml(item.brandName || translateUiText('Marka belirtilmedi'))} · ${escapeHtml(item.categoryName || translateUiText('Kategori belirtilmedi'))} ${canWriteAssets() ? `<label class="muted" style="display:block;margin-top:5px">${translateUiText('Model numarası')}<input data-model-number="${item.id}" maxlength="120" value="${escapeHtml(item.modelNumber || '')}" aria-label="${escapeHtml(item.name)} model numarası"></label>` : item.modelNumber ? `<div class="muted">${translateUiText('Model numarası')}: ${escapeHtml(item.modelNumber)}</div>` : ''} <div class="muted" style="margin-top:5px"><button class="btn small" data-model-attachments="${item.id}" type="button">${translateUiText('Teknik dosyalar')} (${fmt.format(item.attachmentCount || 0)})</button></div> ${canManageSettings() ? `<div class="muted" style="margin-top:5px"><label>${translateUiText('Model görseli')} <input data-model-photo="${item.id}" type="file" accept="image/png,image/jpeg,image/webp"></label><button class="btn small" data-model-photo-save="${item.id}" type="button">${translateUiText('Görseli yükle')}</button></div><div class="model-depreciation-editor"><label>${translateUiText('Ömür (ay)')}<input data-dep-months="${item.id}" type="number" min="1" max="3600" value="${item.depreciationMonths ?? ''}" placeholder="${translateUiText('Boş bırakılırsa kapalı')}"></label><label>${translateUiText('Yıllık amortisman oranı (%)')}<input data-dep-annual-rate="${item.id}" type="number" min="0.34" max="100" step="0.01" value="${item.depreciationAnnualRatePercent ?? ''}" placeholder="${translateUiText('Örn. 25')}"></label><small class="muted" style="grid-column:1/-1">${translateUiText('Ay veya yıllık oran yöntemlerinden birini girin. Oran doğrusal yöntemde uygulanır.')}</small><label>${translateUiText('Taban değer')}<input data-dep-minimum="${item.id}" type="number" min="0" step="0.01" value="${item.depreciationMinimum ?? ''}"></label><label>${translateUiText('Tür')}<select data-dep-minimum-type="${item.id}"><option value="amount" ${item.depreciationMinimumType === 'percent' ? '' : 'selected'}>${translateUiText('Tutar')}</option><option value="percent" ${item.depreciationMinimumType === 'percent' ? 'selected' : ''}>${translateUiText('Yüzde')}</option></select></label><label>${translateUiText('Yöntem')}<select data-dep-method="${item.id}"><option value="linear" ${item.depreciationMethod === 'linear' ? 'selected' : ''}>${translateUiText('Doğrusal')}</option><option value="half_1" ${item.depreciationMethod === 'half_1' ? 'selected' : ''}>${translateUiText('Yarım yıl · ilk dönem')}</option><option value="half_2" ${item.depreciationMethod === 'half_2' ? 'selected' : ''}>${translateUiText('Yarım yıl · satın alma dönemine göre')}</option></select></label><button class="btn small" data-dep-save="${item.id}" type="button">${translateUiText('Amortismanı kaydet')}</button></div>` : `<div class="muted">${item.depreciationAnnualRatePercent != null ? `${fmt.format(item.depreciationAnnualRatePercent)}% ${translateUiText('yıllık')} · ${translateUiText(item.depreciationMethod)}` : item.depreciationMonths ? `${item.depreciationMonths} ${translateUiText('ay')} · ${translateUiText(item.depreciationMethod)}` : translateUiText('Amortisman kapalı')}</div>`}` : catalogKind === 'brands' ? `${item.hasLogo ? `<img src="/api/brands/${item.id}/logo" alt="${escapeHtml(item.name)} logosu" style="max-width:100px;max-height:40px;object-fit:contain;margin:4px 0">` : ''}${canWriteAssets() ? `<div class="model-depreciation-editor"><label>${translateUiText('Web sitesi')}<input data-brand-website="${item.id}" type="url" value="${escapeHtml(item.website || '')}"></label><label>${translateUiText('Destek URL')}<input data-brand-support="${item.id}" type="url" value="${escapeHtml(item.supportUrl || '')}"></label><label>${translateUiText('Garanti URL')}<input data-brand-warranty="${item.id}" type="url" value="${escapeHtml(item.warrantyUrl || '')}"></label><label>${translateUiText('Destek telefonu')}<input data-brand-phone="${item.id}" type="tel" value="${escapeHtml(item.supportPhone || '')}"></label><label>${translateUiText('Destek e-postası')}<input data-brand-email="${item.id}" type="email" value="${escapeHtml(item.supportEmail || '')}"></label><button class="btn small" data-brand-profile-save="${item.id}" type="button">${translateUiText('Üretici bilgilerini kaydet')}</button></div><label class="muted">${translateUiText('Marka logosu')} <input data-brand-logo="${item.id}" type="file" accept="image/png,image/jpeg,image/webp"></label><button class="btn small" data-brand-logo-save="${item.id}" type="button">${translateUiText('Logoyu yükle')}</button>` : `<div class="muted">${[item.website,item.supportUrl,item.warrantyUrl,item.supportPhone,item.supportEmail].filter(Boolean).map(escapeHtml).join(' · ') || translateUiText('Üretici iletişim bilgisi eklenmemiş')}</div>`}` : '—';
         const modelEndOfLifeEditor = catalogKind !== 'models' ? '' : canManageSettings()
           ? `<label class="muted" style="display:block;margin-top:5px">${translateUiText('Ömür sonu (EOL)')}<input data-model-eol="${item.id}" type="date" value="${escapeHtml(item.endOfLifeOn || '')}" aria-label="${escapeHtml(item.name)} ${translateUiText('Ömür sonu (EOL)')}"></label>`
