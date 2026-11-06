@@ -1885,6 +1885,34 @@
       "coolifyTouched": false,
       "pushed": false,
       "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
+    },
+    "wp160InstalledSoftwareTenantIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Installed_software_inventory_is_company_scoped_and_hides_foreign_assets",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Installed_software_inventory_is_company_scoped_and_hides_foreign_assets'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1386,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "Forged companyId did not change Company A's asset context.",
+        "Only Company A's present software row was returned; removed and foreign rows were absent.",
+        "The Company B asset path returned HTTP 404 without disclosing its software marker."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
     }
   },
   "historicalBaseline": {

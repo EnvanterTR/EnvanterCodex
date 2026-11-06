@@ -460,6 +460,62 @@ public sealed partial class TenantSessionAcceptanceTests
     }
 
     [Fact]
+    public async Task Installed_software_inventory_is_company_scoped_and_hides_foreign_assets()
+    {
+        var ownVisibleMarker = $"OWN-INSTALLED-{_userId:N}";
+        var ownRemovedMarker = $"OWN-REMOVED-{_userId:N}";
+        var foreignMarker = $"FOREIGN-INSTALLED-{_userId:N}";
+
+        await using (var seedScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetInstalledSoftware.AddRange(
+                new AssetInstalledSoftware
+                {
+                    CompanyId = _companyId,
+                    AssetId = _ownAssetId,
+                    Fingerprint = Guid.NewGuid().ToString("N"),
+                    Name = ownVisibleMarker,
+                    Source = "tenant-acceptance",
+                    IsPresent = true
+                },
+                new AssetInstalledSoftware
+                {
+                    CompanyId = _companyId,
+                    AssetId = _ownAssetId,
+                    Fingerprint = Guid.NewGuid().ToString("N"),
+                    Name = ownRemovedMarker,
+                    Source = "tenant-acceptance",
+                    IsPresent = false
+                },
+                new AssetInstalledSoftware
+                {
+                    CompanyId = _otherCompanyId,
+                    AssetId = _otherCompanyAssetId,
+                    Fingerprint = Guid.NewGuid().ToString("N"),
+                    Name = foreignMarker,
+                    Source = "tenant-acceptance",
+                    IsPresent = true
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using (var ownResponse = await SendAsAdminAsync($"/api/assets/{_ownAssetId}/installed-software?companyId={_otherCompanyId:D}"))
+        {
+            var body = await ownResponse.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, ownResponse.StatusCode);
+            Assert.Contains(ownVisibleMarker, body, StringComparison.Ordinal);
+            Assert.DoesNotContain(ownRemovedMarker, body, StringComparison.Ordinal);
+            Assert.DoesNotContain(foreignMarker, body, StringComparison.Ordinal);
+        }
+
+        using var foreignResponse = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}/installed-software");
+        var foreignBody = await foreignResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.NotFound, foreignResponse.StatusCode);
+        Assert.DoesNotContain(foreignMarker, foreignBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Tenant_write_matrix_rejects_foreign_stock_archive_and_preserves_rows()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

@@ -483,3 +483,7 @@ F1: WP-101's earlier Nov 3 archive SHA-256 matched its manifest; it was not reco
 ## Güncel devam — WP-159 (2026-11-06)
 
 WP-159 DONE: employee CSV import-mapping route rejects a non-member's cross-company context with HTTP 401. Focused isolated PostgreSQL run: 1/1 PASS, xUnit 1.2216 minutes, runner exit 0; disposable database/network removed. Test-only change. F4 remains PARTIAL because the 503 method-route tenant matrix is incomplete. Next: select one independent migration-free F4/F5/F6 evidence gap. The last unfiltered PostgreSQL run is WP-158 (330/330, source/test SHA e82c2d1); run a new full set once at the end of this continuation. No live, migration, deploy, payment, Coolify, or push changes.
+
+## 2026-11-06 WP-160 handoff
+
+Installed-software inventory tenant test is DONE: focused isolated PostgreSQL **1/1 PASS**, xUnit **1.1386 min**, runner exit 0. It proves active own software is returned, removed own software and foreign software are absent, forged `companyId` does not switch tenant, and the foreign asset path is 404. Disposable DB/network were removed. Test-only; no migration/live/deploy/payment/Coolify/push. F4 remains PARTIAL. The prior unfiltered process handle disappeared before its terminal line could be retained, so it is not claimed as new full-suite evidence; WP-158 remains the last authoritative full run (330/330).

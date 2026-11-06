@@ -513,3 +513,11 @@ Deneme 1/3: initial assertion expected 200/empty items, but the fixture correctl
 Focused command `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Saved_asset_import_mappings_are_validated_and_private_to_their_owner'`: **1 total / 1 passed / 0 failed**, xUnit **1.2216 minutes**, runner exit **0**. A Company A user without Company B membership was rejected with 401 on `/api/employees/import-mappings`; same-company owner listing still returned its saved profile, while another same-company user saw none. Build succeeded with **4 existing ASP.NET deprecation warnings / 0 errors**. Compose removed disposable database `envantertr-security-acceptance-403d7cdad9-database-1` and network `envantertr-security-acceptance-403d7cdad9_acceptance`. Test-only change; no product code, schema/migration, live, deploy, payment, Coolify/environment/domain/routing, or push change.
 
 Durum: DONE. Deneme: 2/3. Commit: `23e513d368d423c7375347845812d67c0e27fba`.
+
+## WP-160 — DONE — F4 installed-software inventory tenant isolation
+
+**Bitti tanımı:** İzole PostgreSQL üzerinde Firma A varlığının kurulu-yazılım listesinin yalnız A'nın mevcut yazılımlarını döndürdüğünü, kaldırılmış kaydı dışladığını ve Firma B varlığına doğrudan erişimin 404 olduğunu kanıtla. Sahte `companyId=B` sorgusu tenant bağlamını değiştirmemeli. Test-only; migration/live/deploy/payment/Coolify/push yok.
+
+`./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Installed_software_inventory_is_company_scoped_and_hides_foreign_assets'`: **1 total / 1 passed / 0 failed**, xUnit **1.1386 minutes**, runner exit **0**. Firma A'nın aktif yazılım işareti döndü; A'nın `IsPresent=false` kaydı ve Firma B işareti dönmedi. Firma B varlığı için istek **404** verdi ve yabancı yazılım adı yanıt gövdesine girmedi. Acceptance build **0 errors / 4 existing ASP.NET deprecation warnings**. Compose geçici PostgreSQL konteynerini ve izole ağı kaldırdı. Ürün kodu ve şema değişmedi; F4 tam 503 method-route matrisi tamamlanmadığı için PARTIAL kalır.
+
+Deneme: **1/3**, PASS.
