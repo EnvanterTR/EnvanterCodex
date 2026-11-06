@@ -4315,7 +4315,8 @@
       if (employeeIndex >= 0 && cells[employeeIndex] && item.employeeId && item.employeeName) cells[employeeIndex].replaceChildren(assetFilterLink(item.employeeName, 'employee', item.employeeId));
     }
     function modelIdByName(name) {
-      const matches = (lookupCache.models || []).filter(model => model.name === name);
+      if (!name || !Array.isArray(lookupCache?.models)) return '';
+      const matches = lookupCache.models.filter(model => model?.name === name);
       return matches.length === 1 ? matches[0].id : '';
     }
     function inventoryFilterLink(label, value, inputId) {

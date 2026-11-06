@@ -2570,6 +2570,7 @@ try {
   await maintenanceDialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetTabMaintenance')?.hidden === false);
   assert.equal(maintenanceRows[0].status, 'Scheduled');
+  await page.locator('#assetMaintenanceRows').getByText('Synthetic scheduled inspection').first().waitFor().catch(() => {});
   assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Synthetic scheduled inspection/);
   assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Planlandı/);
   const scheduleWrite = apiRequests.at(-1);
@@ -3316,6 +3317,7 @@ try {
   assert.equal(acceptedEulaAssignment.eulaAttachmentId, softwareLicenseCurrentEula.id);
   assert.equal(acceptedEulaAssignment.eulaVersion, '2.0');
   assert.equal(acceptedEulaAssignment.eulaAcceptedBy, 'Synthetic Owner');
+  await page.waitForFunction(() => /2\.0[\s\S]*Synthetic Owner/.test(document.querySelector('#licenseAssignments')?.innerText || '')).catch(() => {});
   assert.match(await page.locator('#licenseAssignments').innerText(), /2\.0[\s\S]*Synthetic Owner/,
     'The refreshed license detail must show the accepted EULA version and confirmer.');
   assert.deepEqual(softwareLicenseAssignmentWrites.at(-1).body,
@@ -3402,6 +3404,8 @@ try {
   const employeeSearchResponse = waitAssignmentList(params => params.get('active') === 'false' && params.get('q') === 'QA-PAGE-025' && params.get('page') === '1');
   await page.locator('#licenseAssignmentSearch').fill('QA-PAGE-025');
   assert.equal((await employeeSearchResponse).status(), 200);
+  await assignmentRows.getByText('QA-PAGE-025').first().waitFor().catch(() => {});
+  await page.waitForFunction(() => document.querySelectorAll('#licenseAssignmentRows tr').length === 1).catch(() => {});
   assert.equal(await assignmentRows.count(), 1, 'Searching by employee number must return the matching assignment.');
   await assignmentRows.getByText('QA-PAGE-025').waitFor();
   const licenseSearchResponse = waitAssignmentList(params => params.get('active') === 'false' && params.get('q') === 'Synthetic Pagination License' && params.get('page') === '1');
@@ -3566,6 +3570,7 @@ try {
   assert.equal(deviceLicenseAssignment.assetId, assetId);
   assert.equal(deviceLicenseAssignment.employeeId, null);
   await deviceLicenseDetailRefreshResponse;
+  await page.locator('#licenseAssignments').getByText(`QA-ASSET-001 · ${assignedAssetName}`).first().waitFor().catch(() => {});
   const renderedDeviceAssignments = await page.locator('#licenseAssignments').innerText();
   assert.ok(renderedDeviceAssignments.includes(`QA-ASSET-001 · ${assignedAssetName}`),
     `The refreshed license detail must display the assigned asset; rendered rows: ${renderedDeviceAssignments}`);
@@ -4342,6 +4347,7 @@ try {
 
   await page.locator('#reservationStatus').selectOption('Approved');
   await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-001' }).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('#reservationRows tr').length === 1).catch(() => {});
   assert.equal(await page.locator('#reservationRows tr').count(), 1, 'Status filtering must return only matching reservations.');
   assert.ok(requests.some(item => item.path === '/api/reservations' && item.query.status === 'Approved' && item.query.page === '1'),
     'Changing the status filter must reload page one with the selected status.');

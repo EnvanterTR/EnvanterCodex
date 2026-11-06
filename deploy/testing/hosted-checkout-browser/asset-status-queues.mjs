@@ -138,6 +138,8 @@ try {
   }
   await statusFilter.selectOption('');
   await page.locator('#assetRows').getByText('QA-STATUS-QUEUE-Archived', { exact: true }).waitFor();
+  // "Archived" önceki filtreden ekranda kalmış olabilir; tüm liste gelene kadar bekle.
+  await page.waitForFunction(() => document.querySelectorAll('#assetRows tr[data-id]').length === 6).catch(() => {});
   assert.equal(await page.locator('#assetRows tr[data-id]').count(), 6);
   assert.equal(await page.locator('#assetRows').getByText('QA-STATUS-QUEUE-FOREIGN', { exact: true }).count(), 0,
     'The synthetic other-tenant record must never render in the selected company list.');
