@@ -487,3 +487,7 @@ WP-159 DONE: employee CSV import-mapping route rejects a non-member's cross-comp
 ## 2026-11-06 WP-160 handoff
 
 Installed-software inventory tenant test is DONE: focused isolated PostgreSQL **1/1 PASS**, xUnit **1.1386 min**, runner exit 0. It proves active own software is returned, removed own software and foreign software are absent, forged `companyId` does not switch tenant, and the foreign asset path is 404. Disposable DB/network were removed. Test-only; no migration/live/deploy/payment/Coolify/push. F4 remains PARTIAL. The prior unfiltered process handle disappeared before its terminal line could be retained, so it is not claimed as new full-suite evidence; WP-158 remains the last authoritative full run (330/330).
+
+## 2026-11-06 WP-161 handoff
+
+Customer API installed-software snapshot authorization/tenant evidence is DONE. Focused `Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable` run: **1/1 PASS**, xUnit **1.1723 min**, runner exit 0. `assets:read` write=403; `assets:write` own snapshot persists and audits; foreign asset write=404 with no foreign row/audit. Disposable DB/network removed. Test-only; no migration/live/deploy/payment/Coolify/push. F4/F6 remain PARTIAL.

@@ -10857,6 +10857,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.Forbidden, deniedWrite.StatusCode);
         }
 
+        using (var readOnlySoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_ownAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "read-only-token",
+                items = new[] { new { name = "MUST-NOT-BE-WRITTEN", publisher = "Acceptance", version = "1.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            readOnlySoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            using var deniedSnapshot = await _client!.SendAsync(readOnlySoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.Forbidden, deniedSnapshot.StatusCode);
+        }
+
         using (var wrongScopeRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories"))
         {
             wrongScopeRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
@@ -10922,6 +10937,47 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, writeTokenResponse.StatusCode);
         using var writeTokenPayload = JsonDocument.Parse(await writeTokenResponse.Content.ReadAsStringAsync());
         var writeSecret = writeTokenPayload.RootElement.GetProperty("secret").GetString()!;
+        var softwareMarker = $"API-INSTALLED-{_userId:N}";
+        using (var ownSoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_ownAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "customer-api-acceptance",
+                items = new[] { new { name = softwareMarker, publisher = "Acceptance", version = "1.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            ownSoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", writeSecret);
+            using var ownSnapshotResponse = await _client!.SendAsync(ownSoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.OK, ownSnapshotResponse.StatusCode);
+        }
+        using (var foreignSoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_otherCompanyAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "customer-api-acceptance",
+                items = new[] { new { name = softwareMarker, publisher = "Acceptance", version = "2.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            foreignSoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", writeSecret);
+            using var foreignSnapshotResponse = await _client!.SendAsync(foreignSoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.NotFound, foreignSnapshotResponse.StatusCode);
+        }
+        await using (var softwareScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = softwareScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Single(await db.AssetInstalledSoftware.Where(x =>
+                x.CompanyId == _companyId && x.AssetId == _ownAssetId && x.Name == softwareMarker).ToListAsync());
+            Assert.Empty(await db.AssetInstalledSoftware.Where(x =>
+                x.CompanyId == _otherCompanyId && x.AssetId == _otherCompanyAssetId && x.Name == softwareMarker).ToListAsync());
+            Assert.Contains(await db.AuditEntries.Where(x => x.CompanyId == _companyId && x.TargetId == _ownAssetId).ToListAsync(),
+                entry => entry.Action == "software-inventory.synced");
+            Assert.DoesNotContain(await db.AuditEntries.Where(x => x.CompanyId == _otherCompanyId && x.TargetId == _otherCompanyAssetId).ToListAsync(),
+                entry => entry.Action == "software-inventory.synced");
+        }
         Guid categoryId;
         const string standardFieldKey = "asset_tier";
         const string sensitiveFieldKey = "support_pin";

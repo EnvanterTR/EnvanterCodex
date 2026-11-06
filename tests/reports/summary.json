@@ -1913,6 +1913,35 @@
       "coolifyTouched": false,
       "pushed": false,
       "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
+    },
+    "wp161CustomerApiSoftwareSnapshotBoundary": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1723,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "An assets:read token received HTTP 403 when writing an installed-software snapshot.",
+        "An assets:write token persisted Company A software and a Company A software-inventory.synced audit.",
+        "The same token received HTTP 404 for the Company B asset and created no Company B row or audit."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL",
+      "f6Status": "PARTIAL"
     }
   },
   "historicalBaseline": {

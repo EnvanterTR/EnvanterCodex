@@ -521,3 +521,11 @@ Durum: DONE. Deneme: 2/3. Commit: `23e513d368d423c7375347845812d67c0e27fba`.
 `./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Installed_software_inventory_is_company_scoped_and_hides_foreign_assets'`: **1 total / 1 passed / 0 failed**, xUnit **1.1386 minutes**, runner exit **0**. Firma A'nın aktif yazılım işareti döndü; A'nın `IsPresent=false` kaydı ve Firma B işareti dönmedi. Firma B varlığı için istek **404** verdi ve yabancı yazılım adı yanıt gövdesine girmedi. Acceptance build **0 errors / 4 existing ASP.NET deprecation warnings**. Compose geçici PostgreSQL konteynerini ve izole ağı kaldırdı. Ürün kodu ve şema değişmedi; F4 tam 503 method-route matrisi tamamlanmadığı için PARTIAL kalır.
 
 Deneme: **1/3**, PASS.
+
+## WP-161 — DONE — F4/F6 customer API software-snapshot authorization and tenant boundary
+
+**Bitti tanımı:** Mevcut customer API acceptance testinde `assets:read` anahtarının kurulu-yazılım snapshot yazmasını 403 ile reddet; `assets:write` anahtarıyla kendi varlığına tam snapshot yazıp satır ve audit oluştur; aynı anahtarla yabancı firma varlığına yazmayı 404 ile reddet ve yabancı satır/audit oluşmadığını doğrula. Migration/live/deploy/payment/Coolify/push yok.
+
+`./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'`: **1 total / 1 passed / 0 failed**, xUnit **1.1723 minutes**, runner exit **0**. Read-only anahtar snapshot PUT için 403 aldı. Write anahtarı Firma A varlığına bir kurulu-yazılım satırı ve `software-inventory.synced` audit'i oluşturdu. Firma B varlığına aynı PUT **404** verdi; B tarafında eşleşen satır veya audit oluşmadı. Build **0 errors / 4 existing ASP.NET deprecation warnings**; Compose geçici PostgreSQL ve ağı kaldırdı. Test-only değişiklik; F4/F6 kapsamı genişledi ancak faz kapıları tamamlanmadı.
+
+Deneme: **1/3**, PASS.
