@@ -30,6 +30,7 @@
     @media(max-width:430px){.stats{grid-template-columns:1fr 1fr}.stat-top{font-size:.67rem}.stat small{font-size:.62rem}.detail-grid{grid-template-columns:1fr 1fr}.page-head h1{font-size:1.3rem}}
     .auth-layer{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:18px;background:#10213aeb}.auth-layer.show{display:grid}.auth-card{width:min(440px,100%);padding:28px;border:1px solid #e4eaf2;border-radius:16px;background:#fff;box-shadow:0 25px 80px #0005}.auth-card h1{margin:0 0 7px;color:#17253c;font-size:1.35rem}.auth-card p{margin:0 0 20px;color:#758299;font-size:.82rem;line-height:1.5}.auth-card label{display:block;margin:13px 0;color:#526178;font-size:.75rem;font-weight:700}.auth-card label[hidden]{display:none!important}.auth-card input{width:100%;height:42px;margin-top:6px;padding:0 11px;border:1px solid #dce4ee;border-radius:8px;color:#19263b;background:white}
 .auth-card select{display:block;width:100%;height:42px;margin-top:6px;padding:0 11px;border:1px solid #dce4ee;border-radius:8px;color:#19263b;background:white;font:inherit;font-size:.82rem;font-weight:600}
+.location-trail{color:var(--muted,#7b879a);font-size:.92em}.location-trail .relationship-link{font-weight:500}
 .auth-card label>small{display:block;margin-top:6px;color:#8793a6;font-size:.7rem;font-weight:500;line-height:1.45}.auth-card button{width:100%;margin-top:10px}.auth-error{min-height:18px;color:#c8333e;font-size:.72rem}.auth-error.is-next-step{color:#3b5a85}.auth-info{margin:12px 0 16px;padding:11px 12px;border:1px solid #cbdcf5;border-radius:8px;color:#264f87;background:#f1f6ff;font-size:.75rem;line-height:1.5}.auth-info[hidden]{display:none!important}.table-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid #edf0f5}.table-tools select,.table-tools input{min-height:34px;padding:0 9px;border:1px solid #e1e7ef;border-radius:7px;color:#46546b;background:#fff;font-size:.72rem}.table-tools input{flex:1;min-width:140px}.table-tools small{color:#8390a3;font-size:.68rem}.employee-date-filter{display:grid;gap:3px;color:#65738a;font-size:.62rem;font-weight:650}.employee-date-filter input{flex:none;width:155px;min-width:130px}.pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 13px;color:#76849a;font-size:.7rem}.pager button{min-height:30px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;color:#33445e;background:#fff;font-size:.7rem}.pager button:disabled{opacity:.45;cursor:not-allowed}.dialog-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid #edf0f5}.workspace-page{width:100%;max-width:none;box-sizing:border-box;margin:0;padding:22px 24px 38px}.workspace-page[hidden]{display:none}.row-actions{display:flex;gap:6px}.btn.small{min-height:29px;padding:0 8px;font-size:.68rem}.muted{color:#8792a4;font-size:.7rem}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid label{display:block;color:#526178;font-size:.72rem}.form-grid input{width:100%;height:38px;margin-top:5px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;color:#19263b}.busy{opacity:.65;pointer-events:none}
     .auth-card button[hidden]{display:none!important}
     .auth-card .remember-login{display:flex;align-items:center;gap:8px;margin:8px 0 14px;color:#526178;font-size:.8rem;font-weight:600}.auth-card .remember-login input{width:16px;height:16px;min-height:16px;margin:0;accent-color:#1769e0}
@@ -763,6 +764,7 @@
     document.getElementById('closeImagePreview').addEventListener('click', () => imagePreviewDialog.close());
     imagePreviewDialog.addEventListener('click', event => { if (event.target === imagePreviewDialog) imagePreviewDialog.close(); });
     imagePreview.addEventListener('click', () => imagePreviewDialog.close());
+    let assetLocationIncludeChildren = false;
     let toastTimer, requestToken = '', authSessionGeneration = 0, availableCompanyContexts = [], activeCompanyContextId = '', lookupCache = { categories: [], brands: [], models: [], locations: [] }, loadedAssets = [], selectedEmployeeIds = new Set(), selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, currentEmployeeProfile = null, employeeProfileRequestId = 0, employeeDialogProgrammaticCloseCount = 0, employeeImportPreviewRequestId = 0, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, auditScheduleRequestId = 0, auditSchedulePage = 1, auditSchedulePageSize = 50, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let assignmentPage = 1, returnsPage = 1, assignmentRequestId = 0, returnsRequestId = 0, assignmentSearchTimer, returnsSearchTimer;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
@@ -3999,7 +4001,7 @@
       $('#assetByodFilter').value = f.byod === true ? 'true' : f.byod === false ? 'false' : '';
       const isGuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
       $('#assetCategoryFilter').value = isGuid(f.categoryId) ? f.categoryId : ''; $('#assetBrandFilter').value = isGuid(f.brandId) ? f.brandId : ''; populateAssetModelFilter(); $('#assetModelFilter').value = isGuid(f.modelId) ? f.modelId : '';
-      assetEmployeeFilterId = isGuid(f.employeeId) ? f.employeeId : ''; assetEmployeeFilterName = typeof f.employeeName === 'string' ? f.employeeName.slice(0, 200) : ''; assetLocationFilter = typeof f.location === 'string' ? f.location.slice(0, 160) : '';
+      assetEmployeeFilterId = isGuid(f.employeeId) ? f.employeeId : ''; assetEmployeeFilterName = typeof f.employeeName === 'string' ? f.employeeName.slice(0, 200) : ''; assetLocationFilter = typeof f.location === 'string' ? f.location.slice(0, 160) : ''; assetLocationIncludeChildren = false;
       $('#assetCustomFieldFilter').value = typeof f.customFieldKey === 'string' ? f.customFieldKey : '';
       $('#assetCustomFieldMode').value = ['empty','contains'].includes(f.customFieldMode) ? f.customFieldMode : 'equals';
       $('#assetCustomFieldValue').value = typeof f.customFieldValue === 'string' ? f.customFieldValue.slice(0, 2000) : '';
@@ -4475,7 +4477,7 @@
       if ($('#assetBrandFilter').value) filters.push({ key: 'brand', label: `Marka: ${selectedLabel($('#assetBrandFilter'))}` });
       if ($('#assetModelFilter').value) filters.push({ key: 'model', label: `Model: ${selectedLabel($('#assetModelFilter'))}` });
       if (assetEmployeeFilterId) filters.push({ key: 'employee', label: `Çalışan: ${assetEmployeeFilterName}` });
-      if (assetLocationFilter) filters.push({ key: 'location', label: `Konum: ${assetLocationFilter}` });
+      if (assetLocationFilter) filters.push({ key: 'location', label: `Konum: ${assetLocationFilter}${assetLocationIncludeChildren ? ` (${translateUiText('alt konumlar dahil')})` : ''}` });
       if ($('#assetWarrantyFilter').value) filters.push({ key: 'warranty', label: `Garanti: ${$('#assetWarrantyFilter').selectedOptions[0]?.textContent || ''}` });
       const customFieldFilter = readAssetCustomFieldFilter();
       if (customFieldFilter.key && !customFieldFilter.error) {
@@ -4491,7 +4493,7 @@
           if (filter.key === 'brand') { $('#assetBrandFilter').value = ''; populateAssetModelFilter(); }
           if (filter.key === 'model') $('#assetModelFilter').value = '';
           if (filter.key === 'employee') { assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; }
-          if (filter.key === 'location') assetLocationFilter = '';
+          if (filter.key === 'location') assetLocationFilter = ''; assetLocationIncludeChildren = false;
           if (filter.key === 'warranty') $('#assetWarrantyFilter').value = '';
           if (filter.key === 'customField') { $('#assetCustomFieldFilter').value = ''; $('#assetCustomFieldMode').value = 'equals'; $('#assetCustomFieldValue').value = ''; $('#assetCustomFieldValue').disabled = false; }
           updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
@@ -4502,7 +4504,7 @@
     }
     function clearAssetRelationshipFilters() {
       $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
-      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
+      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false;
       $('#assetCustomFieldFilter').value = ''; $('#assetCustomFieldMode').value = 'equals'; $('#assetCustomFieldValue').value = ''; $('#assetCustomFieldValue').disabled = false;
       updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
     }
@@ -4524,13 +4526,13 @@
     }
     function applyAssetRelationshipFilter(type, value, label) {
       if (!value) return;
-      if (type !== 'department') { $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; }
+      if (type !== 'department') { assetLocationIncludeChildren = false; $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false; }
       if (type === 'status') $('#assetStatusFilter').value = assetStatusLabelMap[value] ? value : '';
       if (type === 'category') $('#assetCategoryFilter').value = value;
       if (type === 'brand') { $('#assetBrandFilter').value = value; $('#assetModelFilter').value = ''; populateAssetModelFilter(); }
       if (type === 'model') { const model = lookupCache.models.find(item => item.id === value); if (model?.brandId) $('#assetBrandFilter').value = model.brandId; if (model?.categoryId) $('#assetCategoryFilter').value = model.categoryId; populateAssetModelFilter(value); $('#assetModelFilter').value = value; }
       if (type === 'employee') { assetEmployeeFilterId = value; assetEmployeeFilterName = label; }
-      if (type === 'location') assetLocationFilter = label;
+      if (type === 'location') assetLocationFilter = label; assetLocationIncludeChildren = false;
       if (type === 'department') { $('#employeeDepartmentFilter').value = label; const employeePage = document.querySelector('.sub-item[data-page="Çalışan kayıtları"]'); if (employeePage && !employeePage.classList.contains('active')) employeePage.click(); else loadEmployees(1).catch(error => notify(error.message)); return; }
       updateAssetRelationFilter();
       const inventoryPage = document.querySelector('.sub-item[data-page="Varlıklar"]');
@@ -4547,12 +4549,12 @@
         if (model?.brandId) $('#assetBrandFilter').value = model.brandId;
         populateAssetModelFilter(modelId); $('#assetModelFilter').value = modelId;
       } else if ($('#assetBrandFilter').value) populateAssetModelFilter();
-      if (locationName) assetLocationFilter = locationName;
+      if (locationName) assetLocationFilter = locationName; assetLocationIncludeChildren = false;
       if (categoryId || brandId || modelId || locationName) updateAssetRelationFilter();
     }
     window.addEventListener('popstate', () => {
       $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
-      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
+      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false;
       restoreAssetRelationshipFiltersFromUrl();
       const params = new URL(location.href).searchParams;
       if (['categoryId','brandId','modelId','location','status'].some(key => params.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click();
@@ -4890,7 +4892,7 @@
     function openInventoryForStatus(status) {
       $('#assetStatusFilter').value = status;
       $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
-      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
+      assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false;
       $('#assetWarrantyFilter').value = '';
       $('#globalSearch').value = ''; $('#assetListSearch').value = '';
       updateAssetRelationFilter();
@@ -5126,6 +5128,7 @@
       if ($('#assetModelFilter').value) filters.set('modelId', $('#assetModelFilter').value);
       if (assetEmployeeFilterId) filters.set('employeeId', assetEmployeeFilterId);
       if (assetLocationFilter) filters.set('location', assetLocationFilter);
+      if (assetLocationFilter && assetLocationIncludeChildren) filters.set('includeChildLocations', 'true');
       if ($('#assetWarrantyFilter').value) filters.set('warranty', $('#assetWarrantyFilter').value);
       const customFieldFilter = readAssetCustomFieldFilter();
       if (customFieldFilter.key) {
@@ -5893,11 +5896,12 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     document.querySelectorAll('input[name="department"]').forEach(input => {
       input.setAttribute('list', 'departmentSuggestions'); input.addEventListener('change', scheduleDirectorySuggestionRefresh);
     });
-    function openDirectoryLocation(item, family = '') {
+    function openDirectoryLocation(item, family = '', { includeChildren = false } = {}) {
+      assetLocationIncludeChildren = includeChildren;
       const selected = family || (item.assetCount ? 'assets' : item.accessoryCount ? 'accessories' : item.accessoryAssignmentCount ? 'accessoryAssignments' : item.consumableCount ? 'consumables' : item.componentCount ? 'components' : 'assets');
       if (selected === 'assets') {
         $('#assetStatusFilter').value = ''; $('#assetWarrantyFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
-        assetLocationFilter = item.name; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click();
+        assetLocationFilter = item.name; assetLocationIncludeChildren = includeChildren; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click();
       } else if (selected === 'accessories' || selected === 'accessoryAssignments') {
         $('#accessorySearch').value = item.name; $('#accessoryStockFilter').value = ''; $('[data-page="Aksesuarlar"]').click();
       } else if (selected === 'consumables') {
@@ -5929,6 +5933,20 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
             openDirectoryLocation(item);
           }
         });
+        const pathSegments = directoryKind === 'locations' ? String(item.name || '').split(' / ').map(part => part.trim()).filter(Boolean) : [];
+        if (pathSegments.length > 1) {
+          // Snipe-IT "parent" bağlantısı: yolun üst parçaları o üst konumun (alt konumlar dahil) kayıtlarını açar.
+          link.textContent = item.isActive === false ? `${pathSegments.at(-1)} · Arşivlendi` : pathSegments.at(-1);
+          const trail = document.createElement('span'); trail.className = 'location-trail';
+          pathSegments.slice(0, -1).forEach((segment, index) => {
+            const ancestorPath = pathSegments.slice(0, index + 1).join(' / ');
+            const ancestor = document.createElement('button'); ancestor.type = 'button'; ancestor.className = 'text-link relationship-link'; ancestor.textContent = segment;
+            ancestor.setAttribute('aria-label', `${ancestorPath} ${translateUiText('konumundaki kayıtları listele')}`);
+            ancestor.addEventListener('click', event => { event.stopPropagation(); openDirectoryLocation({ name: ancestorPath }, 'assets', { includeChildren: true }); });
+            trail.append(ancestor, ' / ');
+          });
+          name.append(trail);
+        }
         name.append(link); row.append(name);
         const values = directoryKind === 'departments'
            ? [item.locationName || '—', item.managerName || (item.managerEmployeeId ? 'Pasif çalışan' : 'Atanmamış'), item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
@@ -5949,7 +5967,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
             countLink.addEventListener('click', () => {
               if (!status) { openDirectoryLocation(item, locationCountFamilies[index]); return; }
               $('#assetWarrantyFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
-              $('#assetStatusFilter').value = status; assetLocationFilter = item.name; assetEmployeeFilterId = ''; assetEmployeeFilterName = '';
+              $('#assetStatusFilter').value = status; assetLocationFilter = item.name; assetLocationIncludeChildren = false; assetEmployeeFilterId = ''; assetEmployeeFilterName = '';
               updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click();
             });
           }
@@ -6405,7 +6423,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           result = await submitRename(true);
         }
         $('#directoryRenameDialog').close();
-        if (kind === 'locations' && !locationId && assetLocationFilter === currentName) assetLocationFilter = result.name;
+        if (kind === 'locations' && !locationId && assetLocationFilter === currentName) assetLocationFilter = result.name; assetLocationIncludeChildren = false;
         if (kind === 'departments' && $('#employeeDepartmentFilter').value === currentName) $('#employeeDepartmentFilter').value = result.name;
         const count = kind === 'departments' ? result.employeeCount : result.updatedCount;
         try {
@@ -6716,7 +6734,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const row = document.createElement('tr'), stateCell = document.createElement('td'), count = document.createElement('td'), action = document.createElement('td');
         const pill = document.createElement('span'); applyAssetStatusPill(pill, item.status); stateCell.append(pill); count.textContent = fmt.format(item.count);
         const link = document.createElement('button'); link.type = 'button'; link.className = 'text-link'; link.textContent = translateUiText('Varlıkları aç →');
-        link.addEventListener('click', () => { $('#assetStatusFilter').value = item.status; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); });
+        link.addEventListener('click', () => { $('#assetStatusFilter').value = item.status; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); });
         action.append(link); row.append(stateCell, count, action); statusRows.append(row);
       }
 
@@ -6734,7 +6752,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       for (const item of result.categories || []) {
         const row = document.createElement('tr'), name = document.createElement('td'), category = document.createElement('button');
         category.type = 'button'; category.className = 'employee-profile-link'; category.textContent = item.name;
-        const openAssets = () => { $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = item.categoryId; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); };
+        const openAssets = () => { $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = item.categoryId; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); };
         category.addEventListener('click', openAssets); name.append(category); row.append(name);
         for (const value of [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount]) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
         const action = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = translateUiText('İncele →'); open.addEventListener('click', openAssets); action.append(open); row.append(action); categoryRows.append(row);
@@ -10628,7 +10646,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       if (page === 'Genel Bakış' || page === 'Varlıklar') {
         $('#overview').hidden = false;
         const inventoryMode = page === 'Varlıklar'; $('#overview').classList.toggle('inventory-mode', inventoryMode); applyDashboardPreferences([...dashboardVisibleWidgets]);
-        if (!inventoryMode) { $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); }
+        if (!inventoryMode) { $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; assetLocationIncludeChildren = false; updateAssetRelationFilter(); }
         $('#pageTitle').textContent = inventoryMode ? 'Varlık kayıtları' : 'Envanter genel bakışı';
         $('#pageEyebrow').textContent = inventoryMode ? 'ŞİRKET ALANI / VARLIKLAR' : 'ŞİRKET ALANI / GENEL BAKIŞ';
         $('#pageSubtitle').textContent = inventoryMode ? 'Filtreleyin, karşılaştırın ve birbiriyle ilişkili varlıklara tek tıkla geçin.' : 'Şirket varlıklarını, zimmetleri ve yaklaşan işleri tek ekranda izleyin.';

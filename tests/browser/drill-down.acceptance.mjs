@@ -158,6 +158,17 @@ await check('Varlıklar: Tedarikçi / Sipariş No / Alış / Garanti sütunları
   assert.equal(await page.locator('#assetRows td:nth-child(20)').first().isHidden(), true, 'Varsayılana dönünce yeni sütunlar gizlenmeli');
 });
 
+await check('Lokasyonlar: konum yolunun üst parçası üst konumun kayıtlarını açar', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500); await go('Lokasyonlar');
+  const ancestor = page.locator('#directoryRows .location-trail .relationship-link').first();
+  if (!await ancestor.count()) throw new Error('Konum yolu bağlantısı yok');
+  const label = (await ancestor.getAttribute('aria-label')).replace(/ konumundaki kayıtları listele$/, '');
+  await ancestor.click(); await page.waitForTimeout(1800);
+  assert.ok(await page.locator('#assetRows').isVisible(), 'Varlık listesi açılmadı');
+  assert.ok((await relationChips()).some(chip => chip.includes(label)), `Üst konum etiketi yok: ${label}`);
+  assert.ok(await assetTotal() > 0, 'Üst konumda kayıt bulunamadı');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;

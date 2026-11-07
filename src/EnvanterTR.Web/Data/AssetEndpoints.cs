@@ -108,7 +108,7 @@ public static class AssetEndpoints
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
-            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
+            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] bool? includeChildLocations, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] bool? byod,
             [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
@@ -134,7 +134,12 @@ public static class AssetEndpoints
             {
                 var selectedLocation = location.Trim();
                 if (selectedLocation.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Konum filtresi 160 karakteri aşamaz."] });
-                query = query.Where(x => x.Location == selectedLocation);
+                if (includeChildLocations == true)
+                {
+                    var childPrefix = selectedLocation + " / ";
+                    query = query.Where(x => x.Location == selectedLocation || (x.Location != null && x.Location.StartsWith(childPrefix)));
+                }
+                else query = query.Where(x => x.Location == selectedLocation);
             }
             if (!TryApplyWarrantyFilter(query, warranty, out var warrantyFiltered))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["warranty"] = ["Garanti filtresi expired, expiring, active veya unspecified olmalıdır."] });
@@ -3808,7 +3813,7 @@ public static class AssetEndpoints
 
         var exportAllAssets = async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
-            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
+            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] bool? includeChildLocations, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] bool? byod, [FromQuery] string? columns,
             [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -3845,7 +3850,12 @@ public static class AssetEndpoints
                     await Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Konum filtresi 160 karakteri aşamaz."] }).ExecuteAsync(context);
                     return;
                 }
-                query = query.Where(x => x.Location == selectedLocation);
+                if (includeChildLocations == true)
+                {
+                    var childPrefix = selectedLocation + " / ";
+                    query = query.Where(x => x.Location == selectedLocation || (x.Location != null && x.Location.StartsWith(childPrefix)));
+                }
+                else query = query.Where(x => x.Location == selectedLocation);
             }
             if (!TryApplyWarrantyFilter(query, warranty, out var warrantyFiltered))
             {
