@@ -264,7 +264,7 @@ assert.match(palette, /languagePreference'\)\.selectOption\('en'\)/);
 assert.match(palette, /appearanceWrite\?\.csrf, 'synthetic-viewer-csrf'/);
 assert.match(palette, /Only explicit synthetic notification, company security policy, API key create\/revoke, remote session revoke, TOTP setup, and appearance actions may write/);
 assert.match(palette, /apiRequests\.filter\(item => item\.method !== 'GET'\)/);
-assert.match(palette, /writes\.find\(item => item\.path === '\/api\/appearance\/preferences'\)\?\.body, \{ theme: 'dark', language: 'en' \}/);
+assert.match(palette, /writes\.find\(item => item\.path === '\/api\/appearance\/preferences'\)\?\.body, \{ theme: 'dark', language: 'en', palette: 'classic' \}/);
 assert.match(runner, /docker build[\s\S]*?docker run --rm --init/);
 assert.match(script, /paymentAvailable = false/);
 assert.match(script, /Personal and billing data must remain disabled/);

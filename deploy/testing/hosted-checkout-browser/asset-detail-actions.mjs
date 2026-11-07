@@ -4707,6 +4707,8 @@ try {
     const url = new URL(response.url()); return url.pathname === '/api/reports/depreciation' && url.searchParams.get('q') === 'QA-DEPR-PAGE';
   });
   await page.locator('#depreciationReportSearch').fill('QA-DEPR-PAGE'); await allDepreciationSearch;
+  await page.locator('#depreciationReportRows').getByText('QA-DEPR-PAGE').first().waitFor();
+  await page.waitForFunction(() => document.querySelector('#depreciationReportNext')?.disabled === false, null, { timeout: 5000 }).catch(() => {});
   assert.equal(await page.locator('#depreciationReportNext').isDisabled(), false, 'Depreciation report must enable paging when more than 50 rows match.');
   const depreciationPageTwo = page.waitForResponse(response => {
     const url = new URL(response.url()); return url.pathname === '/api/reports/depreciation' && url.searchParams.get('q') === 'QA-DEPR-PAGE' && url.searchParams.get('page') === '2';
