@@ -117,8 +117,8 @@ const assetEndpoints = readFileSync(resolve('src/EnvanterTR.Web/Data/AssetEndpoi
 const locationsEndpointStart = assetEndpoints.indexOf('api.MapGet("/locations"');
 const locationsEndpointEnd = assetEndpoints.indexOf('api.MapPost("/locations/catalog"', locationsEndpointStart);
 const locationsEndpoint = locationsEndpointStart < 0 || locationsEndpointEnd < 0 ? '' : assetEndpoints.slice(locationsEndpointStart, locationsEndpointEnd);
-if (!locationsEndpoint.includes('Results.Ok(new { items, total = items.Count, departmentCounts })')) {
-  failures.push('The locations API must keep its documented items/total/departmentCounts response envelope.');
+if (!locationsEndpoint.includes('Results.Ok(new { items, total = items.Count, departmentCounts, employeeCounts })')) {
+  failures.push('The locations API must keep its documented items/total/departmentCounts/employeeCounts response envelope.');
 }
 const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
 const loginSubmitEnd = source.indexOf("$('#retryApiButton').addEventListener('click'", loginSubmitStart);
