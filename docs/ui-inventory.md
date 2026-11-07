@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-11-07T13:26:30.846Z
+Oluşturulma: 2026-11-07T14:05:25.226Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -959,7 +959,7 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 930 | Girdi alanı | Hazır kitlerde ara | id=accessoryKitSearch |
 | 931 | Girdi alanı | Sarf malzemelerinde ara | id=consumableSearch |
 | 932 | Seçim alanı | Stok durumuna göre filtrele | id=consumableStockFilter; seçenekler=(değer yok): Tüm stoklar, available: Stokta olanlar, low: Minimum seviyede veya altında |
-| 933 | Seçim alanı | name:asc: Ada göre A–Z, name:desc: Ada göre Z–A, remaining:asc: Kalan miktar artan, remaining:desc: Kalan miktar azalan, updated:desc: Son güncellenen | id=consumableSort; seçenekler=name:asc: Ada göre A–Z, name:desc: Ada göre Z–A, remaining:asc: Kalan miktar artan, remaining:desc: Kalan miktar azalan, updated:desc: Son güncellenen |
+| 933 | Seçim alanı | Sarf malzemesi sıralaması | id=consumableSort; seçenekler=name:asc: Ada göre A–Z, name:desc: Ada göre Z–A, remaining:asc: Kalan miktar artan, remaining:desc: Kalan miktar azalan, updated:desc: Son güncellenen |
 | 934 | Girdi alanı | Talep edilebilir stoklarda ara | id=requestCatalogSearch |
 | 935 | Seçim alanı | Talep durumuna göre filtrele | id=requestStatusFilter; seçenekler=(değer yok): Tüm durumlar, Pending: Bekliyor, Approved: Onaylandı, Rejected: Reddedildi, Cancelled: İptal edildi |
 | 936 | Girdi alanı | Taleplerde ara | id=requestSearch |
@@ -967,7 +967,7 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 938 | Girdi alanı | licenseSearch | id=licenseSearch |
 | 939 | Seçim alanı | Lisans durumuna göre filtrele | id=licenseStatusFilter; seçenekler=active: Etkin lisanslar, archived: Arşivlenmiş lisanslar, all: Tüm lisanslar |
 | 940 | Girdi alanı | licenseAssignmentSearch | id=licenseAssignmentSearch |
-| 941 | Seçim alanı | true: Aktif atamalar, false: Geri alınan atamalar, (değer yok): Tüm atamalar | id=licenseAssignmentState; seçenekler=true: Aktif atamalar, false: Geri alınan atamalar, (değer yok): Tüm atamalar |
+| 941 | Seçim alanı | Lisans ataması durumu | id=licenseAssignmentState; seçenekler=true: Aktif atamalar, false: Geri alınan atamalar, (değer yok): Tüm atamalar |
 | 942 | Girdi alanı | kind | type=checkbox; name=kind |
 | 943 | Girdi alanı | kind | type=checkbox; name=kind |
 | 944 | Girdi alanı | kind | type=checkbox; name=kind |
@@ -984,7 +984,7 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 955 | Girdi alanı | emailKind | type=checkbox; name=emailKind |
 | 956 | Girdi alanı | emailKind | type=checkbox; name=emailKind |
 | 957 | Girdi alanı | componentSearch | id=componentSearch |
-| 958 | Seçim alanı | (değer yok): Tüm stoklar, available: Kullanılabilir miktar, low: Minimum seviyede veya altında | id=componentStockFilter; seçenekler=(değer yok): Tüm stoklar, available: Kullanılabilir miktar, low: Minimum seviyede veya altında |
+| 958 | Seçim alanı | Bileşen stok filtresi | id=componentStockFilter; seçenekler=(değer yok): Tüm stoklar, available: Kullanılabilir miktar, low: Minimum seviyede veya altında |
 | 959 | Girdi alanı | Stok hareketlerinde ara | id=inventoryMovementSearch |
 | 960 | Seçim alanı | Stok türüne göre filtrele | id=inventoryMovementKind; seçenekler=(değer yok): Tüm stok türleri, accessory: Aksesuar, consumable: Sarf malzemesi, component: Bileşen |
 | 961 | Seçim alanı | Hareket türüne göre filtrele | id=inventoryMovementType; seçenekler=(değer yok): Tüm hareketler, Received: Stok girişi, Adjustment: Sayım düzeltmesi, Checkout: Çıkış / atama, Checkin: İade / çıkarma |
@@ -1041,7 +1041,7 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 1012 | Seçim alanı | İade tarihine göre filtrele | id=returnsState; seçenekler=overdue: Geciken iadeler, due30: Önümüzdeki 30 gün, undated: Tarihi belirtilmemiş, later: Daha ileri tarih, all: Tüm zimmetler |
 | 1013 | Girdi alanı | İadelerde ara | id=returnsSearch |
 | 1014 | Girdi alanı | Hareket kayıtlarında ara | id=activitySearch |
-| 1015 | Seçim alanı | (değer yok): Tüm işlem türleri, Created: Oluşturuldu, Purchased: Satın alma teslimatı, Assigned: Zimmetlendi, Returned: İade alındı, StatusChanged: Durum değişti, Transferred: Konum transferi | id=activityType; seçenekler=(değer yok): Tüm işlem türleri, Created: Oluşturuldu, Purchased: Satın alma teslimatı, Assigned: Zimmetlendi, Returned: İade alındı, StatusChanged: Durum değişti, Transferred: Konum transferi |
+| 1015 | Seçim alanı | Hareket türü | id=activityType; seçenekler=(değer yok): Tüm işlem türleri, Created: Oluşturuldu, Purchased: Satın alma teslimatı, Assigned: Zimmetlendi, Returned: İade alındı, StatusChanged: Durum değişti, Transferred: Konum transferi |
 | 1016 | Girdi alanı | activityFrom | id=activityFrom; type=date |
 | 1017 | Girdi alanı | activityTo | id=activityTo; type=date |
 | 1018 | Seçim alanı | assetId | id=reservationAsset; name=assetId; seçenekler=(değer yok): Uygun varlıklar yükleniyor… |
@@ -1058,12 +1058,12 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 1029 | Seçim alanı | Denetim planı durumu | id=auditScheduleState; seçenekler=all: Gecikmiş ve yaklaşan, overdue: Yalnızca gecikmiş, upcoming: Yalnızca yaklaşan, unscheduled: Denetim planı olmayanlar, completed: Tamamlanan denetimler |
 | 1030 | Girdi alanı | Denetim kuyruğunda ara | id=auditScheduleSearch |
 | 1031 | Girdi alanı | Denetim kayıtlarında ara | id=auditSearch |
-| 1032 | Seçim alanı | (değer yok): Tüm kayıt türleri, Asset: Varlık, Employee: Çalışan, Company: Şirket, categories: Kategoriler, brands: Markalar, models: Modeller | id=auditTarget; seçenekler=(değer yok): Tüm kayıt türleri, Asset: Varlık, Employee: Çalışan, Company: Şirket, categories: Kategoriler, brands: Markalar, models: Modeller |
+| 1032 | Seçim alanı | Denetim hedefi | id=auditTarget; seçenekler=(değer yok): Tüm kayıt türleri, Asset: Varlık, Employee: Çalışan, Company: Şirket, categories: Kategoriler, brands: Markalar, models: Modeller |
 | 1033 | Seçim alanı | İşlem türü | id=auditAction; seçenekler=(değer yok): Tüm işlemler |
 | 1034 | Girdi alanı | Denetim başlangıç tarihi | id=auditFrom; type=date |
 | 1035 | Girdi alanı | Denetim bitiş tarihi | id=auditTo; type=date |
 | 1036 | Girdi alanı | Sözleşmelerde ara | id=contractSearch |
-| 1037 | Seçim alanı | (değer yok): Etkin ve arşiv kayıtları, active: Etkin, expiring: 30 gün içinde bitecek, expired: Süresi dolmuş, archived: Arşiv | id=contractStatus; seçenekler=(değer yok): Etkin ve arşiv kayıtları, active: Etkin, expiring: 30 gün içinde bitecek, expired: Süresi dolmuş, archived: Arşiv |
+| 1037 | Seçim alanı | Sözleşme durumu | id=contractStatus; seçenekler=(değer yok): Etkin ve arşiv kayıtları, active: Etkin, expiring: 30 gün içinde bitecek, expired: Süresi dolmuş, archived: Arşiv |
 | 1038 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
 | 1039 | Girdi alanı | title | name=title |
 | 1040 | Metin alanı | description | name=description |
@@ -1090,7 +1090,7 @@ Oluşturulma: 2026-11-07T13:26:30.846Z
 | 1061 | Seçim alanı | expiresInDays | name=expiresInDays; seçenekler=(değer yok): Süresiz, 30: 30 gün, 90: 90 gün, 365: 365 gün |
 | 1062 | Girdi alanı | integrationSecretValue | id=integrationSecretValue; type=password |
 | 1063 | Girdi alanı | Bakım kayıtlarında ara | id=maintenanceSearch |
-| 1064 | Seçim alanı | (değer yok): Tüm durumlar, Scheduled: Planlandı, InProgress: Devam ediyor, Completed: Tamamlandı, Cancelled: İptal edildi | id=maintenanceStatus; seçenekler=(değer yok): Tüm durumlar, Scheduled: Planlandı, InProgress: Devam ediyor, Completed: Tamamlandı, Cancelled: İptal edildi |
+| 1064 | Seçim alanı | Bakım durumu | id=maintenanceStatus; seçenekler=(değer yok): Tüm durumlar, Scheduled: Planlandı, InProgress: Devam ediyor, Completed: Tamamlandı, Cancelled: İptal edildi |
 | 1065 | Girdi alanı | maintenanceFrom | id=maintenanceFrom; type=date |
 | 1066 | Girdi alanı | maintenanceTo | id=maintenanceTo; type=date |
 | 1067 | Girdi alanı | calendarFrom | id=calendarFrom; type=date |

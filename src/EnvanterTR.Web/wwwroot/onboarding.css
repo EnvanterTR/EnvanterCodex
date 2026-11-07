@@ -2,12 +2,12 @@
 .onboarding[hidden]{display:none}
 .onboarding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
 .onboarding-head h2{margin:0;color:#1d2c45;font-size:.94rem}
-.onboarding-head p{margin:5px 0 0;color:#75839a;font-size:.74rem;line-height:1.5}
+.onboarding-head p{margin:5px 0 0;color:#5b687c;font-size:.74rem;line-height:1.5}
 .onboarding-progress{flex:none;padding:7px 9px;border:1px solid #d8e5f5;border-radius:99px;color:#315b92;background:#fff;font-size:.69rem;font-weight:750}
 .onboarding-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:0;padding:0;list-style:none}
 .onboarding-step{min-width:0;padding:11px;border:1px solid #dfe8f3;border-radius:10px;background:#ffffffc9}
 .onboarding-step h3{margin:0;color:#33445d;font-size:.72rem;line-height:1.4}
-.onboarding-step p{min-height:3em;margin:5px 0 10px;color:#78869a;font-size:.65rem;line-height:1.5}
+.onboarding-step p{min-height:3em;margin:5px 0 10px;color:#5b687c;font-size:.65rem;line-height:1.5}
 .onboarding-step button{min-height:31px;padding:0 9px;border:1px solid #cdddf0;border-radius:7px;color:#245b9d;background:#f5f9ff;font-size:.66rem;font-weight:750;cursor:pointer}
 .onboarding-step button:hover{background:#e8f1fd}
 .onboarding-step.is-complete{border-color:#cbe6d8;background:#f5fcf8}
