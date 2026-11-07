@@ -5180,7 +5180,11 @@
           asset => asset.brandName,
           asset => asset.purchaseCost == null ? null : formatRecordedCurrency(asset.purchaseCost, asset.currency),
           asset => asset.currentValue == null ? null : formatRecordedCurrency(asset.currentValue, asset.currency),
-          asset => translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış')
+          asset => translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış'),
+          asset => asset.supplierName,
+          asset => asset.purchaseOrderNumber,
+          asset => asset.purchaseDate ? new Date(`${asset.purchaseDate}T00:00:00`).toLocaleDateString(selectedLocale) : null,
+          asset => asset.warrantyExpiresAt ? new Date(`${asset.warrantyExpiresAt}T00:00:00`).toLocaleDateString(selectedLocale) : null
         ];
         if (sourceHeaders.length !== columnValues.length) throw new Error('Varlık listesi yazdırma alanları güncel başlıklarla eşleşmiyor.');
         const visibleColumns = new Set(Array.from($('#assetColumnPicker').querySelectorAll('[data-asset-column]:checked'), input => Number(input.dataset.assetColumn)));
