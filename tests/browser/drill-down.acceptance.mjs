@@ -135,6 +135,14 @@ await check('Yazılım lisansları: yayıncı filtreler, koltuk sayısı lisans 
   assert.ok(await page.locator('#licenseDialog').evaluate(dialog => dialog.open), 'Lisans detayı açılmadı');
 });
 
+await check('Departmanlar: kat/konum tıklaması o konumun varlıklarını listeler', async () => {
+  await go('Departmanlar'); const link = page.locator('#directoryRows tr td:nth-child(2) .relationship-link').first();
+  if (!await link.count()) throw new Error('Departman konumu tıklanamıyor');
+  const locationName = (await link.textContent()).trim(); await link.click(); await page.waitForTimeout(1800);
+  assert.ok(await page.locator('#assetRows').isVisible(), 'Varlık listesi açılmadı');
+  assert.ok((await relationChips()).some(chip => chip.includes(locationName)), 'Konum filtresi etiketi yok');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;

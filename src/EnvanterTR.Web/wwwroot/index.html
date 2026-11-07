@@ -5939,6 +5939,11 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           }
           cell.append(countLink); row.append(cell);
         });
+        if (directoryKind === 'departments') {
+          const departmentCells = row.children, firstValueIndex = departmentCells.length - values.length;
+          if (item.locationName && departmentCells[firstValueIndex]) departmentCells[firstValueIndex].replaceChildren(assetFilterLink(item.locationName, 'location', item.locationName));
+          if (item.managerEmployeeId && item.managerName && departmentCells[firstValueIndex + 1]) departmentCells[firstValueIndex + 1].replaceChildren(assetFilterLink(item.managerName, 'employee', item.managerEmployeeId));
+        }
         if (directoryKind === 'locations') {
           const unitCell = document.createElement('td'), defaultCell = document.createElement('td'), managerCell = document.createElement('td');
           unitCell.textContent = item.isCatalogEntry ? (item.companyUnitName || '—') : '—';
