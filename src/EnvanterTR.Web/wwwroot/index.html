@@ -3476,7 +3476,8 @@
         const original = localeTextNodes.get(node);
         const key = original.trim();
         const translation = index === undefined ? null : localeRows[key]?.[index];
-        if (translation) node.nodeValue = original.replace(key, translation); else node.nodeValue = original;
+        const next = translation ? original.replace(key, translation) : original;
+        if (node.nodeValue !== next) node.nodeValue = next;
       }
       if (index === undefined) return;
       for (const input of root.querySelectorAll?.('input[placeholder]:not([data-locale-placeholder]),textarea[placeholder]:not([data-locale-placeholder])') || []) {
