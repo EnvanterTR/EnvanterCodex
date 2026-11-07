@@ -1337,6 +1337,7 @@ public static class AccountEndpoints
             "asset_manager" => "Varlık yöneticisi",
             "asset_operator" => "Varlık sorumlusu",
             "auditor" => "Denetçi",
+            "finance" => "Muhasebe (salt okunur)",
             "hr_operator" => "Ekip yöneticisi",
             _ => "Görüntüleyici"
         };

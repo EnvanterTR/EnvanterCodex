@@ -24,7 +24,7 @@ public static partial class PlatformEndpoints
             var plans = await db.SubscriptionPlans.AsNoTracking()
                 .Where(x => x.IsActive && x.IsPublic).OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
-                    MaxLoginUsers = x.DeploymentKind == "cloud" ? (int?)null : x.MaxLoginUsers, x.MaxAssets,
+                    x.MaxLoginUsers, x.MaxAssets,
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays, x.FeatureFlagsJson })
                 .ToListAsync(cancellationToken);
             return Results.Ok(plans);
@@ -866,7 +866,7 @@ public static partial class PlatformEndpoints
             [FromBody] UpdatePlatformMemberRoleRequest request, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             var roleKey = request?.RoleKey?.Trim();
             var note = Clean(request?.Note);
             if (request is null || roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal) ||
@@ -945,7 +945,7 @@ public static partial class PlatformEndpoints
             var email = request?.NewOwnerEmail?.Trim();
             var previousOwnerRole = request?.FormerOwnerRoleKey?.Trim();
             var note = Clean(request?.Note);
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             if (request is null || userId == Guid.Empty || companyId == Guid.Empty ||
                 string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
                 previousOwnerRole is null || !allowedRoles.Contains(previousOwnerRole, StringComparer.Ordinal) ||
@@ -1030,7 +1030,7 @@ public static partial class PlatformEndpoints
             var fullName = request.FullName?.Trim();
             var email = request.Email?.Trim();
             var roleKey = request.RoleKey?.Trim();
-            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "finance", "hr_operator" };
             if (request.CompanyId == Guid.Empty || string.IsNullOrWhiteSpace(fullName) || fullName.Length > 160 ||
                 string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
                 roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal))
@@ -1088,7 +1088,7 @@ public static partial class PlatformEndpoints
                 else
                 {
                     var memberCount = await db.CompanyMemberships.CountAsync(item => item.CompanyId == request.CompanyId, cancellationToken);
-                    if (subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
+                    if (subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
                         return Results.Conflict(new { message = $"Bu plan {seatLimit} giriş hesabıyla sınırlı. Kullanıcı eklemek için planı yükseltin." });
 
                     if (account is null)
@@ -1349,7 +1349,7 @@ public static partial class PlatformEndpoints
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
-                    MaxLoginUsers = x.DeploymentKind == "cloud" ? (int?)null : x.MaxLoginUsers, x.MaxAssets,
+                    x.MaxLoginUsers, x.MaxAssets,
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays,
                     x.FeatureFlagsJson, x.IsPublic, x.IsActive, x.SortOrder }).ToListAsync(cancellationToken)));
 
@@ -2218,8 +2218,6 @@ public static partial class PlatformEndpoints
         if (request.Description is { Length: > 2000 }) errors["description"] = ["Açıklama en fazla 2000 karakter olabilir."];
         if (request.DeploymentKind is not ("cloud" or "local-windows" or "windows-server" or "linux")) errors["deploymentKind"] = ["Dağıtım türü geçersiz."];
         if (request.MaxLoginUsers is <= 0 || request.MaxAssets is <= 0) errors["limits"] = ["Kullanıcı ve varlık sınırı pozitif sayı veya sınırsız için boş olmalıdır."];
-        if (request.DeploymentKind == "cloud" && request.MaxLoginUsers is not null)
-            errors["maxLoginUsers"] = ["Bulut planlarında giriş kullanıcısı sınırı yoktur; tüm şirket kullanıcıları dahildir."];
         const decimal maximumPrice = 9999999999999999.99m;
         if (request.MonthlyPrice < 0 || request.AnnualPrice < 0 || request.OneTimePrice < 0 ||
             request.MonthlyPrice > maximumPrice || request.AnnualPrice > maximumPrice || request.OneTimePrice > maximumPrice)
@@ -2333,7 +2331,7 @@ public static partial class PlatformEndpoints
         plan.Name = request.Name.Trim();
         plan.Description = Clean(request.Description);
         plan.DeploymentKind = request.DeploymentKind;
-        plan.MaxLoginUsers = request.DeploymentKind == "cloud" ? null : request.MaxLoginUsers;
+        plan.MaxLoginUsers = request.MaxLoginUsers;
         plan.MaxAssets = request.MaxAssets;
         plan.MonthlyPrice = request.MonthlyPrice;
         plan.AnnualPrice = request.AnnualPrice;

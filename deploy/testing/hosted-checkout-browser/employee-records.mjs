@@ -23,15 +23,16 @@ const appScripts = new Map(await Promise.all(['report-print.js', 'scheduled-repo
 const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
 const requests = [];
 const employees = [
-  { id: managerId, employeeNumber: 'QA-MGR-001', displayName: 'QA Supervisor', email: null, department: 'Operations', jobTitle: 'Team lead', phone: null, location: 'Istanbul Office / Floor 1', companyUnitId: '99999999-9999-4999-8999-999999999991', companyUnitName: 'QA Main Unit', startedOn: '2020-03-10', isActive: true, managerEmployeeId: null, managerName: null },
-  { id: alternateManagerId, employeeNumber: 'QA-MGR-002', displayName: 'QA Supervisor II', email: null, department: 'IT', jobTitle: 'Engineering lead', phone: null, location: null, startedOn: '2021-05-11', isActive: true, managerEmployeeId: null, managerName: null },
-  { id: '77777777-7777-4777-8777-777777777777', employeeNumber: 'QA-EMP-INACTIVE', displayName: 'QA Inactive Employee', email: null, department: 'Operations', jobTitle: 'Former technician', phone: null, location: null, startedOn: '2020-12-31', isActive: false, managerEmployeeId: null, managerName: null },
-  { id: '88888888-8888-4888-8888-888888888888', employeeNumber: 'QA-EMP-UNDATED', displayName: 'QA Undated Employee', email: null, department: 'Operations', jobTitle: 'New technician', phone: null, location: null, startedOn: null, isActive: true, managerEmployeeId: null, managerName: null }
+  { id: managerId, employeeNumber: 'QA-MGR-001', displayName: 'QA Supervisor', email: null, department: 'Operations', jobTitle: 'Team lead', phone: null, location: 'Istanbul Office / Floor 1', companyUnitId: '99999999-9999-4999-8999-999999999991', companyUnitName: 'QA Main Unit', startedOn: '2020-03-10', isActive: true, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: alternateManagerId, employeeNumber: 'QA-MGR-002', displayName: 'QA Supervisor II', email: null, department: 'IT', jobTitle: 'Engineering lead', phone: null, location: null, startedOn: '2021-05-11', isActive: true, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: '77777777-7777-4777-8777-777777777777', employeeNumber: 'QA-EMP-INACTIVE', displayName: 'QA Inactive Employee', email: null, department: 'Operations', jobTitle: 'Former technician', phone: null, location: null, startedOn: '2020-12-31', isActive: false, isArchived: false, managerEmployeeId: null, managerName: null },
+  { id: '88888888-8888-4888-8888-888888888888', employeeNumber: 'QA-EMP-UNDATED', displayName: 'QA Undated Employee', email: null, department: 'Operations', jobTitle: 'New technician', phone: null, location: null, startedOn: null, isActive: true, isArchived: false, managerEmployeeId: null, managerName: null }
 ];
 let syntheticRole = 'admin';
 let privateNotes = '';
 let employeeDocuments = [];
 const handoverDocuments = [];
+const handoverEmailAttempts = [];
 let employeeImportPreview = null;
 const employeePhotos = new Map();
 const floorOneId = '66666666-6666-4666-8666-666666666661';
@@ -106,6 +107,19 @@ const server = createServer(async (request, response) => {
   requests.push({ method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), csrf: request.headers['x-csrf-token'], body,
     contentType: request.headers['content-type'], upload: uploadedFile && { filename: uploadedFile.filename, contentType: uploadedFile.contentType, bytes: uploadedFile.bytes } });
 
+  const handoverEmailPostMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
+  if (request.method === 'POST' && handoverEmailPostMatch) {
+    if (request.headers['x-csrf-token'] !== csrfToken) return json(response, 400, { message: 'CSRF required' });
+    const document = handoverDocuments.find(item => item.employeeId === handoverEmailPostMatch[1] && item.id === handoverEmailPostMatch[2]);
+    if (!document?.isFullySigned) return json(response, 409, { message: 'Signed document required' });
+    assert.equal(body.expectedRecipient, 'qa.employee@example.test');
+    assert.equal(body.snapshotSha256, document.snapshotSha256);
+    assert.ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey), 'Handover email must use a fresh idempotency key.');
+    assert.equal(body.resendOfAttemptId, null);
+    handoverEmailAttempts.push({ ...body, employeeId: handoverEmailPostMatch[1], documentId: handoverEmailPostMatch[2] });
+    return json(response, 200, { message: 'PDF e-postayla gönderildi.' });
+  }
+
   if (request.method === 'GET') {
     if (url.pathname === '/api/status') return json(response, 200, { status: 'ready', migrationCount: 96, pendingMigrationCount: 0 });
     if (url.pathname === '/api/setup/status') return json(response, 200, { setupRequired: false });
@@ -121,6 +135,7 @@ const server = createServer(async (request, response) => {
     ], total: 1 });
     if (url.pathname === '/api/employees') {
       const filtered = employees.filter(item => {
+        if (url.searchParams.get('includeArchived') !== 'true' && item.isArchived) return false;
         const active = url.searchParams.get('active');
         if (active === 'true' && !item.isActive) return false;
         if (active === 'false' && item.isActive) return false;
@@ -155,7 +170,13 @@ const server = createServer(async (request, response) => {
     }
     const handoverCollectionMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents$/i);
     const handoverDetailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)$/i);
+    const handoverEmailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
     if (handoverCollectionMatch) return json(response, 200, handoverDocuments.filter(item => item.employeeId === handoverCollectionMatch[1]).map(({ snapshot, ...item }) => item));
+    if (handoverEmailMatch) {
+      const document = handoverDocuments.find(item => item.employeeId === handoverEmailMatch[1] && item.id === handoverEmailMatch[2]);
+      if (!document) return json(response, 404, { message: 'Handover document not found' });
+      return json(response, 200, { ready: true, recipient: 'qa.employee@example.test', snapshotSha256: document.snapshotSha256, latestAttempt: null });
+    }
     if (handoverDetailMatch) {
       const handover = handoverDocuments.find(item => item.employeeId === handoverDetailMatch[1] && item.id === handoverDetailMatch[2]);
       return handover ? json(response, 200, handover) : json(response, 404, { message: 'Handover document not found' });
@@ -416,9 +437,23 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/employees') {
     const manager = employees.find(item => item.id === body.managerEmployeeId);
-    const created = { ...body, id: employeeId, isActive: true, companyUnitName: body.companyUnitId ? 'QA Main Unit' : null,
+    const created = { ...body, id: employeeId, isActive: true, isArchived: false, companyUnitName: body.companyUnitId ? 'QA Main Unit' : null,
       managerEmployeeId: manager?.id || null, managerName: manager?.displayName || null };
     employees.push(created); return json(response, 201, created);
+  }
+  const employeeArchiveMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/(archive|restore)$/i);
+  if (request.method === 'POST' && employeeArchiveMatch) {
+    if (!['owner', 'admin', 'hr_operator'].includes(syntheticRole)) return json(response, 403, { message: 'Forbidden' });
+    const employee = employees.find(item => item.id === employeeArchiveMatch[1]);
+    if (!employee) return json(response, 404, { message: 'Employee not found' });
+    if (!body?.reason?.trim()) return json(response, 400, { message: 'Archive reason required' });
+    if (employeeArchiveMatch[2] === 'archive') {
+      if (employee.isActive) return json(response, 409, { message: 'Inactive employee required' });
+      employee.isArchived = true;
+      return json(response, 200, { id: employee.id, isArchived: true, archivedAt: '2026-11-04T12:00:00Z' });
+    }
+    employee.isArchived = false;
+    return json(response, 200, { id: employee.id, isArchived: false, isActive: employee.isActive });
   }
   const managerMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/manager$/i);
   if (request.method === 'PATCH' && managerMatch) {
@@ -455,6 +490,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('#authLayer').waitFor({ state: 'hidden' });
   await page.locator('#sidebar [data-group="people"]').click({ force: true });
+  await page.locator('#sidebar [data-page="Çalışan kayıtları"]').waitFor({ state: 'visible' });
   await page.locator('#sidebar [data-page="Çalışan kayıtları"]').click();
   await page.locator('#employeesPage').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#employeesPage').isVisible(), true, 'Employee directory must be open before adding a record.');
@@ -739,6 +775,15 @@ try {
   assert.match(await printPopup.locator('body').innerText(), /qa\.employee@example\.test/);
   assert.match(await printPopup.locator('body').innerText(), /0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/);
   assert.equal(await printPopup.locator('.sign img').count(), 2, 'The printable PDF source must contain both captured signatures.');
+  const handoverQr = printPopup.locator('img.handover-document-qr');
+  await handoverQr.waitFor({ state: 'visible' });
+  assert.match(await handoverQr.getAttribute('src'), /^data:image\/svg\+xml;charset=utf-8,/,
+    'The signed handover PDF must contain an embedded, scannable QR image.');
+  const expectedHandoverPdfUrl = `http://127.0.0.1:${server.address().port}/api/employees/${employeeId}/handover-documents/${handoverDocuments[0].id}/pdf`;
+  assert.equal(await handoverQr.getAttribute('data-handover-qr-target'), expectedHandoverPdfUrl,
+    'The QR target must open this authenticated handover PDF endpoint in the same company app.');
+  assert.match(await printPopup.locator('.handover-qr-help').innerText(), /oturum açmanızı gerektirir/,
+    'The print document must explain that the company session is required to open its QR link.');
   assert.match(await printPopup.locator('.foot').innerText(), /nitelikli elektronik imza|qualified electronic signature/i,
     'The print form must explain the legal scope of a drawn signature.');
   const pdfBytes = await printPopup.pdf({ format: 'A4', printBackground: true });
@@ -766,7 +811,19 @@ try {
   const archivedPdfBytes = await archivedPrint.pdf({ format: 'A4' });
   assert.ok(archivedPdfBytes.subarray(0, 5).equals(Buffer.from('%PDF-')) && archivedPdfBytes.length > 1_000,
     'An archived signed document must remain exportable as a non-empty PDF.');
+  assert.equal(await archivedPrint.locator('.handover-document-qr').count(), 1, 'The archived PDF must preserve its QR code.');
   await archivedPrint.close();
+  const emailButton = handoverDialog.locator('#employeeHandoverHistory').getByRole('button', { name: 'E-postayla gönder' });
+  await emailButton.click();
+  const handoverEmailConfirm = page.locator('#employeeActionDialog');
+  await handoverEmailConfirm.waitFor({ state: 'visible' });
+  assert.match(await handoverEmailConfirm.locator('#employeeActionSummary').innerText(), /qa\.employee@example\.test/,
+    'Email confirmation must show the configured recipient before sending.');
+  await handoverEmailConfirm.locator('#employeeActionSubmit').click();
+  await page.locator('#toast').getByText('PDF e-postayla gönderildi.').waitFor();
+  assert.equal(handoverEmailAttempts.length, 1, 'A single explicit confirmation must create one handover email request.');
+  const handoverEmailRequest = requests.find(item => item.method === 'POST' && item.path === `/api/employees/${employeeId}/handover-documents/${handoverDocuments[0].id}/email`);
+  assert.equal(handoverEmailRequest?.csrf, csrfToken, 'Handover PDF email delivery must use CSRF protection.');
   await handoverDialog.getByRole('button', { name: 'Kapat' }).click();
   await handoverDialog.waitFor({ state: 'hidden' });
 
@@ -1055,6 +1112,8 @@ try {
     const lastMove = requests.findLast(item => item.method === 'POST' && item.path === `/api/departments/${departmentOneId}/move-employees`);
     assert.equal(lastMove?.csrf, csrfToken, 'Moving a department batch must send CSRF protection.');
     assert.deepEqual(lastMove?.body, { targetDepartmentId: departmentTwoId, batchSize: 100 });
+    // Yanıt geldikten sonra ilerleme metni bir sonraki karede çizilir; okumadan önce beklenen metni bekle.
+    await page.waitForFunction(text => document.querySelector('#departmentMoveProgress')?.innerText.includes(text), `${expectedMoved} çalışan taşındı`, { timeout: 5000 }).catch(() => {});
     const progressText = await page.locator('#departmentMoveProgress').innerText();
     assert.ok(progressText.includes(`${expectedMoved} çalışan taşındı`), `Expected batch size ${expectedMoved}, got: ${progressText}`);
     assert.ok(progressText.includes(`${expectedRemaining} çalışan`), `Expected ${expectedRemaining} remaining employees, got: ${progressText}`);
@@ -1158,6 +1217,99 @@ try {
   assert.equal((await restoreAllResponse).status(), 200, 'Restoring access to all locations must succeed.');
   const restoreAllWrite = requests.filter(item => item.method === 'PUT' && item.path === `/api/members/${memberUserId}/location-access`).at(-1);
   assert.deepEqual(restoreAllWrite?.body, { mode: 'all', locationIds: [], companyUnitMode: 'all', companyUnitIds: [] });
+
+  await page.locator('#sidebar [data-group="people"]').click({ force: true });
+  await page.locator('#sidebar [data-page="Çalışan kayıtları"]').evaluate(element => element.click());
+  await page.locator('#employeesPage').waitFor({ state: 'visible' });
+  await page.locator('#employeeSearch').fill('');
+  await page.locator('#employeeDepartmentFilter').fill('');
+  await page.locator('#employeeManagerFilter').selectOption('');
+  await page.locator('#employeeStartedFrom').fill('');
+  await page.locator('#employeeStartedTo').fill('');
+  await page.locator('#employeeIncludeArchived').uncheck();
+  const inactiveEmployeesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('active') === 'false';
+  });
+  await page.locator('#employeeState').selectOption('false');
+  await inactiveEmployeesResponse;
+  let inactiveEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await inactiveEmployeeRow.getByRole('button', { name: 'Arşivle' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  await page.locator('#employeeActionDialog').getByRole('button', { name: 'Vazgeç' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  assert.equal(requests.filter(item => item.method === 'POST' && item.path.endsWith('/archive')).length, 0,
+    'Canceling employee archive must not write to the API.');
+  inactiveEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await inactiveEmployeeRow.getByRole('button', { name: 'Arşivle' }).click();
+  const defaultListResponsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' &&
+      url.searchParams.get('active') === 'false' && url.searchParams.get('includeArchived') !== 'true';
+  });
+  const employeeArchiveResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === '/api/employees/77777777-7777-4777-8777-777777777777/archive');
+  await page.locator('#employeeActionSubmit').click();
+  const [employeeArchiveResponse] = await Promise.all([employeeArchiveResponsePromise, defaultListResponsePromise]);
+  assert.equal(employeeArchiveResponse.status(), 200, 'Archiving an inactive employee must succeed.');
+  const archiveRequest = requests.findLast(item => item.method === 'POST' && item.path === '/api/employees/77777777-7777-4777-8777-777777777777/archive');
+  assert.equal(archiveRequest?.csrf, csrfToken, 'Employee archive must include CSRF protection.');
+  assert.ok(archiveRequest?.body.reason, 'Employee archive must include an audit reason.');
+  await page.locator('#employeeRows').getByText('QA Inactive Employee').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('#employeeRows').getByText('QA Inactive Employee').count(), 0,
+    'Archived employees must disappear from the default list.');
+  const archivedEmployeesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('includeArchived') === 'true';
+  });
+  await page.locator('#employeeIncludeArchived').check();
+  await archivedEmployeesResponse;
+  let archivedEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await archivedEmployeeRow.waitFor();
+  assert.match(await archivedEmployeeRow.innerText(), /Arşivli/, 'Included archived employee must display its archived state.');
+  const restoreResponsePromise = page.waitForResponse(response => response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === '/api/employees/77777777-7777-4777-8777-777777777777/restore');
+  const restoredListResponsePromise = page.waitForResponse(response => response.request().method() === 'GET' &&
+    new URL(response.url()).pathname === '/api/employees' && new URL(response.url()).searchParams.get('includeArchived') === 'true');
+  await archivedEmployeeRow.getByRole('button', { name: 'Arşivden geri yükle' }).click();
+  await page.locator('#employeeActionSubmit').click();
+  const [employeeRestoreResponse] = await Promise.all([restoreResponsePromise, restoredListResponsePromise]);
+  assert.equal(employeeRestoreResponse.status(), 200, 'Restoring an archived employee must succeed.');
+  const restoreRequest = requests.findLast(item => item.method === 'POST' && item.path === '/api/employees/77777777-7777-4777-8777-777777777777/restore');
+  assert.equal(restoreRequest?.csrf, csrfToken, 'Employee restore must include CSRF protection.');
+  assert.ok(restoreRequest?.body.reason, 'Employee restore must include an audit reason.');
+  archivedEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Inactive Employee' });
+  await archivedEmployeeRow.getByRole('button', { name: 'Arşivle' }).waitFor();
+  assert.match(await archivedEmployeeRow.innerText(), /Pasif/, 'Restoring an archived employee must preserve its inactive status.');
+
+  const offboardingWrites = [];
+  await page.route(`**/api/employees/${employeeId}/offboarding-summary`, route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ canCompleteOffboarding: true, assetCount: 1, accessoryCount: 2, activeLicenseCount: 1, activeDirectReportCount: 1 })
+  }));
+  await page.route(`**/api/employees/${employeeId}/active`, route => {
+    offboardingWrites.push({ method: route.request().method(), body: route.request().postDataJSON() });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: employeeId, isActive: false, returnedAssets: 1, returnedAccessories: 2, revokedLicenses: 1 }) });
+  });
+  await page.locator('#employeeIncludeArchived').uncheck();
+  const activeEmployeesBeforeOffboarding = page.waitForResponse(response => {
+    const url = new URL(response.url()); return response.request().method() === 'GET' && url.pathname === '/api/employees' && url.searchParams.get('active') === 'true';
+  });
+  await page.locator('#employeeState').selectOption('true');
+  await activeEmployeesBeforeOffboarding;
+  const offboardingEmployeeRow = page.locator('#employeeRows tr').filter({ hasText: 'QA Employee Updated' });
+  await offboardingEmployeeRow.getByRole('button', { name: 'Pasife al' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#employeeActionSummary').innerText(), /otomatik iade edilir/i,
+    'The confirmation must tell the user that assigned assets and accessories will be returned automatically.');
+  assert.equal(offboardingWrites.length, 0, 'Opening the offboarding confirmation must not deactivate the employee.');
+  await page.locator('#employeeActionDialog').getByRole('button', { name: 'Vazgeç' }).click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  assert.equal(offboardingWrites.length, 0, 'Canceling offboarding must not write to the API.');
+  await offboardingEmployeeRow.getByRole('button', { name: 'Pasife al' }).click();
+  const employeeDeactivationResponse = page.waitForResponse(response => response.request().method() === 'PATCH' &&
+    new URL(response.url()).pathname === `/api/employees/${employeeId}/active`);
+  await page.locator('#employeeActionSubmit').click();
+  assert.equal((await employeeDeactivationResponse).status(), 200, 'Confirming offboarding must call the employee deactivation endpoint.');
+  assert.deepEqual(offboardingWrites.at(-1), { method: 'PATCH', body: { isActive: false } });
+  await page.getByRole('status').filter({ hasText: 'Otomatik iade: 1 varlık ve 2 aksesuar' }).waitFor();
 
   syntheticRole = 'asset_operator';
   // This limits private HR notes to authorized roles.

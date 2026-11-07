@@ -248,8 +248,26 @@ try {
     'Reloading after a rate-limited MFA challenge must preserve the authenticator field for this browser tab.');
   await page.unroute('**/api/session/login', rateLimitedLogin);
 
-  // A fresh TOTP still works after the failed recovery-code replay.
-  await submitLogin(page, totp(secret));
+  // A malformed six-digit challenge must preserve the field and allow a valid retry.
+  await page.locator('#loginForm [name="email"]').fill(email);
+  await page.locator('#loginForm [name="password"]').fill(password);
+  await mfaInputAfterFailure.fill('not-a-code');
+  const invalidAuthenticatorResponsePromise = page.waitForResponse(response =>
+    new URL(response.url()).pathname === '/api/session/login' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Güvenli giriş yap' }).click();
+  const invalidAuthenticatorResponse = await invalidAuthenticatorResponsePromise;
+  assert.equal(invalidAuthenticatorResponse.status(), 400,
+    'The invalid authenticator attempt must reach the server and return a retryable MFA response.');
+  assert.equal((await invalidAuthenticatorResponse.json()).twoFactorRequired, true);
+  await page.locator('#loginError').waitFor({ state: 'visible' });
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'A rejected Authenticator challenge must keep the MFA field available for retry.');
+  assert.equal(await page.getByRole('button', { name: 'Güvenli giriş yap' }).isVisible(), true,
+    'The platform login action must remain available after an invalid Authenticator code.');
+
+  // A fresh TOTP still works after rejected recovery and Authenticator challenges.
+  await mfaInputAfterFailure.fill(totp(secret));
+  await page.getByRole('button', { name: 'Güvenli giriş yap' }).click();
   await page.locator('#appShell').waitFor({ state: 'visible' });
   await page.getByRole('heading', { name: 'Genel Bakış' }).waitFor();
   assert.equal(browserErrors.length, 0, `JavaScript exceptions: ${browserErrors.join(' | ')}`);

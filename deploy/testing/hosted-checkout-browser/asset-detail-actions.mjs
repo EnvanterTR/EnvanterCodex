@@ -13,6 +13,7 @@ const hierarchyChildId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const foreignParentId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const employeeId = '99999999-9999-4999-8999-999999999999';
 const modelId = '66666666-6666-4666-8666-666666666666';
+let modelDepreciationPolicy = { months: 36, annualRatePercent: null, minimum: null, minimumType: 'amount', method: 'linear' };
 const brandId = '55555555-5555-4555-8555-555555555556';
 const bulkEmployeeTwoId = '88888888-8888-4888-8888-888888888882';
 const bulkEmployeeThreeId = '77777777-7777-4777-8777-777777777773';
@@ -64,7 +65,10 @@ const asset = {
   createdAt: '2026-10-01T12:00:00Z', purchaseDate: '2025-01-15', warrantyExpiresAt: '2027-01-15',
   insuranceProvider: 'Synthetic Insurer', insurancePolicyNumber: 'QA-POLICY-001', insuranceExpiresAt: '2028-12-31',
   purchaseCost: 2500, currency: 'TRY', isRequestable: true, isByod: false,
-  customFields: { inventory_reference: 'QA-SOURCE-REF', secret_key: 'source-sensitive-value' }
+  customFields: {
+    inventory_reference: 'QA-SOURCE-REF', secret_key: 'source-sensitive-value',
+    purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+  }
 };
 const installedSoftwareRows = [{ name: 'Synthetic Inventory Agent', publisher: 'EnvanterTR QA', version: '1.2.3', architecture: 'x64', installDate: '2026-10-01', lastSeenAt: '2026-10-19T12:00:00Z' }];
 let assetValuation = { ageMonths: 21, depreciationMonths: 60, remainingMonths: 39, currentValue: 1625 };
@@ -84,6 +88,9 @@ const clonedAssets = [];
 const assetCreateWrites = [];
 const assetCustomFieldDefinitions = [
   { key: 'inventory_reference', name: 'Envanter referansı', groupName: 'Genel', fieldType: 'text', isActive: true, isRequired: false, options: [] },
+  { key: 'purchase_date_custom', name: 'Özel satın alma tarihi', groupName: 'Satın alma', fieldType: 'date', isActive: true, isRequired: false, options: [] },
+  { key: 'encrypted_unit', name: 'Şifreleme etkin', groupName: 'Güvenlik', fieldType: 'checkbox', isActive: true, isRequired: false, options: [] },
+  { key: 'asset_class', name: 'Varlık sınıfı', groupName: 'Genel', fieldType: 'select', isActive: true, isRequired: false, options: ['Laptop', 'Desktop'] },
   { key: 'secret_key', name: 'Gizli anahtar', groupName: 'Genel', fieldType: 'sensitive', isActive: true, isRequired: false, options: [] },
   { key: 'model_secret', name: 'Model güvenlik kodu', groupName: 'Güvenlik', categoryId: asset.categoryId, modelId,
     fieldType: 'sensitive', isActive: true, isRequired: false, options: [] }
@@ -147,12 +154,12 @@ const pendingDeliveryReportItems = [
   }))
 ];
 const depreciationReportItems = [
-  { id: 'd3000000-0000-4000-8000-000000000001', assetTag: 'QA-DEPR-LINEAR', name: 'Synthetic depreciating asset', serialNumber: 'QA-DEPR-SERIAL', category: 'QA Hardware', model: 'QA Linear Model', location: 'QA Depot', status: 'Available', purchaseDate: '2025-10-16', endOfLife: '2030-10-16', purchaseCost: 12000, currency: 'TRY', monthlyDepreciation: 200, accumulatedDepreciation: 2400, bookValue: 9600, remainingMonths: 48, method: 'linear' },
+  { id: 'd3000000-0000-4000-8000-000000000001', assetTag: 'QA-DEPR-LINEAR', name: 'Synthetic depreciating asset', serialNumber: 'QA-DEPR-SERIAL', category: 'QA Hardware', model: 'QA Linear Model', location: 'QA Depot', status: 'Available', purchaseDate: '2025-10-16', endOfLife: '2030-10-16', purchaseCost: 12000, currency: 'TRY', annualDepreciationRatePercent: 10, monthlyDepreciation: 200, accumulatedDepreciation: 2400, bookValue: 9600, remainingMonths: 48, method: 'linear' },
   ...Array.from({ length: 51 }, (_, index) => ({
     id: `d4000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, assetTag: `QA-DEPR-PAGE-${String(index + 1).padStart(3, '0')}`,
     name: `Synthetic depreciation asset ${index + 1}`, serialNumber: `QA-DEPR-PAGE-SERIAL-${index + 1}`, category: 'QA Hardware',
     model: 'QA Paging Model', location: 'QA Depot', status: 'Available', purchaseDate: '2026-01-01', endOfLife: '2031-01-01',
-    purchaseCost: 6000, currency: index % 2 ? 'USD' : 'TRY', monthlyDepreciation: 100, accumulatedDepreciation: 900,
+    purchaseCost: 6000, currency: index % 2 ? 'USD' : 'TRY', annualDepreciationRatePercent: index % 2 ? 12.5 : 10, monthlyDepreciation: 100, accumulatedDepreciation: 900,
     bookValue: 5100, remainingMonths: 51, method: index % 2 ? 'half_1' : 'linear'
   }))
 ];
@@ -216,8 +223,12 @@ const softwareLicenseRows = [{
   id: softwareLicenseId, name: 'Synthetic License Import Baseline', publisher: 'Synthetic Publisher', productVersion: '1',
   licenseType: 'Subscription', licenseReference: 'QA-LICENSE-BASELINE', supplier: 'Synthetic Supplier', seats: 3, assigned: 0,
   unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
-  notes: null, isArchived: false
+  notes: null, isArchived: false, hasLicenseKey: false
 }];
+const softwareLicenseKeys = new Map();
+const softwareLicenseKeyWrites = [];
+const syntheticAppearanceWrites = [];
+let syntheticAppearance = { theme: 'system', language: 'tr' };
 let softwareLicenseCurrentEula = null;
 const softwareLicenseAssignments = [];
 const softwareLicenseAssignmentWrites = [];
@@ -455,7 +466,7 @@ const server = createServer(async (request, response) => {
     const asOf = url.searchParams.get('asOf') || '2026-10-16';
     const matching = depreciationReportItems.filter(item => !q || [item.assetTag, item.name, item.serialNumber, item.category, item.model, item.location].some(value => value?.toLocaleLowerCase('tr-TR').includes(q)));
     response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename=synthetic-depreciation-${asOf.replaceAll('-', '')}.csv`, 'cache-control': 'no-store' });
-    response.end(`Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n${matching.map(item => `${item.assetTag};${item.name};${item.serialNumber};${item.category};${item.model};${item.location};${item.status};${item.purchaseDate};${item.endOfLife};${item.currency};${item.purchaseCost};${item.monthlyDepreciation};${item.accumulatedDepreciation};${item.bookValue};${item.remainingMonths};${item.method}`).join('\r\n')}\r\n`);
+    response.end(`Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Yıllık amortisman (%);Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n${matching.map(item => `${item.assetTag};${item.name};${item.serialNumber};${item.category};${item.model};${item.location};${item.status};${item.purchaseDate};${item.endOfLife};${item.currency};${item.purchaseCost};${item.annualDepreciationRatePercent};${item.monthlyDepreciation};${item.accumulatedDepreciation};${item.bookValue};${item.remainingMonths};${item.method}`).join('\r\n')}\r\n`);
     return;
   }
   if (request.method === 'GET' && url.pathname === '/api/reports/depreciation') {
@@ -664,8 +675,9 @@ const server = createServer(async (request, response) => {
     assert.equal(record.body.purchaseDate, asset.purchaseDate);
     assert.equal(record.body.warrantyExpiresAt, asset.warrantyExpiresAt);
     assert.equal(record.body.purchaseCost, asset.purchaseCost);
-    assert.deepEqual(record.body.customFields, { inventory_reference: 'QA-SOURCE-REF' },
-      'The clone must copy ordinary custom fields but never carry encrypted sensitive values.');
+    assert.deepEqual(record.body.customFields, {
+      inventory_reference: 'QA-SOURCE-REF', purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+    }, 'The clone must preserve text, date, checkbox, and select values while never carrying encrypted sensitive values.');
     assert.equal(Object.hasOwn(record.body, 'assignedEmployeeId'), false, 'A clone must not inherit an assignment.');
     assert.equal(Object.hasOwn(record.body, 'status'), false, 'A clone must be created in the default available state.');
     assetCreateWrites.push(record);
@@ -899,7 +911,7 @@ const server = createServer(async (request, response) => {
         })) };
     }
     else if (url.pathname === `/api/models/${modelId}/details`) result = {
-      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear' },
+      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', endOfLifeOn: '2030-06-30', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: modelDepreciationPolicy.months, depreciationAnnualRatePercent: modelDepreciationPolicy.annualRatePercent, depreciationMinimum: modelDepreciationPolicy.minimum, depreciationMinimumType: modelDepreciationPolicy.minimumType, depreciationMethod: modelDepreciationPolicy.method },
       summary: { assetTotal: 1, statuses: [{ status: 'Available', count: 1 }] },
       assets: [{ id: assetId, assetTag: asset.assetTag, name: asset.name, status: asset.status, serialNumber: asset.serialNumber, location: asset.location, employeeName: null, updatedAt: asset.updatedAt }],
       assetTotal: 1, assetListLimit: 100,
@@ -912,7 +924,7 @@ const server = createServer(async (request, response) => {
       const allItems = query === 'qa-prnt' ? printAssetRows
         : query === 'synthetic qa parent' ? [hierarchyParent]
           : query === 'synthetic qa child' ? [hierarchyChild]
-            : [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...clonedAssets, ...bulkAssets];
+            : [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...clonedAssets, ...bulkAssets.filter(item => !item.isDeleted)];
       const matchingItems = allItems.filter(item => !query || [item.assetTag, item.serialNumber, item.name, item.companyUnitName].some(value => value?.toLocaleLowerCase('tr-TR').includes(query)))
         .map(item => item.id === assetId ? { ...item, photoAttachmentId: [...assetAttachments].reverse().find(file => file.contentType?.startsWith('image/'))?.id || null, modelPhotoUrl: null } : item);
       const page = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 50);
@@ -971,11 +983,11 @@ const server = createServer(async (request, response) => {
       const status = url.searchParams.get('status') || 'active';
       const items = softwareLicenseRows.filter(item => (status === 'all' || (status === 'archived' ? item.isArchived : !item.isArchived))
         && (!q || [item.name, item.publisher, item.supplier, item.licenseReference].some(value => value?.toLocaleLowerCase().includes(q))));
-      result = { items, total: items.length, page: 1, pageSize: 25 };
+      result = { items: items.map(item => ({ ...item, hasLicenseKey: softwareLicenseKeys.has(item.id) })), total: items.length, page: 1, pageSize: 25 };
     }
     else if (softwareLicenseRows.some(item => url.pathname === `/api/software-licenses/${item.id}`)) {
       const licenseId = url.pathname.split('/').at(-1), license = softwareLicenseRows.find(item => item.id === licenseId);
-      result = { license: { ...license }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
+      result = { license: { ...license, hasLicenseKey: softwareLicenseKeys.has(licenseId) }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
         attachments: licenseId === softwareLicenseId ? softwareLicenseAttachments.map(item => ({ ...item })) : [],
         currentEula: licenseId === softwareLicenseId && softwareLicenseCurrentEula ? { ...softwareLicenseCurrentEula } : null };
     }
@@ -1006,7 +1018,7 @@ const server = createServer(async (request, response) => {
     }
     else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
     else if (url.pathname === '/api/lookups/brands') result = [{ id: brandId, name: 'Synthetic Brand', assetCount: 1 }];
-    else if (url.pathname === '/api/lookups/models') result = [{ id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandId, brandName: 'Synthetic Brand', categoryId: asset.categoryId, categoryName: 'Synthetic equipment', hasPhoto: false, attachmentCount: 2, depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear', assetCount: 1 }];
+    else if (url.pathname === '/api/lookups/models') result = [{ id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandId, brandName: 'Synthetic Brand', categoryId: asset.categoryId, categoryName: 'Synthetic equipment', hasPhoto: false, attachmentCount: 2, depreciationMonths: modelDepreciationPolicy.months, depreciationAnnualRatePercent: modelDepreciationPolicy.annualRatePercent, depreciationMinimum: modelDepreciationPolicy.minimum, depreciationMinimumType: modelDepreciationPolicy.minimumType, depreciationMethod: modelDepreciationPolicy.method, assetCount: 1 }];
     else if (url.pathname === '/api/locations') result = { items: locationDirectoryRows.map(item => ({ ...item })) };
     else if (url.pathname === '/api/suppliers') result = { items: [{ id: 'ab000000-0000-4000-8000-000000000001', name: 'Synthetic Asset Supplier', isActive: true }] };
     else if (/^\/api\/asset-purchase-budgets\/\d{4}$/.test(url.pathname)) result = {
@@ -1062,6 +1074,20 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/lookups/models') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Creating a model with depreciation policy must retain CSRF protection.');
+    assert.equal(body.depreciationMonths, null, 'Model creation must not send both month and annual-rate policies.');
+    assert.equal(body.depreciationAnnualRatePercent, 25, 'Model creation must persist the annual depreciation percentage.');
+    json(response, 200, { id: 'b7000000-0000-4000-8000-000000000001' }); return;
+  }
+  if (request.method === 'PATCH' && url.pathname === `/api/lookups/models/${modelId}/depreciation`) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Updating a model depreciation policy must retain CSRF protection.');
+    assert.equal(body.months, null, 'An annual-rate update must clear the conflicting month policy.');
+    assert.equal(body.annualRatePercent, 20, 'Model policy updates must persist the annual depreciation percentage.');
+    modelDepreciationPolicy = { months: body.months, annualRatePercent: body.annualRatePercent, minimum: body.minimum,
+      minimumType: body.minimumType, method: body.method };
+    json(response, 200, { id: modelId, ...body }); return;
   }
   const budgetWriteMatch = url.pathname.match(/^\/api\/asset-purchase-budgets\/(\d{4})\/(TRY|USD|EUR)$/);
   if (request.method === 'PUT' && budgetWriteMatch) {
@@ -1369,6 +1395,42 @@ const server = createServer(async (request, response) => {
     assert.ok(role, 'Activation must target the current company custom role.');
     role.isActive = body.isActive; companyRoleWrites.push(record);
     json(response, 200, { roleKey: role.roleKey, isActive: role.isActive }); return;
+  }
+  if (request.method === 'PUT' && url.pathname === '/api/appearance/preferences') {
+    assert.ok(['system', 'light', 'dark'].includes(body?.theme));
+    assert.ok(['tr', 'en', 'ru', 'uk', 'mk'].includes(body?.language));
+    syntheticAppearance = { ...body };
+    syntheticAppearanceWrites.push(record);
+    json(response, 200, syntheticAppearance); return;
+  }
+  const softwareLicenseKeyRoute = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)\/key(?:\/(reveal))?$/i);
+  if (softwareLicenseKeyRoute && request.method === 'PUT' && !softwareLicenseKeyRoute[2]) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Saving a software license key must send CSRF.');
+    assert.equal(typeof body?.key, 'string');
+    assert.ok(body.key.length > 0 && body.key.length <= 2048);
+    const license = softwareLicenseRows.find(item => item.id === softwareLicenseKeyRoute[1]);
+    assert.ok(license, 'A software license key must belong to an existing synthetic license.');
+    softwareLicenseKeys.set(softwareLicenseKeyRoute[1], body.key);
+    license.hasLicenseKey = true;
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(204); response.end(); return;
+  }
+  if (softwareLicenseKeyRoute && request.method === 'POST' && softwareLicenseKeyRoute[2] === 'reveal') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Revealing a software license key must send CSRF.');
+    const key = softwareLicenseKeys.get(softwareLicenseKeyRoute[1]);
+    assert.ok(key, 'Only a stored synthetic key may be revealed.');
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store, private' });
+    response.end(JSON.stringify({ key })); return;
+  }
+  if (softwareLicenseKeyRoute && request.method === 'DELETE' && !softwareLicenseKeyRoute[2]) {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Removing a software license key must send CSRF.');
+    const license = softwareLicenseRows.find(item => item.id === softwareLicenseKeyRoute[1]);
+    assert.ok(license, 'A software license key must belong to an existing synthetic license.');
+    softwareLicenseKeys.delete(softwareLicenseKeyRoute[1]);
+    license.hasLicenseKey = false;
+    softwareLicenseKeyWrites.push(record);
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && url.pathname === '/api/software-licenses') {
     assert.equal(typeof body?.name, 'string', 'A new license must submit its name.');
@@ -1768,6 +1830,21 @@ const server = createServer(async (request, response) => {
     json(response, 200, record.responseBody);
     return;
   }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-trash') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Bulk trash must use CSRF protection.');
+    assert.deepEqual(body.assetIds, ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313']);
+    assert.equal(body.note, 'Quarterly inventory cleanup');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'Bulk trash must submit exactly the two selected synthetic assets.');
+    for (const target of targets) {
+      target.isDeleted = true;
+      target.updatedAt = '2026-10-15T11:30:00Z';
+    }
+    record.responseBody = { trashedCount: targets.length, assetIds: [...selected], trashedAt: '2026-10-15T11:30:00Z' };
+    json(response, 200, record.responseBody);
+    return;
+  }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
     asset.status = body.status;
     asset.updatedAt = '2026-10-14T13:30:00Z';
@@ -1820,7 +1897,7 @@ const server = createServer(async (request, response) => {
     asset.assignedEmployeeName = body.employeeId === employeeId ? 'Synthetic QA Employee' : 'Unknown synthetic employee';
     asset.expectedReturnOn = body.expectedReturnOn;
     asset.status = 'Deployed';
-    assetHistory.unshift({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventType: 'Assigned', occurredAt: '2026-10-14T16:00:00Z',
+    assetHistory.unshift({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventType: 'Assigned', employeeId: body.employeeId, occurredAt: '2026-10-14T16:00:00Z',
       details: `Varlık ${asset.assignedEmployeeName} çalışanına zimmetlendi${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ id: assetId, assetTag: asset.assetTag, status: asset.status, assignedEmployeeId: employeeId,
@@ -1832,7 +1909,7 @@ const server = createServer(async (request, response) => {
     delete asset.assignedEmployeeId;
     delete asset.assignedEmployeeName;
     delete asset.expectedReturnOn;
-    assetHistory.unshift({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', eventType: 'Returned', occurredAt: '2026-10-14T17:00:00Z',
+    assetHistory.unshift({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', eventType: 'Returned', employeeId, occurredAt: '2026-10-14T17:00:00Z',
       details: `Varlık iade alındı${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(204); response.end(); return;
   }
@@ -2200,6 +2277,14 @@ try {
   assert.equal(await page.locator('#newAssetForm [name="insuranceExpiresAt"]').inputValue(), '', 'Policy-specific insurance data must be cleared on clone.');
   assert.equal(await page.locator('#newAssetForm [name="purchaseCost"]').inputValue(), String(asset.purchaseCost));
   assert.equal(await page.locator('#newAssetForm [name="customField:inventory_reference"]').inputValue(), 'QA-SOURCE-REF');
+  assert.equal(await page.locator('#newAssetForm [name="customField:purchase_date_custom"]').getAttribute('type'), 'date',
+    'A custom date field must render as a native date input.');
+  assert.equal(await page.locator('#newAssetForm [name="customField:purchase_date_custom"]').inputValue(), '2026-10-15');
+  assert.equal(await page.locator('#newAssetForm [name="customField:encrypted_unit"]').getAttribute('type'), 'checkbox',
+    'A custom checkbox field must render as a checkbox.');
+  assert.equal(await page.locator('#newAssetForm [name="customField:encrypted_unit"]').isChecked(), true);
+  assert.equal(await page.locator('#newAssetForm [name="customField:asset_class"]').inputValue(), 'Laptop',
+    'A custom select field must preserve the selected configured option.');
   assert.equal(await page.locator('#newAssetForm [name="customField:secret_key"]').inputValue(), '',
     'Encrypted sensitive source values must not be prefilled into a cloned asset.');
   assert.equal(await page.locator('#newAssetForm .asset-custom-field-group h3').filter({ hasText: 'Güvenlik' }).count(), 1,
@@ -2224,6 +2309,9 @@ try {
   assert.equal(assetCreateWrites.at(-1).body.insuranceProvider, null);
   assert.equal(assetCreateWrites.at(-1).body.insurancePolicyNumber, null);
   assert.equal(assetCreateWrites.at(-1).body.insuranceExpiresAt, null);
+  assert.deepEqual(assetCreateWrites.at(-1).body.customFields, {
+    inventory_reference: 'QA-SOURCE-REF', purchase_date_custom: '2026-10-15', encrypted_unit: 'true', asset_class: 'Laptop'
+  }, 'Text, date, checkbox, and select values must be serialized with the cloned asset; sensitive data must remain excluded.');
   await page.waitForFunction(() => [...document.querySelectorAll('#assetRows tr')].some(row => row.innerText.includes('QA-CLONE-001')));
   assert.equal(await page.locator('#assetRows tr').filter({ hasText: 'QA-CLONE-001' }).count(), 1,
     'The cloned asset must appear in the refreshed company inventory.');
@@ -2482,6 +2570,7 @@ try {
   await maintenanceDialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetTabMaintenance')?.hidden === false);
   assert.equal(maintenanceRows[0].status, 'Scheduled');
+  await page.locator('#assetMaintenanceRows').getByText('Synthetic scheduled inspection').first().waitFor().catch(() => {});
   assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Synthetic scheduled inspection/);
   assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Planlandı/);
   const scheduleWrite = apiRequests.at(-1);
@@ -2574,6 +2663,13 @@ try {
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
   await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#detailEmployee')?.textContent.includes('Synthetic QA Employee'));
   assert.equal(asset.status, 'Deployed');
+  await page.locator('#assetTabHistoryButton').click();
+  const openAssignmentDuration = page.locator('[data-assignment-event="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]');
+  await openAssignmentDuration.waitFor({ state: 'visible' });
+  assert.equal(await openAssignmentDuration.getAttribute('data-asset-held-duration'), 'ongoing');
+  assert.match(await openAssignmentDuration.innerText(), /Zimmet süresi · \d+ gün \(devam ediyor\)/,
+    'The assignment timeline must show elapsed holding time while the employee still has the asset.');
+  await page.locator('#assetTabOverviewButton').click();
 
   const detailReferenceFilters = [
     { selector: '#detailCategory', label: 'Synthetic equipment', queryKey: 'categoryId', value: asset.categoryId },
@@ -2868,6 +2964,12 @@ try {
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
   assert.match(await page.locator('#detailEmployee').innerText(), /—|atanmamış/i,
     'After a successful return, reopening the asset must not show the previous assignee.');
+  await page.locator('#assetTabHistoryButton').click();
+  const completedAssignmentDuration = page.locator('[data-assignment-event="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]');
+  await completedAssignmentDuration.waitFor({ state: 'visible' });
+  assert.equal(await completedAssignmentDuration.getAttribute('data-asset-held-duration'), 'completed');
+  assert.match(await completedAssignmentDuration.innerText(), /Zimmet süresi · 1 saat/,
+    'The assignment timeline must show the elapsed duration up to the matching employee return.');
   await page.locator('#assetDialog #closeDialog').click();
 
   await page.locator('[data-group="data"]').click();
@@ -3215,6 +3317,7 @@ try {
   assert.equal(acceptedEulaAssignment.eulaAttachmentId, softwareLicenseCurrentEula.id);
   assert.equal(acceptedEulaAssignment.eulaVersion, '2.0');
   assert.equal(acceptedEulaAssignment.eulaAcceptedBy, 'Synthetic Owner');
+  await page.waitForFunction(() => /2\.0[\s\S]*Synthetic Owner/.test(document.querySelector('#licenseAssignments')?.innerText || '')).catch(() => {});
   assert.match(await page.locator('#licenseAssignments').innerText(), /2\.0[\s\S]*Synthetic Owner/,
     'The refreshed license detail must show the accepted EULA version and confirmer.');
   assert.deepEqual(softwareLicenseAssignmentWrites.at(-1).body,
@@ -3301,6 +3404,8 @@ try {
   const employeeSearchResponse = waitAssignmentList(params => params.get('active') === 'false' && params.get('q') === 'QA-PAGE-025' && params.get('page') === '1');
   await page.locator('#licenseAssignmentSearch').fill('QA-PAGE-025');
   assert.equal((await employeeSearchResponse).status(), 200);
+  await assignmentRows.getByText('QA-PAGE-025').first().waitFor().catch(() => {});
+  await page.waitForFunction(() => document.querySelectorAll('#licenseAssignmentRows tr').length === 1).catch(() => {});
   assert.equal(await assignmentRows.count(), 1, 'Searching by employee number must return the matching assignment.');
   await assignmentRows.getByText('QA-PAGE-025').waitFor();
   const licenseSearchResponse = waitAssignmentList(params => params.get('active') === 'false' && params.get('q') === 'Synthetic Pagination License' && params.get('page') === '1');
@@ -3465,6 +3570,7 @@ try {
   assert.equal(deviceLicenseAssignment.assetId, assetId);
   assert.equal(deviceLicenseAssignment.employeeId, null);
   await deviceLicenseDetailRefreshResponse;
+  await page.locator('#licenseAssignments').getByText(`QA-ASSET-001 · ${assignedAssetName}`).first().waitFor().catch(() => {});
   const renderedDeviceAssignments = await page.locator('#licenseAssignments').innerText();
   assert.ok(renderedDeviceAssignments.includes(`QA-ASSET-001 · ${assignedAssetName}`),
     `The refreshed license detail must display the assigned asset; rendered rows: ${renderedDeviceAssignments}`);
@@ -3584,6 +3690,102 @@ try {
   await page.locator('#licenseRows').getByText(editedLicenseName).waitFor();
   assert.ok(requests.some(item => item.path === '/api/software-licenses' && item.query.q === 'QA-LICENSE-CRUD-001'),
     'The license list search must find the newly persisted record through the API.');
+  await page.locator('#licenseSearch').fill('');
+  await licenseList.locator(`tr[data-id="${softwareLicenseId}"]`).waitFor({ state: 'visible' });
+  const licenseKeyLocaleCases = [
+    ['en', 'License key', 'Product key'], ['ru', 'Ключ лицензии', 'Ключ продукта'],
+    ['uk', 'Ліцензійний ключ', 'Ключ продукту'], ['mk', 'Клуч за лиценца', 'Клуч на производот'], ['tr', 'Lisans anahtarı', 'Ürün anahtarı']
+  ];
+  for (const [language, expectedHeading, expectedLabel] of licenseKeyLocaleCases) {
+    await page.locator('#appearanceButton').click();
+    await page.locator('#languagePreference').selectOption(language);
+    const appearanceSaveResponse = page.waitForResponse(response => response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/appearance/preferences');
+    await page.locator('#appearanceSave').click();
+    assert.equal((await appearanceSaveResponse).status(), 200, `Saving ${language} appearance preference must succeed.`);
+    await page.locator('#appearanceDialog').waitFor({ state: 'hidden' });
+    await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+    await licenseDetail.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#licenseKeySection h3').innerText(), expectedHeading, `${language} license-key heading must be translated.`);
+    assert.equal(await page.locator('#licenseKeySection label span').innerText(), expectedLabel, `${language} product-key label must be translated.`);
+    await page.locator('#closeLicenseDetail').click();
+    await licenseDetail.waitFor({ state: 'hidden' });
+  }
+  assert.deepEqual(syntheticAppearanceWrites.slice(-5).map(write => write.body.language), ['en', 'ru', 'uk', 'mk', 'tr'],
+    'The five-language acceptance must save each selected locale through the preference endpoint.');
+
+  await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  const licenseKeySection = page.locator('#licenseKeySection');
+  const licenseKeyInput = page.locator('#licenseKeyInput');
+  const syntheticProductKey = 'SYNTHETIC-KEY-UI-ONLY-7C51';
+  assert.equal(await licenseKeySection.isVisible(), true, 'A writable company user must see the key controls.');
+  assert.equal(await page.locator('#licenseKeyState').innerText(), 'Anahtar kaydı yok.');
+  assert.equal(await page.locator('#licenseKeyReveal').isHidden(), true);
+  const keyWriteCountBeforeSave = softwareLicenseKeyWrites.length;
+  await page.locator('#licenseKeySave').click();
+  assert.equal(softwareLicenseKeyWrites.length, keyWriteCountBeforeSave, 'An empty key must not produce an API write.');
+  await licenseKeyInput.fill(syntheticProductKey);
+  const licenseKeySaveResponse = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key`);
+  await page.locator('#licenseKeySave').click();
+  assert.equal((await licenseKeySaveResponse).status(), 204);
+  await page.waitForFunction(() => document.querySelector('#licenseKeyState')?.textContent === 'Anahtar kayıtlı.');
+  assert.equal(await licenseKeyInput.inputValue(), '', 'Saving must clear the secret from the input.');
+  assert.equal(await page.locator('#licenseKeyReveal').isVisible(), true);
+  assert.equal((await page.locator('#licenseDetailFields').innerText()).includes(syntheticProductKey), false,
+    'License detail fields must never render the key.');
+  assert.equal((await page.locator('#licenseKeySection').innerText()).includes(syntheticProductKey), false,
+    'License key panel must not reveal the secret until explicitly requested.');
+  assert.equal(softwareLicenseKeys.get(softwareLicenseId), syntheticProductKey);
+  assert.deepEqual(softwareLicenseKeyWrites.at(-1).body, { key: syntheticProductKey });
+  assert.equal(softwareLicenseKeyWrites.at(-1).csrf, 'synthetic-asset-csrf');
+  const revealResponsePromise = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key/reveal`);
+  await page.locator('#licenseKeyReveal').click();
+  const revealResponse = await revealResponsePromise;
+  assert.equal(revealResponse.status(), 200);
+  assert.match(revealResponse.headers()['cache-control'] || '', /no-store/i);
+  await page.waitForFunction(value => document.querySelector('#licenseKeyInput')?.value === value, syntheticProductKey);
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'text');
+  await page.locator('#licenseKeyVisibility').click();
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'password', 'The visibility control must hide a revealed key.');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#licenseKeyInput')?.value === '');
+  assert.equal(await licenseKeyInput.getAttribute('type'), 'password');
+  await page.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  assert.equal(await licenseKeyInput.inputValue(), '', 'Reopening detail must not restore the plaintext key.');
+  const licenseKeyWriteCountBeforeClear = softwareLicenseKeyWrites.length;
+  await page.locator('#licenseKeyClear').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  assert.equal((await page.locator('#licenseActionTitle').textContent()).trim(), 'Anahtarı kaldır');
+  assert.match((await page.locator('#licenseActionSummary').textContent()).trim(), /Kayıtlı lisans anahtarını kaldırmak istiyor musunuz\?/);
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseKeyWrites.length, licenseKeyWriteCountBeforeClear,
+    'Canceling the confirmation must not call the delete API.');
+  assert.equal(softwareLicenseKeys.get(softwareLicenseId), syntheticProductKey,
+    'Canceling the confirmation must retain the encrypted key.');
+  await page.locator('#licenseKeyClear').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  const licenseKeyClearResponse = page.waitForResponse(response => response.request().method() === 'DELETE'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/key`);
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await licenseKeyClearResponse).status(), 204);
+  await page.waitForFunction(() => document.querySelector('#licenseKeyState')?.textContent === 'Anahtar kaydı yok.');
+  assert.equal(softwareLicenseKeys.has(softwareLicenseId), false);
+  assert.equal(softwareLicenseRows.find(item => item.id === softwareLicenseId).hasLicenseKey, false);
+  assert.equal(await page.locator('#licenseKeyReveal').isHidden(), true);
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  assert.deepEqual(softwareLicenseKeyWrites.map(write => [write.method, write.path]), [
+    ['PUT', `/api/software-licenses/${softwareLicenseId}/key`],
+    ['POST', `/api/software-licenses/${softwareLicenseId}/key/reveal`],
+    ['DELETE', `/api/software-licenses/${softwareLicenseId}/key`]
+  ]);
+  console.log('PASS: software license key UI saves only nonempty values with CSRF, reveals with no-store, toggles visibility, clears on close, removes with confirmation, never renders in detail, and all five locale labels render.');
   assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 4,
     'Only the explicitly confirmed license creation, update, archive, and restore may write.');
   console.log('PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive/restore confirmation, active/archive filters, archived action locks, persisted list/detail refresh, and search.');
@@ -3698,7 +3900,7 @@ try {
   const bulkAssetIds = ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313'];
   bulkAssets = bulkAssetIds.map((id, index) => ({
     ...asset, companyId: activeCompanyId, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
-    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null
+    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null, isDeleted: false
   }));
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   const firstBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[0]}"]`);
@@ -4017,6 +4219,48 @@ try {
   assert.ok(bulkAssets.every(item => item.nextAuditOn === null), 'An omitted next-audit date must clear the previous schedule.');
   console.log('PASS: bulk unacceptable audit requires a finding, preserves CSRF, records findings for every selected asset, and supports clearing its schedule.');
 
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  const bulkTrashButton = page.locator('#bulkTrashSelectedAssets');
+  assert.equal(await bulkTrashButton.isVisible(), true, 'Writable users must see the bulk-trash action.');
+  assert.equal(await bulkTrashButton.isDisabled(), false, 'Bulk trash must be available for a valid selection of up to 100 assets.');
+  const bulkTrashWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length;
+  await bulkTrashButton.click();
+  const bulkTrashDialog = page.locator('dialog[aria-labelledby="bulkAssetActionTitle"]');
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#bulkAssetActionTitle').innerText(), /Seçili varlıkları çöp kutusuna taşı/);
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /2 seçili varlık/);
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /geri alınabilir/);
+  await page.keyboard.press('Escape');
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length, bulkTrashWritesBeforeCancel,
+    'Escape must cancel the bulk-trash confirmation without writing.');
+  assert.ok(bulkAssets.every(item => !item.isDeleted), 'Escape must leave every selected asset unchanged.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/,
+    'Escape must preserve selection so the user can retry deliberately.');
+  await bulkTrashButton.click();
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  await page.locator('#cancelBulkAssetAction').click();
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-trash').length, bulkTrashWritesBeforeCancel,
+    'The cancel button must also avoid writes.');
+  assert.ok(bulkAssets.every(item => !item.isDeleted), 'Cancel must leave every selected asset unchanged.');
+  await bulkTrashButton.click();
+  await bulkTrashDialog.waitFor({ state: 'visible' });
+  await page.locator('#bulkAssetActionForm [name="note"]').fill('Quarterly inventory cleanup');
+  await page.locator('#submitBulkAssetAction').click();
+  await bulkTrashDialog.waitFor({ state: 'hidden' });
+  await firstBulkRow.waitFor({ state: 'detached' });
+  await secondBulkRow.waitFor({ state: 'detached' });
+  const bulkTrashWrite = apiRequests.find(item => item.path === '/api/assets/bulk-trash');
+  assert.equal(bulkTrashWrite?.method, 'POST');
+  assert.deepEqual(bulkTrashWrite?.body, { assetIds: bulkAssetIds, note: 'Quarterly inventory cleanup' });
+  assert.equal(bulkTrashWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.isDeleted), 'Only confirmed selected assets may be soft-deleted.');
+  assert.equal(await bulkToolbar.isHidden(), true, 'Successful bulk trash must clear selection and hide the toolbar.');
+  assert.match(await page.locator('#toast').innerText(), /2 seçili varlık çöp kutusuna taşındı/);
+  console.log('PASS: bulk-trash UI is writable-role gated, confirms reversible trash, Escape/cancel do not write, confirmed request is CSRF-protected, and removed rows/selection are refreshed.');
+
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
@@ -4103,6 +4347,7 @@ try {
 
   await page.locator('#reservationStatus').selectOption('Approved');
   await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-001' }).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('#reservationRows tr').length === 1).catch(() => {});
   assert.equal(await page.locator('#reservationRows tr').count(), 1, 'Status filtering must return only matching reservations.');
   assert.ok(requests.some(item => item.path === '/api/reservations' && item.query.status === 'Approved' && item.query.page === '1'),
     'Changing the status filter must reload page one with the selected status.');
@@ -4441,6 +4686,8 @@ try {
   assert.equal(apiRequests.length, deliveryWritesBeforeRefresh, 'Pending delivery filters, paging, CSV and refresh must remain read-only.');
   await page.locator('#depreciationReportRows').getByText('QA-DEPR-LINEAR').waitFor();
   assert.equal(await page.locator('#depreciationReportRows tr').count(), 50, 'Depreciation report must initially page at 50 rows.');
+  assert.match(await page.locator('#depreciationReportRows').locator('xpath=../thead').innerText(), /Yıllık amortisman \(%\)/, 'Depreciation report must label the annual percentage column.');
+  assert.match(await page.locator('#depreciationReportRows tr').filter({ hasText: 'QA-DEPR-LINEAR' }).innerText(), /10%/, 'Depreciation report must render the effective annual percentage.');
   assert.match(await page.locator('#depreciationReportRows').innerText(), /Doğrusal/);
   assert.match(await page.locator('#depreciationReportRows').innerText(), /9\.600/);
   assert.match(await page.locator('#depreciationReportSummary').innerText(), /TRY/);
@@ -4480,7 +4727,9 @@ try {
   const depreciationStream = await depreciationDownload.createReadStream(), depreciationChunks = [];
   for await (const chunk of depreciationStream) depreciationChunks.push(Buffer.from(chunk));
   const depreciationCsv = Buffer.concat(depreciationChunks).toString('utf8');
+  assert.match(depreciationCsv, /Yıllık amortisman \(%\)/, 'Depreciation CSV must include the annual rate heading.');
   assert.match(depreciationCsv, /QA-DEPR-PAGE-001/);
+  assert.match(depreciationCsv, /10;100;/, 'Depreciation CSV must include the effective annual rate value.');
   assert.doesNotMatch(depreciationCsv, /QA-DEPR-LINEAR/);
   const depreciationExport = requests.findLast(item => item.path === '/api/reports/depreciation/export.csv');
   assert.equal(depreciationExport?.query.asOf, '2026-11-16', 'Depreciation CSV must preserve the report date.');
@@ -4679,8 +4928,10 @@ try {
   const customPresetsResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/assets/custom-reports' && response.request().method() === 'GET');
   await page.locator('#sidebar button[data-page="Özel rapor oluştur"]').click();
   await Promise.all([customFieldsResponse, customPresetsResponse]);
-  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').count(), 1,
+  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').count(), 4,
     'Only active non-sensitive company custom fields may be offered as custom report columns.');
+  assert.equal(await page.locator('#customReportColumns [data-custom-report-field]').filter({ hasText: 'Gizli anahtar' }).count(), 0,
+    'Sensitive custom fields must remain unavailable as custom report columns.');
   const customReportChecks = page.locator('#customReportColumns input[type="checkbox"]');
   await customReportChecks.evaluateAll(inputs => inputs.forEach(input => { input.checked = false; input.dispatchEvent(new Event('change', { bubbles: true })); }));
   await page.locator('#customReportName').fill('QA Custom Assets');
@@ -5413,6 +5664,46 @@ try {
 
   if (!await page.locator('[data-page="Varlık modelleri"]').isVisible()) await page.locator('[data-group="inventory"]').click();
   await page.locator('[data-page="Varlık modelleri"]').click();
+  const modelRateInput = page.locator('#catalogCreateForm [name="depreciationAnnualRatePercent"]');
+  await modelRateInput.waitFor({ state: 'visible' });
+  await page.locator('#catalogCreateForm [name="name"]').fill('Synthetic annual-rate model');
+  await page.locator('#catalogCreateForm [name="categoryId"]').selectOption(asset.categoryId);
+  await page.locator('#catalogCreateForm [name="depreciationMonths"]').fill('48');
+  await modelRateInput.fill('25');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMonths"]').inputValue(), '',
+    'Entering an annual rate must clear the conflicting useful-life value.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"]').inputValue(), 'linear',
+    'Annual-rate depreciation must use the supported straight-line method.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"] option[value="half_1"]').evaluate(option => option.disabled), true,
+    'Annual-rate depreciation must disable the unsupported first half-year method.');
+  assert.equal(await page.locator('#catalogCreateForm [name="depreciationMethod"] option[value="half_2"]').evaluate(option => option.disabled), true,
+    'Annual-rate depreciation must disable the unsupported second half-year method.');
+  const modelCreateResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/lookups/models'
+    && response.request().method() === 'POST');
+  await page.locator('#catalogCreateForm button[type="submit"]').click();
+  assert.equal((await modelCreateResponse).status(), 200);
+  const createdModelRequest = requests.findLast(item => item.path === '/api/lookups/models' && item.method === 'POST');
+  assert.equal(createdModelRequest?.body.depreciationMonths, null);
+  assert.equal(createdModelRequest?.body.depreciationAnnualRatePercent, 25);
+  const modelEditMonths = page.locator(`[data-dep-months="${modelId}"]`);
+  const modelEditRate = page.locator(`[data-dep-annual-rate="${modelId}"]`);
+  await modelEditMonths.fill('36');
+  assert.equal(await modelEditRate.inputValue(), '', 'Entering useful life must clear the conflicting annual rate.');
+  await modelEditRate.fill('20');
+  assert.equal(await modelEditMonths.inputValue(), '', 'Entering an annual rate must clear the conflicting useful life.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"]`).inputValue(), 'linear',
+    'Editing an annual-rate model must select the supported straight-line method.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"] option[value="half_1"]`).evaluate(option => option.disabled), true,
+    'Editing an annual-rate model must disable the unsupported first half-year method.');
+  assert.equal(await page.locator(`[data-dep-method="${modelId}"] option[value="half_2"]`).evaluate(option => option.disabled), true,
+    'Editing an annual-rate model must disable the unsupported second half-year method.');
+  const modelPolicyResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/lookups/models/${modelId}/depreciation`
+    && response.request().method() === 'PATCH');
+  await page.locator(`[data-dep-save="${modelId}"]`).click();
+  assert.equal((await modelPolicyResponse).status(), 200);
+  const updatedModelPolicy = requests.findLast(item => item.path === `/api/lookups/models/${modelId}/depreciation` && item.method === 'PATCH');
+  assert.equal(updatedModelPolicy?.body.months, null);
+  assert.equal(updatedModelPolicy?.body.annualRatePercent, 20);
   let releaseModelDetails;
   const modelDetailsGate = new Promise(resolve => { releaseModelDetails = resolve; });
   const delayModelDetails = async route => {
@@ -5435,6 +5726,9 @@ try {
     await page.unroute(`**/api/models/${modelId}/details`, delayModelDetails);
   }
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /MD-TEST/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /Ömür sonu \(EOL\)/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /30\.06\.2030/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /20% yıllık/, 'Model details must show the configured annual depreciation rate.');
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /Teknik dosyalar/);
   assert.match(await page.locator('#modelDetailsAssets').innerText(), /QA-ASSET-001/);
   assert.match(await page.locator('#modelDetailsOrders').innerText(), /PO-MODEL-001/);

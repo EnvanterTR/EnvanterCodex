@@ -5,9 +5,19 @@ import vm from 'node:vm';
 const htmlPath = resolve(process.argv[2] || 'src/EnvanterTR.Web/wwwroot/index.html');
 const programPath = resolve(process.argv[3] || 'src/EnvanterTR.Web/Program.cs');
 const authPath = resolve(process.argv[4] || 'src/EnvanterTR.Web/Data/CompanyRoleAuthorization.cs');
+const platformHtmlPath = resolve('src/EnvanterTR.Web/wwwroot/platform-admin.html');
+const platformMembersPath = resolve('src/EnvanterTR.Web/wwwroot/platform-admin-members.js');
+const operationalEndpointsPath = resolve('src/EnvanterTR.Web/Data/OperationalEndpoints.cs');
+const platformEndpointsPath = resolve('src/EnvanterTR.Web/Data/PlatformEndpoints.cs');
+const dataExportEndpointsPath = resolve('src/EnvanterTR.Web/Data/DataExportEndpoints.cs');
 const html = readFileSync(htmlPath, 'utf8');
 const program = readFileSync(programPath, 'utf8');
 const authorization = readFileSync(authPath, 'utf8');
+const platformHtml = readFileSync(platformHtmlPath, 'utf8');
+const platformMembers = readFileSync(platformMembersPath, 'utf8');
+const operationalEndpoints = readFileSync(operationalEndpointsPath, 'utf8');
+const platformEndpoints = readFileSync(platformEndpointsPath, 'utf8');
+const dataExportEndpoints = readFileSync(dataExportEndpointsPath, 'utf8');
 const catalogMatch = html.match(/let companyRoleCatalog\s*=\s*(\[[\s\S]*?\n\s{4}\]);/);
 if (!catalogMatch) throw new Error(`Could not locate the company role catalog in ${htmlPath}`);
 const uiRoles = vm.runInNewContext(`(${catalogMatch[1]})`, {}, { timeout: 1000 });
@@ -18,7 +28,7 @@ const builtInBlock = authorization.match(/private static readonly CompanyRoleDef
 if (!builtInBlock) throw new Error(`Could not locate server built-in role definitions in ${authPath}`);
 const serverRoles = [...builtInBlock[1].matchAll(/Role\("([^"]+)",\s*"[^"]+"(?:,\s*([^\n)]*))?\)/g)]
   .map(([, key, permissionList]) => ({ key, permissions: (permissionList || '').split(',').map(value => constants[value.trim()]).filter(Boolean) }));
-if (serverRoles.length !== 7) throw new Error(`Expected 7 server built-in roles, found ${serverRoles.length}`);
+if (serverRoles.length !== 8) throw new Error(`Expected 8 server built-in roles, found ${serverRoles.length}`);
 
 const capabilityPermissions = {
   assetsRead: ['assets.read'], assetsWrite: ['assets.write'], peopleRead: ['people.read'],
@@ -72,4 +82,18 @@ if (!program.includes('RequireClaim("company_member", "true")') || !program.incl
   throw new Error('Company membership policy is not backed by live membership resolution.');
 if (!authorization.includes('role.CompanyId == companyId && role.RoleKey == roleKey && role.IsActive'))
   throw new Error('Custom roles must resolve within the active tenant only.');
-console.log(`Verified ${serverRoles.length} built-in roles, six UI capabilities, tenant-scoped custom-role resolution, and seven server permission policies.`);
+const finance = serverRoles.find(role => role.key === 'finance');
+if (!finance || finance.permissions.length !== 1 || finance.permissions[0] !== 'assets.read')
+  throw new Error('The finance role must grant only assets.read.');
+const inviteOption = '<option value="finance">Muhasebe (salt okunur)</option>';
+if (!html.includes(inviteOption) || !platformHtml.includes(inviteOption))
+  throw new Error('Company and platform member invitations must expose the read-only finance role.');
+if ((platformMembers.match(/finance: 'Muhasebe \(salt okunur\)'/g) || []).length !== 3)
+  throw new Error('Platform member labels and role selectors must recognize finance in all three maps.');
+if (!operationalEndpoints.includes('"viewer", "finance", "hr_operator"'))
+  throw new Error('Company member invitation endpoint must accept the finance role.');
+if ((platformEndpoints.match(/"viewer", "finance", "hr_operator"/g) || []).length !== 3)
+  throw new Error('All platform company-member role validation endpoints must accept finance.');
+if (!dataExportEndpoints.includes('"viewer" or "finance" or "hr_operator"'))
+  throw new Error('Company import validation must recognize the finance role.');
+console.log(`Verified ${serverRoles.length} built-in roles, read-only finance permissions, company/platform invite and import mappings, six UI capabilities, tenant-scoped custom-role resolution, and seven server permission policies.`);

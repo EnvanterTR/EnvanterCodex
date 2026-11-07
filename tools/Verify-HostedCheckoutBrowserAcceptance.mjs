@@ -166,7 +166,7 @@ assert.match(assetActions, /placeholderDestinations\.length/);
 assert.match(platformMembers, /account\/security\/membership\/payment timeline/);
 assert.match(platformMembers, /Canceling the membership-role dialog must not write/);
 assert.match(platformMembers, /Synthetic role review/);
-assert.match(platformMembers, /Synthetic Invited Viewer/);
+assert.match(platformMembers, /Synthetic Invited Finance/);
 assert.match(platformMembers, /Özellik bayrakları JSON nesnesi olmalı ve değerleri true\/false olmalıdır\./);
 assert.match(platformMembers, /invalid feature-flags document must not write a plan/);
 assert.match(platformMembers, /Clearing a draft plan must not write/);

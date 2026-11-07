@@ -1,1188 +1,2156 @@
 {
-  "schemaVersion": 1,
-  "measuredAt": "2026-11-02T21:03:48Z",
+  "schemaVersion": 2,
+  "measuredAt": "2026-11-05",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "commit": "eb5b93a",
-    "workingTreeHasPreexistingChanges": true
+    "branch": "codex/f2-cloud-seat-limits-20261104",
+    "commit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+    "workingTreeCleanAtRun": true,
+    "note": "WP-153 single unfiltered disposable-PostgreSQL acceptance: 328/328 passed, 0 failed; xUnit 1.0631 hours; wrapper exit 0. No live access, migration source change, or push."
   },
-  "baseline": {
+  "currentVerification": {
     "releaseBuild": {
       "status": "PASS",
       "warnings": 0,
       "errors": 0,
-      "evidence": "Docker SDK container; EnvanterTR.Web.csproj Release build"
-    },
-    "testProjects": 1,
-    "postgresSecurityAcceptance": {
-      "status": "PASS",
-      "passed": 244,
-      "failed": 0,
-      "duration": "40m 12s",
-      "isolatedDatabase": true,
-      "productionWrites": false
-    },
-    "hostedChromiumAcceptance": {
-      "status": "PASS",
-      "exitCode": 0,
-      "fullSuite": true,
-      "productionWrites": false,
-      "testedSidebarDestinations": 53
+      "command": "Docker .NET SDK 10.0: dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+      "measuredCommit": "1b2a8554923687b052b3b2b293622c8eda285580"
     },
     "sourceVerifiers": {
       "status": "PASS",
-      "passed": 83,
+      "passed": 85,
       "failed": 0,
-      "total": 83,
-      "failures": []
+      "total": 85,
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "command": "node tools/Verify-*.mjs",
+      "workingTreeModifiedDuringVerification": true,
+      "note": "All 85 static verifiers passed on the WP-106 source snapshot. The working tree had reporting-only edits during verification; application and test source matched measuredCommit."
+    },
+    "targetedPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited"
+      ],
+      "measuredCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 (single employee archive test filter)",
+      "testHarnessCommit": "9f505cc",
+      "note": "Employee archive/restore role, tenant, CSRF, inactive-state, audit, default-list, includeArchived and restore behavior passed. Test ran against the exact source content committed as measuredCommit; working tree contained source edits while test ran."
+    },
+    "employeeLifecycleAcceptance": {
+      "status": "PASS",
+      "passed": 31,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": "FullyQualifiedName~Employee_",
+      "measuredCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Employee_'",
+      "hostedBrowser": {
+        "status": "PASS",
+        "command": "node deploy/testing/hosted-checkout-browser/employee-records.mjs",
+        "sourceFileChangedDuringVerification": true,
+        "note": "Synthetic API-backed Chromium verifies employee CSV flows, archive cancel/confirm, default filtering, restore preserving inactive state, and single offboarding cancel/confirm with one PATCH and returned-item counts."
+      },
+      "note": "Employee create/edit, list/detail/export, photo/document, CSV, department/location/manager, company scope, archive/restore, and offboarding API acceptance passed. Isolated PostgreSQL is not live-company acceptance."
+    },
+    "employeeCsvImportAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "apiSuitePassed": 31,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Employee_csv_import_preview_is_read_only_and_commit_is_atomic_round_trips_managers_and_audits",
+        "Employee_csv_import_cannot_link_a_manager_outside_the_direct_company_unit_scope"
+      ],
+      "browserCommand": "node deploy/testing/hosted-checkout-browser/employee-records.mjs",
+      "browserStatus": "PASS",
+      "measuredProductCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "testHarnessCommit": "9f505cc",
+      "note": "Sentinel API-backed Chromium verified template, non-writing preview, cancel-safe confirmation, exact-file commit, filtered export, export/import round-trip and duplicate prevention. The isolated API suite covers atomicity, CSRF, tenant/location, manager and audit behavior. This is not a live-company import."
+    },
+    "wp136CustomerApiCustomFieldIsolation": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "runnerExitCode": 0,
+      "xunitDurationSeconds": 58.0948,
+      "behavior": "Foreign companyId removed by 303 redirect; sanitized authenticated request with forged Company B X-Company-Id returned only Company A asset custom-field definition.",
+      "attempts": "Attempt 1 fixture failed because generated key exceeded the 40-character DB limit; shortened key; attempt 2 passed.",
+      "cleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "measuredBaseCommit": "bec001cfb281bfa925263e9b2ce067bc4331ed97",
+      "measuredCodeCommit": "23b8928"
+    },
+    "finalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 328,
+      "passed": 328,
+      "failed": 0,
+      "xunitDurationHours": 1.0631,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
+      "includedTests": [
+        "Company_label_settings_and_templates_ignore_forged_foreign_company_selectors: PASS",
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "note": "Single unfiltered PostgreSQL acceptance run requested for WP-153. xUnit reported Test Run Successful; negative-path error logs occurred inside passing tests."
     },
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2240,
-      "pageRoutes": 66,
+      "staticControls": 2265,
+      "pageRoutes": 65,
       "menuGroups": 10,
-      "links": 52,
-      "buttons": 950,
-      "forms": 111,
-      "inputs": 616,
-      "selects": 202,
-      "textareas": 41,
-      "modals": 107,
+      "links": 53,
+      "buttons": 958,
+      "forms": 113,
+      "inputs": 627,
+      "selects": 204,
+      "textareas": 42,
+      "modals": 109,
       "tabs": 5,
-      "tables": 80
+      "tables": 79,
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "measuredBaseCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "workingTreeModified": true,
+      "note": "WP-099 software-license-key controls added; node tools/Generate-UiInventory.mjs --check passed on the current working tree."
     },
-    "migrationSourceCount": 121,
-    "liveReadOnly": {
-      "apex": "HTTP 200 ready",
-      "firm": "HTTP 200 ready",
-      "publicPlans": 8,
-      "checkout": "unavailable",
-      "applicationReportedMigrations": 122,
-      "sourceLiveMigrationDifference": 1,
-      "checkedBy": "node tools/Check-CoolifyProduction.mjs",
-      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "deploymentHistory": "Coolify latest successful deployment 2026-11-01 08:42 UTC",
-      "liveCommitMigrationCount": 122,
-      "liveCommitLatestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "liveCommitOnlyMigrations": [
-        "20261020174959_AddSubscriptionCoupons",
-        "20261023190000_AddExistingCompanyCheckoutContext",
-        "20261024010000_AddPlatformImpersonationSessions",
-        "20261024212238_AddRecoverableCompanyDeletion",
-        "20261026083058_AddHandoverEmailAttempts"
+    "gitDiffCheck": {
+      "status": "PASS",
+      "command": "git diff --check",
+      "measuredCommit": "56c0fae3719d109020398b4a2e7ab158584fd9a8"
+    },
+    "lastFullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "exitCode": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "duration": "50.4233 minutes (xUnit)",
+      "measuredCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "resultEvidence": "xUnit output: Test Run Successful; Total tests: 322; Passed: 322; Total time: 50.4233 Minutes; runner exit 0.",
+      "log": "%TEMP%\\envantertr-full-acceptance-20261105-wp132.log",
+      "runnerCleanup": "Compose stopped and removed the disposable acceptance/PostgreSQL containers and isolated network.",
+      "failedTests": [],
+      "note": "Existing migrations ran only in disposable acceptance PostgreSQL. No production DB, migration file, deployment, payment, Coolify/environment/domain/routing change, or push."
+    },
+    "wp122FullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "exitCode": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "duration": "49.9245 minutes (xUnit total time)",
+      "measuredCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "runnerCleanup": "Disposable acceptance and PostgreSQL containers removed; isolated Docker network removed; Compose teardown exit 0",
+      "failedTests": [],
+      "log": "Interactive Codex exec output; the runner does not persist an output log file",
+      "note": "Test Run Successful; 322 total, 322 passed, 0 failed; xUnit and runner exit 0. No live DB, migration, deployment, payment, Coolify configuration, or push."
+    },
+    "latestTargetedReminderRegression": {
+      "measuredCommit": "0650321a2b9afcfad6d9f3a7e9c411099abb0e1d",
+      "workingTreeCleanAtRun": false,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Asset_return_email_reminders_include_overdue_and_upcoming_items_once_per_day_and_stay_tenant_scoped|FullyQualifiedName~License_reminder_is_due_only_at_the_configured_day_thresholds'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "status": "PASS",
+      "note": "Test ran with the WP-106 source edits present before commit; the committed code content matches the tested source. The working tree was modified during verification."
+    },
+    "f4TenantSelectorReadMatrix": {
+      "measuredBaseCommit": "b646263",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_read_matrix_hides_foreign_records_from_detail_and_collection_routes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "families": [
+        "assets",
+        "employees",
+        "software licenses",
+        "accessories",
+        "consumables",
+        "components"
       ],
-      "worktreeOnlyMigrations": [
-        "20261101212918_AddCheckoutWebhookReceipts",
-        "20261101214246_AddCompanyPayments",
-        "20261101220912_AddCompanyInvoices",
-        "20261101230628_AddPlatformAnnouncements"
-      ]
+      "checks": "For each family, direct foreign detail returns 404; normal collection excludes the foreign ID; collection with forged companyId=<other tenant> still includes the caller's own ID and excludes the foreign ID.",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "status": "PASS"
     },
-    "sourceLineage": {
-      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "mergeBaseWithFeatureHead": "36c5937440229b6105c3c8b5f9e86cafa655e2c0",
-      "originMainMergeBaseWithDeployedSha": "4d55270827be312775ebffe60c5a6d74011d7802",
-      "originMainOnlyCommits": 74,
-      "featureBranchOnlyCommits": 13,
-      "featureBranch": "feat/platform-checkout-readiness-20261020",
-      "worktreeDirty": true,
-      "mergeOrDeployPerformed": false
+    "f5HostedBrowserAcceptanceSweep": {
+      "measuredBaseCommit": "29f0cdf",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+      "exitCode": 0,
+      "hostedCheckoutModule": "PASS",
+      "homepageProductGalleryModule": "PASS",
+      "uiInventoryCommand": "node tools/Generate-UiInventory.mjs --check",
+      "staticControls": 2265,
+      "routes": 65,
+      "inventoryStatus": "PASS",
+      "aggregatePassFailBlockedCounts": "Runner does not emit aggregate counts; no assertion failure surfaced before exit 0.",
+      "scopeNote": "Curated Chromium workflows only; this is not individual acceptance of all 2,265 controls or every live-company role.",
+      "productionWrites": false,
+      "status": "PASS"
     },
-    "liveDerivedReleaseCandidate": {
+    "wp099SecretLogCaptureAcceptance": {
+      "measuredBaseCommit": "602f4f3",
+      "workingTreeModifiedAtRun": true,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "method": "A test-host ILoggerProvider was attached before startup; a warning-level canary proved capture was active. It then captured rendered and structured entries during set/reveal and verified the unique synthetic plaintext sentinel was absent. It does not require the endpoint to emit a route-specific log entry.",
+      "priorEncryptionAndRoleEvidence": "WP-104: Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped passed 1/1, including ciphertext at rest, tenant/license binding, viewer role and CSRF rejection, API/audit non-disclosure, reveal no-store, replace and clear.",
+      "failedAttempts": [
+        "Initial build lacked Microsoft.Extensions.DependencyInjection for GetRequiredService.",
+        "Information-level capture canary was filtered; changed canary to Warning and verified provider before capture."
+      ],
+      "status": "PASS"
+    },
+    "apiRouteBoundaryAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        "Every_api_endpoint_declares_an_explicit_authentication_boundary",
+        "Every_api_route_policy_matches_the_company_and_platform_role_matrix"
+      ],
+      "routesLowerBoundVerified": 300,
+      "coverage": "Every runtime /api RouteEndpoint was checked for explicit authorization or AllowAnonymous; every protected route was evaluated against the company/platform role-policy matrix; the exact public route and policy sets were asserted.",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "measuredCommit": "2cf52c8e2e2f18dcef1d922ea31f41fd75e2b54f",
+      "runnerCleanup": "Temporary database container and network removed"
+    },
+    "prCiObservation": {
+      "status": "PASS",
+      "runId": "41773396545",
+      "headSha": "aaff45e559cc62403772f04eed830b21023bb7f7",
+      "observedAt": "2026-11-04T04:56:12Z",
+      "requiredJobs": 5,
+      "successfulJobs": 5,
+      "inProgressJobs": 0,
+      "failedJobs": 0,
+      "jobResults": {
+        "Platform MFA browser acceptance": "success",
+        "Linux PostgreSQL tenant acceptance": "success",
+        "Windows deployment and backup safety": "success",
+        "Homepage gallery browser acceptance": "success",
+        "Linux tenant security acceptance": "success"
+      },
+      "previousRun": {
+        "runId": "41768913869",
+        "headSha": "a35cce4753ce1dfbd0829905dea979598398a680",
+        "status": "PASS",
+        "successfulJobs": 5
+      },
+      "note": "GitHub Actions run completed successfully on the exact PR head SHA; all five required jobs concluded success. The Linux PostgreSQL tenant acceptance job was observed in progress for 25+ minutes and later completed successfully. This Actions run verifies the pushed documentation-only head; application-source acceptance evidence remains recorded separately by its measured commit SHA."
+    },
+    "catalogCoverageAudit": {
+      "status": "PASS",
+      "targetItemOccurrences": 115,
+      "targetUniqueItems": 115,
+      "statusRowsForTargetItems": 115,
+      "missing": 0,
+      "duplicate": 0,
+      "invalid": 0,
+      "classification": {
+        "notRun": 75,
+        "partial": 10,
+        "implemented": 30
+      },
+      "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
+      "measuredCommit": "97b06a2",
+      "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
+      "latestStatusWp": "WP-099",
+      "measuredBaseCommit": "97b06a2",
+      "workingTreeModified": true,
+      "note": "115 A–O rows remain uniquely mapped. WP-099 adds protected license-key storage/access; C01 is VAR. Counts classify evidence only, not product completion."
+    },
+    "sourceMigrationInventory": {
+      "status": "PASS",
+      "count": 127,
+      "first": "20261002192729_InitialSchema",
+      "last": "20261104190000_AddProtectedSoftwareLicenseKeys",
+      "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
+      "measuredBaseCommit": "97b06a2",
+      "workingTreeModified": true,
+      "databaseConnected": false,
+      "note": "The source tree has 127 distinct migration IDs; the most recently measured live/backup history has 122 and has not been compared by exact ID. WP-099 migration is source-only and was not applied."
+    },
+    "f2HostedBrowserAcceptance": {
+      "status": "PASS",
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+      "executionCommit": "bdf209c29a25495ec7d534ba96da23afa1648b03",
+      "applicationSourceCommit": "a35cce4753ce1dfbd0829905dea979598398a680",
+      "fullHostedChromiumAndGallery": true,
+      "syntheticApiFixtures": true,
+      "productionAccess": false,
+      "databaseWrites": false,
+      "f2Assertions": [
+        "Trial mode and 15-day term submitted once with CSRF, paymentVerified=false, paymentReference=null",
+        "Platform plan create/update/validation/publication and reload",
+        "Public Cloud pricing loading/empty/error states, five locales, tenant slug suggestions"
+      ],
+      "note": "The browser acceptance uses synthetic API fixtures. It does not prove production company acceptance or database persistence."
+    },
+    "liveReadOnlyCheck": {
+      "status": "PARTIAL_PASS",
+      "observedAt": "2026-11-04T13:35:17Z",
+      "command": "node tools/Check-CoolifyProduction.mjs",
+      "productionWrites": false,
+      "requests": "HTTPS GET only",
+      "endpoints": {
+        "https://envantertr.com/api/status": {
+          "httpStatus": 200,
+          "appStatus": "ready",
+          "migrationCount": 122,
+          "pendingMigrationCount": 0
+        },
+        "https://firma.envantertr.com/api/status": {
+          "httpStatus": 200,
+          "appStatus": "ready",
+          "migrationCount": 122,
+          "pendingMigrationCount": 0
+        },
+        "https://envantertr.com/api/plans": {
+          "httpStatus": 200,
+          "publicPlanCount": 8
+        },
+        "https://envantertr.com/api/checkout/status": {
+          "httpStatus": 200,
+          "checkoutAvailable": false
+        }
+      },
+      "sourceMigrationCount": 124,
+      "migrationIdentityParity": "NOT_CHECKED",
+      "deployedSha": "NOT_EXPOSED_BY_CHECK",
+      "overallReadiness": "NOT_READY_CHECKOUT_UNAVAILABLE",
+      "note": "Historical read-only check at observedAt; at that time the compared source branch count was 124 and live count was 122. WP-099 later brings the current source tree to 127; no fresh live check or migration-ID parity comparison was performed. No deployment or database writes."
+    },
+    "accessoryAssignmentAcceptance": {
+      "status": "PASS",
+      "passed": 4,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Asset_scope_mutations_reject_hidden_checkout_targets_and_catalog_employee_changes_atomically",
+        "Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return",
+        "Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice",
+        "Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "passed": 2,
+        "tests": [
+          "Verify-AccessoryInventoryUi.mjs",
+          "Verify-AccessoryCheckinDialog.mjs"
+        ],
+        "chromiumCheckoutFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "d0f1c0a",
+      "runnerCleanup": "Temporary PostgreSQL containers and internal networks removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(four targeted accessory assignment/checkin tests)"
+    },
+    "consumableStockAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Consumable_search_stock_filters_pagination_and_csv_export_match_company_scope",
+        "Stock_and_model_employee_scope_matches_customer_api_and_explicit_location_restrictions"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-ConsumableInventoryUi.mjs"
+        ],
+        "chromiumFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "0d374ef",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(two targeted consumable inventory/scope tests)"
+    },
+    "componentAssignmentAcceptance": {
+      "status": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company",
+        "Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice",
+        "Location_access_scope_is_tenant_scoped_inherited_and_enforced_for_assets"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-ComponentInventoryUi.mjs"
+        ],
+        "chromiumAllocationFormSubmission": "NOT_RUN"
+      },
+      "measuredCommit": "32f17ca",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three targeted component allocation/relation/scope tests)"
+    },
+    "kitAcceptance": {
+      "status": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore",
+        "Accessory_kit_requests_are_company_scoped_and_approve_all_stock_lines_atomically",
+        "Mixed_kits_validate_tenant_items_and_issue_all_four_types_as_one_request"
+      ],
+      "hostedChromium": {
+        "status": "PASS",
+        "scenario": "accessory-kits.mjs",
+        "productionWrites": false
+      },
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-AccessoryKitsUi.mjs"
+        ]
+      },
+      "measuredCommit": "d98696e",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~(three kit CRUD/request/mixed-issue tests); deploy/testing/run-hosted-checkout-browser-acceptance.ps1"
+    },
+    "stockArchiveAcceptance": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss"
+      ],
+      "staticUiChecks": {
+        "status": "PASS",
+        "tests": [
+          "Verify-StockArchiveUi.mjs",
+          "Verify-AccessoryInventoryUi.mjs",
+          "Verify-ConsumableInventoryUi.mjs",
+          "Verify-ComponentInventoryUi.mjs"
+        ]
+      },
+      "hostedChromium": {
+        "status": "NOT_RUN",
+        "reason": "Archive/restore button was not clicked in hosted Chromium; F5 remains separate."
+      },
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
+      "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Stock_catalogs_archive_and_restore_without_cross_tenant_access_or_history_loss"
+    },
+    "employeeOffboardingAcceptance": {
+      "status": "PASS",
+      "apiSuiteStatus": "PASS",
+      "apiSuitePassed": 31,
+      "apiSuiteFailed": 0,
+      "apiTest": "Bulk_employee_status_changes_are_company_scoped_atomic_and_audited",
+      "apiTestEvidence": "Included in the already measured Employee_ filter suite; single/bulk deactivation, asset/accessory returns, license revocation, movement/audit, CSRF, tenant, role, and location scope assertions.",
+      "apiMeasuredProductCommit": "92b7e7ba8aeb593f79f56e19d4cee65ab2210aa5",
+      "browserCommand": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/employee-records.mjs",
+      "browserStatus": "PASS",
+      "browserScope": "Synthetic API fixture; cancellation writes nothing; confirmation sends one PATCH; result notice reports return counts.",
+      "regression": "Initial browser run failed on misleading confirmation copy; corrected copy and targeted rerun passed.",
+      "productionWrites": false,
+      "liveCompanyAcceptance": false,
+      "note": "F03 VAR. API suite evidence was recorded in WP-082; this WP added and passed the missing focused browser interaction. No live company acceptance."
+    },
+    "roleMatrixAcceptance": {
+      "status": "PASS",
+      "rolePolicyTestsPassed": 3,
+      "rolePolicyTestsFailed": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "tests": [
+        "Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix",
+        "Company_custom_roles_are_tenant_scoped_owner_controlled_and_recalculated_per_request",
+        "Company_member_and_platform_admin_boundaries_are_enforced_over_http"
+      ],
+      "roleMatrixCommand": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix'",
+      "supportingCommand": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_custom_roles_are_tenant_scoped_owner_controlled_and_recalculated_per_request|FullyQualifiedName~Company_member_and_platform_admin_boundaries_are_enforced_over_http'",
+      "staticVerifier": "node tools/Verify-RoleMatrix.mjs",
+      "staticVerifierStatus": "PASS",
+      "roleScope": "finance grants assets.read only; platform administrator is separate; custom roles remain tenant-scoped and location/unit restrictions are independently enforced.",
+      "runnerCleanup": "Temporary PostgreSQL containers and networks removed",
+      "liveCompanyAcceptance": false,
+      "note": "F04 classified VAR for code/API role support. Invitation control mappings and import role validation are statically verified; live company acceptance remains part of F7.",
+      "measuredSourceCommit": "a0b7674"
+    },
+    "wp087PlatformAdminInviteUi": {
+      "status": "PASS",
+      "command": "docker build --tag envantertr-hosted-checkout-browser-acceptance:local --file deploy/testing/Dockerfile.hosted-checkout-browser .; docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/platform-admin-members.mjs",
+      "browser": "Chromium",
+      "assertions": [
+        "Finance role option renders the label Muhasebe (salt okunur)",
+        "Synthetic invitation POST contains roleKey=finance",
+        "New synthetic member appears in the platform members table"
+      ],
+      "syntheticApi": true,
+      "productionWrites": false,
+      "liveCompanyAcceptance": false,
+      "runnerCleanup": "Temporary Docker test container removed with --rm",
+      "note": "This is one targeted F5 user-interface slice; it does not measure the full 2,255-control/65-route matrix or the F5 pass threshold."
+    },
+    "wp095AssetModelEndOfLifeAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T16:42:34.238Z",
+      "measuredBaseCommit": "172d9af",
+      "workingTreeModified": true,
+      "isolatedDatabaseAcceptance": {
+        "status": "PASS",
+        "passed": 1,
+        "failed": 0,
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "test": "Asset_model_end_of_life_is_company_scoped_and_round_trips_through_catalog_and_details",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Asset_model_end_of_life_is_company_scoped'",
+        "scope": [
+          "create",
+          "list",
+          "detail",
+          "model detail",
+          "update",
+          "clear",
+          "audit",
+          "cross-company 404"
+        ],
+        "runnerCleanup": "Temporary PostgreSQL container and network removed"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "syntheticApi": true,
+        "productionWrites": false,
+        "eolDisplayedInModelDetails": true
+      },
+      "staticVerifier": {
+        "status": "PASS",
+        "command": "node tools/Verify-AssetModelDetailsUi.mjs"
+      },
+      "syntaxAndDiff": {
+        "status": "PASS",
+        "nodeCheck": 2,
+        "gitDiffCheck": true
+      },
       "releaseBuild": {
-        "errors": 0,
+        "status": "PASS",
+        "sdk": "10.0.100",
         "warnings": 0,
+        "errors": 0,
+        "command": "dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release"
+      },
+      "migration": {
+        "id": "20261104161606_AddAssetModelEndOfLife",
+        "sourceCount": 125,
+        "applied": false,
+        "lastObservedLiveCount": 122,
+        "exactIdParityCompared": false
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false
+    },
+    "wp096AnnualDepreciationRateAcceptance": {
+      "status": "PASS",
+      "measuredSourceBaseCommit": "40cbe9d",
+      "workingTreeModifiedDuringVerification": true,
+      "redBaseline": {
+        "status": "FAIL_AS_EXPECTED",
+        "observation": "Model POST rejected a floor value without configured months; annual rate was not supported."
+      },
+      "isolatedPostgres": {
+        "status": "PASS",
+        "passed": 1,
+        "failed": 0,
+        "test": "Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report'",
+        "scope": [
+          "model create/list/detail",
+          "company boundary",
+          "asset current value",
+          "JSON report and CSV",
+          "policy update and clear",
+          "mixed-policy and out-of-range rejection"
+        ],
+        "expectedExample": {
+          "annualRatePercent": 25,
+          "usefulLifeMonths": 48,
+          "purchaseCost": 1000,
+          "salvageFloor": 200,
+          "monthlyDepreciation": 16.67,
+          "bookValueAfter12Months": 800
+        },
+        "productionWrites": false,
+        "runnerCleanup": "Temporary PostgreSQL container and internal network removed"
+      },
+      "releaseBuild": {
+        "status": "PASS",
+        "warnings": 0,
+        "errors": 0,
+        "command": "dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release"
+      },
+      "efModelSnapshot": {
+        "status": "PASS",
+        "command": "dotnet ef migrations has-pending-model-changes",
+        "output": "No changes have been made to the model since the last migration."
+      },
+      "migration": {
+        "id": "20261104171011_AddAssetModelAnnualDepreciationRate",
+        "sourceMigrationCount": 126,
+        "appliedToProduction": false,
+        "exactLiveIdParityCompared": false,
+        "productionWrites": false
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "remaining": "WP-097 UI acceptance passed; A05 is VAR. The source migration remains unapplied; live/backup exact migration-ID parity remains an F1 gate."
+    },
+    "wp097AnnualDepreciationRateUiAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T18:28:14Z",
+      "measuredSourceBaseCommit": "0f03f1b",
+      "staticVerifier": {
+        "status": "PASS",
+        "command": "node tools/Verify-AssetModelDetailsUi.mjs"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "browser": "Chromium",
+        "command": "docker run --rm --init --volume <asset-detail-actions.mjs>:/acceptance/asset-detail-actions.mjs --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "syntheticApi": true,
+        "assertions": [
+          "Model create POST sends 25% annual rate and clears months policy.",
+          "Model edit PATCH sends 20% annual rate and clears months policy.",
+          "Entering either policy clears the conflicting input.",
+          "Model details display the saved annual rate.",
+          "Depreciation report shows annual percentage and CSV contains annual-rate heading/value.",
+          "Annual-rate entry forces linear depreciation and disables both half-year options in create/edit forms."
+        ],
+        "firstRun": "Initial run stopped because the synthetic model form required a category; fixture corrected. A follow-up used a stale image and failed a Playwright isDisabled() assertion even though option.disabled was true; rebuilt the image and asserted the native DOM property. Final full module exit code 0.",
+        "exitCode": 0,
+        "fullAssetDetailActionsModule": true
+      },
+      "syntaxAndDiff": {
+        "status": "PASS",
+        "nodeCheck": true,
+        "gitDiffCheck": true
+      },
+      "uiInventory": {
+        "status": "PASS",
+        "staticControls": 2260,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "classification": "A05 is VAR; A–O evidence counts are 75 not run, 11 partial, 29 implemented; not a completion percentage.",
+      "remaining": "F1 release gate remains open: current backup archive/hash and exact live/source migration ID parity have not been freshly verified."
+    },
+    "wp099SoftwareLicenseKeyAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T20:32:57Z",
+      "measuredSourceBaseCommit": "97b06a2",
+      "workingTreeModifiedDuringVerification": true,
+      "isolatedPostgres": {
+        "isolatedDatabase": true,
+        "failed": 0,
+        "passed": 1,
+        "runnerCleanup": "Temporary PostgreSQL container and internal network removed",
+        "status": "PASS",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped'",
+        "productionWrites": false,
+        "test": "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "assertions": [
+          "ciphertext stored with enc:v1 prefix",
+          "authorized set/reveal/replace/clear",
+          "tenant and license-bound decryption rejection",
+          "role and CSRF rejection",
+          "plaintext excluded from list/detail/export/audit",
+          "Unicode 2,048-character round-trip within protected storage limit"
+        ]
+      },
+      "hostedChromium": {
+        "syntheticApi": true,
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "status": "PASS",
+        "fullAssetDetailActionsModule": true,
+        "assertions": [
+          "five-language copy",
+          "key save/reveal and visibility toggle",
+          "secret cleared when detail closes",
+          "confirmed removal"
+        ],
+        "productionWrites": false
+      },
+      "releaseBuild": {
+        "warnings": 0,
+        "status": "PASS",
+        "command": "Docker .NET SDK 10.0: dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+        "errors": 0
+      },
+      "efModelSnapshot": {
+        "status": "PASS",
+        "command": "dotnet ef migrations has-pending-model-changes",
+        "output": "No changes have been made to the model since the last migration."
+      },
+      "syntaxAndDiff": {
+        "gitDiffCheck": true,
+        "nodeCheck": true,
         "status": "PASS"
       },
-      "postgresSecurityAcceptance": {
-        "failed": 0,
-        "duration": "1.9849 hours",
-        "cleanup": "Compose containers, network, and volume removed",
-        "isolatedDatabase": true,
-        "status": "PASS",
-        "productionWrites": false,
-        "passed": 413
-      },
-      "evidence": "tests/reports/live-derived-candidate-security-20261102.md",
-      "branch": "release/v1-candidate-20261102",
       "uiInventory": {
-        "forms": 117,
-        "tabs": 5,
-        "links": 58,
-        "textareas": 45,
-        "staticControls": 2304,
-        "inputs": 627,
-        "selects": 206,
-        "buttons": 976,
-        "modals": 110,
-        "pageRoutes": 71,
+        "staticControls": 2265,
+        "routes": 65,
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "migration": {
+        "exactIdParityCompared": false,
+        "lastObservedLiveCount": 122,
+        "appliedToProduction": false,
+        "id": "20261104190000_AddProtectedSoftwareLicenseKeys",
+        "sourceCount": 127
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false,
+      "remaining": "F1 backup restore/hash and exact live/source migration-ID parity remain open; no migration or deploy is authorized by this package.",
+      "uiInventoryStatus": "PASS",
+      "committedSourceCommit": "5b4e495",
+      "committedSourceBranch": "codex/f2-cloud-seat-limits-20261104",
+      "pushed": false
+    },
+    "f4TenantWriteArchiveMatrix": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "tests": 1,
+      "resources": [
+        "accessories",
+        "consumables",
+        "components"
+      ],
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_write_matrix_rejects_foreign_stock_archive_and_preserves_rows'",
+      "measuredBaseCommit": "ffb3769c8b42002f5d26e850a839416e516febb7",
+      "workingTreeModifiedAtRun": true,
+      "productionWrites": false,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "result": "Foreign tenant archive requests returned 404; all three rows remained unarchived; no foreign archive audit record."
+    },
+    "f4PurchaseOrderAttachmentMatrix": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "measuredBaseCommit": "5c0227af0756c4afc138780ee9bfa6ae27f7b175",
+      "workingTreeModifiedAtRun": true,
+      "testSourceFileChangedDuringVerification": true,
+      "resources": [
+        "stock purchase-order attachments",
+        "accessory purchase-order attachments",
+        "asset purchase-order attachments"
+      ],
+      "coverage": "Company A sessions cannot list company B order attachments or fetch/delete company B attachment IDs under company A parent routes; foreign files and rows remain intact.",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_attachment_matrix_hides_foreign_purchase_order_files_and_preserves_rows'",
+      "duration": "1.0029 minutes",
+      "exportAssertion": "Company A company-data.json and ZIP entries exclude company B attachment IDs/files.",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "exitCode": 0,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed",
+      "log": "%TEMP%\\envantertr-security-acceptance-20261105-wp117-final.log",
+      "latestRun": {
+        "status": "PASS",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0,
+        "durationSeconds": 59.9293,
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Tenant_attachment_matrix_hides_foreign_purchase_order_files_and_preserves_rows'",
+        "measuredBaseCommit": "65fecdb633b1c1ef35982b56814c700d24efcfe4",
+        "workingTreeModifiedAtRun": true,
+        "addedAssertion": "Company A stock/accessory/asset purchase-order attachment lists return 200 and omit foreign company-B attachment IDs.",
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "runnerCleanup": "Disposable PostgreSQL container and isolated Docker network removed."
+      }
+    },
+    "f5CurrentUiAcceptance": {
+      "status": "PASS",
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85
+      },
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "passedScenarioSummaryRows": 75,
+        "failed": 0,
+        "blocked": 0,
+        "exitCode": 0,
+        "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "log": "%TEMP%\\envantertr-f5-hosted-acceptance-20261105-wp114.log",
+        "scope": "Curated workflow summaries, not per-control acceptance."
+      },
+      "measuredCommit": "f9f4fbc94be08e9b892d59c83aca94cdda8639ab",
+      "productionWrites": false
+    },
+    "f6Wp099CurrentSecurityAcceptance": {
+      "status": "PASS",
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped|FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "roleMatrixVerifier": "node tools/Verify-RoleMatrix.mjs: PASS (8 built-in roles)",
+      "auditRetentionVerifier": "node tools/Verify-PlatformAuditRetention.mjs: PASS",
+      "measuredCommit": "a7a346bda6ea9129b44b79bac0662531338fbefd",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Temporary PostgreSQL container and isolated Docker network removed"
+    },
+    "f6PlatformMfaRetryAcceptance": {
+      "status": "PASS",
+      "measuredBaseCommit": "765af6ca570e09062557c5c53b4fcbadee128a4f",
+      "browser": "Chromium",
+      "command": "deploy/testing/run-platform-mfa-browser-acceptance.ps1",
+      "assertions": [
+        "The isolated stack builds web and browser images from the current checkout.",
+        "An invalid Authenticator challenge reaches the login endpoint and returns HTTP 400 with twoFactorRequired=true.",
+        "The MFA field and secure-login action remain visible after the rejected code.",
+        "A subsequent valid TOTP reaches the platform dashboard."
+      ],
+      "productionWrites": false,
+      "productionCodeChanged": false,
+      "runnerCleanup": "Temporary PostgreSQL/web/migrate/browser containers, isolated network, and test volumes removed",
+      "syntaxAndDiff": "node --check and git diff --check PASS",
+      "scopeNote": "This proves the retry UX in the source-built isolated browser stack; it is not live-company MFA acceptance."
+    },
+    "f4CatalogMediaTenantIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 58.7348,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Brand_model_category_and_images_are_company_scoped_and_reusable",
+      "measuredBaseCommit": "682119d",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "resources": [
+        "brand logo",
+        "model photo and attachments",
+        "accessory-model photo",
+        "supplier logo"
+      ],
+      "foreignSessionAssertions": "Read, upload, and delete attempts return HTTP 404; owned media flows succeed.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed"
+    },
+    "f4MaintenanceReportIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 55.298,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Maintenance_report_aggregates_date_filtered_status_and_costs_without_cross_company_data",
+      "measuredBaseCommit": "cb59de1",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "assertion": "Date/status-filtered maintenance counts and cost aggregates exclude the other company.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "scopeNote": "One report family only; the complete report route set is not covered."
+    },
+    "f4AccessoryKitWriteIsolation": {
+      "status": "PASS",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 58.609,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter FullyQualifiedName~Accessory_kits_support_company_scoped_crud_safe_export_and_archive_restore",
+      "measuredBaseCommit": "751d73f69c9629b935260efa04ced2d8e141c261",
+      "workingTreeModifiedAtRun": true,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "deniedOperations": [
+        "Company A PUT to Company B kit -> 404",
+        "Company A DELETE to Company B kit -> 404",
+        "Company A POST restore to Company B kit -> 404"
+      ],
+      "preservation": "Foreign kit and recipe line remained unchanged; no update/archive/restore audit event was recorded.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerExitCode": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "attempts": "Attempt 1 compile failed with CS8122 for pattern matching in an EF expression tree; predicate changed to explicit equality checks. Attempt 2 passed."
+    },
+    "f5FreshUiAcceptance": {
+      "status": "PASS",
+      "measuredBaseCommit": "c5a172db56e64382019b50410588aa3d9c00dd3c",
+      "workingTreeModifiedAtRun": true,
+      "uiInventory": {
+        "status": "PASS",
+        "controls": 2265,
+        "routes": 65,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "staticVerifiers": {
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "firstRunFailure": "Verify-PlatformMfaBrowserAcceptance.mjs asserted stale literal recovery-code replay text; corrected the verifier to match the existing one-time recovery/replay scenario wording."
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "command": "deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "runnerExitCode": 0,
+        "aggregatePassFailBlockedCounts": "Not emitted by runner; not inferred",
+        "reportedPassScope": [
+          "Fullscreen gallery, keyboard/Escape and focus restoration",
+          "Four original/generated slides, seamless clone, automatic left transition and manual controls",
+          "Mobile overflow and no page errors"
+        ],
+        "browserConsole404Warnings": "Observed; runner did not fail"
+      },
+      "productionWrites": false,
+      "schemaChanges": false,
+      "runnerCleanup": "Hosted browser runner exited 0"
+    },
+    "f6AccountRecoveryAndRateLimit": {
+      "status": "PASS",
+      "testedSourceCommit": "3cbf8c5bc1e251f3ab9b60e01a0955cba9fdae61",
+      "workingTreeAtRun": "Only WP-125 ledger IN_PROGRESS documentation had been appended; source/test files matched the recorded commit.",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "durationMinutes": 1.2435,
+      "runnerExitCode": 0,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use|Login_rate_limit_ignores_untrusted_forwarded_client_ip|Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use|Required_company_mfa_enrollment_is_single_use_and_authenticates_after_totp_verification",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "assertions": [
+        "Password reset gives the same generic response for existing/missing emails; only the real account receives the message; reset token replay is rejected.",
+        "Untrusted forwarded client IP cannot evade login throttling.",
+        "Company MFA enrollment is single-use and valid TOTP authenticates.",
+        "Authenticator recovery-code replay is rejected."
+      ],
+      "testEnvironmentWarnings": "Disposable Data Protection key persistence and initial empty migration-history lookup; no test failures.",
+      "schemaChanges": false,
+      "productionMigration": false
+    },
+    "f4ReportTenantIsolation": {
+      "status": "PASS",
+      "testedSourceCommit": "368e2c203f44d3196da55c86f2e99fccf7c6a87a",
+      "workingTreeAtRun": "Only WP-126 IN_PROGRESS ledger documentation had been appended; source/test files matched the recorded commit.",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "durationMinutes": 1.2328,
+      "runnerExitCode": 0,
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter Asset_purchase_report_is_company_scoped_searchable_and_exports_formula_safe_csv|Pending_delivery_report_unions_order_types_and_keeps_rows_company_scoped|Unified_purchase_overview_is_filtered_paginated_exportable_and_tenant_scoped|Warranty_report_filters_paginate_export_and_remain_company_scoped",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "reportFamilies": [
+        "Asset purchase report: tenant scope, search, and formula-safe CSV",
+        "Pending delivery: unions order types without cross-company rows",
+        "Unified purchase overview: filtering, paging, export, and tenant scope",
+        "Warranty report: filters, paging, CSV, and tenant scope"
+      ],
+      "testEnvironmentWarnings": "Initial empty migration-history lookup and ephemeral Data Protection key; no test failures.",
+      "schemaChanges": false,
+      "productionMigration": false,
+      "scopeNote": "Four report families only; does not close the full F4 route matrix."
+    },
+    "wp127FullPostgresSecurityAcceptance": {
+      "status": "PASS",
+      "total": 322,
+      "passed": 322,
+      "failed": 0,
+      "exitCode": 0,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "duration": "Approximately 49 minutes wall-clock; exact xUnit summary not retained in interactive output",
+      "measuredCommit": "1137d92761e927be666583673fa2c8006e3d1f4d",
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "discoveryCommand": "docker run --rm --network none --entrypoint dotnet envantertr-security-acceptance-4273251c29-acceptance:latest test --no-build --no-restore --list-tests",
+      "discoveryCount": 322,
+      "resultEvidence": "Acceptance Docker die event exitCode=0 at Unix time 1793872298; incremental container log showed 320 named PASS results before teardown and no failing test result. Exact final console summary was not retained by the interactive tool output.",
+      "runnerCleanup": "Compose destroyed disposable acceptance and PostgreSQL containers; docker network ls confirmed no remaining project network",
+      "failedTests": [],
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "note": "Existing source migrations ran only in disposable test PostgreSQL. No production DB, source migration, deployment, payment, Coolify/environment/domain/routing change, or push."
+    },
+    "wp128To132MigrationFreeCloseout": {
+      "status": "DONE",
+      "workPackages": [
+        "WP-128",
+        "WP-129",
+        "WP-130",
+        "WP-131",
+        "WP-132"
+      ],
+      "completed": 5,
+      "maxAllowed": 5,
+      "migrationFree": true,
+      "migrationAdded": false,
+      "productionTouched": false,
+      "pushed": false,
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85,
+        "measuredPackage": "WP-128"
+      },
+      "uiInventory": {
+        "staticControls": 2265,
+        "routes": 65,
         "status": "CURRENT",
+        "measuredPackage": "WP-128"
+      },
+      "f4ExportSelectorTest": {
+        "passed": 1,
+        "failed": 0,
+        "isolatedPostgres": true,
+        "result": "JSON and ZIP companyId tampering stayed scoped to the authenticated company."
+      },
+      "f5MfaRetryBrowser": {
+        "status": "PASS",
+        "runnerExit": 0,
+        "scope": "Synthetic company MFA invalid-code retry flow only."
+      },
+      "wp099Secrets": {
+        "passed": 2,
+        "failed": 0,
+        "isolatedPostgres": true
+      },
+      "fullPostgres": {
+        "total": 322,
+        "passed": 322,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "50.4233 minutes",
+        "measuredCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3"
+      },
+      "f4": "PARTIAL: all-route API, file, import/export and write matrix is incomplete.",
+      "f5": "PARTIAL: 2,265 controls inventoried; not every control was individually exercised.",
+      "f6": "PARTIAL: live security posture, broad security and legal/KVKK review, and live-company acceptance remain open.",
+      "f1": "BLOCKED for dump restore, exact first-122 migration-ID parity, five-migration rehearsal, and before/after row counts; prior WP-101 hash match was not recomputed in this run."
+    },
+    "wp133ApiRouteInventory": {
+      "status": "PASS",
+      "endpointCount": 503,
+      "methodRouteCount": 503,
+      "anonymousEndpointCount": 27,
+      "protectedEndpointCount": 476,
+      "inventorySha256": "D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4",
+      "test": "Every_api_endpoint_declares_an_explicit_authentication_boundary",
+      "result": {
+        "passed": 1,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "50.7343 seconds",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Every_api_endpoint_declares_an_explicit_authentication_boundary'",
+      "firstRedRun": {
+        "passed": 0,
+        "failed": 1,
+        "expectedPlaceholderCount": 0,
+        "actualEndpointCount": 503,
+        "log": "%TEMP%\\envantertr-wp133-route-inventory-red.log"
+      },
+      "greenRunLog": "%TEMP%\\envantertr-wp133-route-inventory-green.log",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "sourceBaseCommit": "d5caf9208670f077939c21e9985d0ce51b3e4ac3",
+      "workingTreeModifiedDuringVerification": true,
+      "scopeNote": "Pins the complete mapped API route/auth metadata surface and reviewed anonymous route allowlist. Does not prove tenant data isolation for each route.",
+      "noProductionChanges": true
+    },
+    "wp134CustomerApiHostileQuerySelector": {
+      "status": "PASS",
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "57.1707 seconds",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "probes": [
+        "assets list",
+        "accessories list",
+        "employees list",
+        "employee search"
+      ],
+      "assertions": "Foreign companyId plus forged X-Company-Id is redirected to a URL with companyId removed; authenticated sanitized requests return Company A rows and omit Company B rows.",
+      "firstAttempt": "Failed with 401 because the default redirect-follow dropped the Bearer header after the app's 303 query-scrubbing response. Probe now disables redirect-follow and asserts 303 plus sanitized Location.",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "measuredSourceBaseCommit": "64f43aebeec1f6ba2ba99ee1ab51686cf5b450a4",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp135AccountPhotoStorageAcceptance": {
+      "status": "PASS",
+      "tests": [
+        "Account_photo_upload_reports_unavailable_storage_without_a_server_error",
+        "Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo"
+      ],
+      "result": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "exitCode": 0,
+        "duration": "1.0168 minutes",
+        "isolatedDatabase": true,
+        "productionWrites": false
+      },
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Account_photo_upload_reports_unavailable_storage_without_a_server_error|FullyQualifiedName~Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo'",
+      "assertions": "Forced storage conflict returns safe 503 without exposing its path and preserves prior bytes; valid 2 MiB, oversized, invalid image, replacement, read and delete paths pass.",
+      "expectedSyntheticErrorLog": "DirectoryNotFoundException from isolated /tmp test media conflict; no production data.",
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "measuredSourceBaseCommit": "a302db4347a9ecf262d23312c1025dbe3e9351c3",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp138PurchaseOrderReadIsolation": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Purchase_order_read_matrix_hides_foreign_records_for_all_order_families'",
+      "xunitTestSeconds": 2,
+      "confirmationRunTotalSeconds": 54.2971,
+      "runs": 2,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "covered": [
+        "stock purchase-order list/detail",
+        "accessory purchase-order list/detail",
+        "asset purchase-order list/detail",
+        "foreign companyId query selector"
+      ],
+      "assertions": "Own-company list/detail returned the seeded row; foreign details returned 404; foreign collection rows were absent; forged companyId did not reveal foreign rows.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "measuredTestFileGitBlob": "2d94cd52c7ac3880a6f1e8dc2bce8d4e50db0614",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp139PurchaseOrderWriteIsolation": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "attempt": 2,
+      "firstAttempt": "Fixture setup failed because random CreatedByUserId values violated the AspNetUsers foreign key. Removed the optional user reference; no application change.",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Purchase_order_write_matrix_rejects_foreign_cancel_and_approval_without_mutation'",
+      "xunitTestSeconds": 5,
+      "totalSeconds": 56.8786,
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "mutationProbes": 6,
+      "assertions": "Cancel and approval for foreign stock/accessory/asset purchase orders returned 404; orders remained Ordered/Pending and no foreign audit rows were added.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp140CurrentUiScan": {
+      "status": "PASS",
+      "uiInventory": {
+        "staticControls": 2265,
+        "routes": 65,
+        "check": "PASS"
+      },
+      "staticVerifiers": {
+        "total": 85,
+        "passed": 85,
+        "failed": 0
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "runnerExitCode": 0,
+        "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "aggregateScenarioTotals": null,
+        "productGallery": "Fullscreen, keyboard, focus restoration, all slides, seamless clone, automatic left transition, manual controls, mobile overflow, and no page errors passed.",
+        "consoleObservation": "404 resource console messages appeared; no assertion failure or page error was reported."
+      },
+      "noReproducibleUiFailure": true,
+      "perControlAcceptanceComplete": false,
+      "productionWrites": false,
+      "noProductionChanges": true
+    },
+    "wp141Wp099SecretSecurity": {
+      "status": "PASS",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "runnerExitCode": 0,
+      "xunitDurationMinutes": 1.0643,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped|FullyQualifiedName~Software_license_key_plaintext_never_enters_host_logs'",
+      "tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "roleMatrixVerifier": "PASS",
+      "auditRetentionVerifier": "PASS",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network removed.",
+      "measuredBaseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "workingTreeModifiedDuringVerification": true,
+      "noProductionChanges": true
+    },
+    "wp142FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 324,
+      "passed": 324,
+      "failed": 0,
+      "xunitDurationMinutes": 49.8462,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 (unfiltered; run once)",
+      "baseCommit": "5a737c1d8f4518636593f7afa03fd2f95037bc65",
+      "testFile": "tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.TenantMatrix.cs",
+      "testFileGitBlob": "2c4acd254b82462b781d2cde4723c9aa3d665f28",
+      "workingTreeModified": true,
+      "isolatedPostgres": true,
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+        "Software_license_key_plaintext_never_enters_host_logs"
+      ],
+      "runnerCleanup": "Compose stopped and removed acceptance/PostgreSQL containers and isolated network; post-run Docker queries found no matching resources.",
+      "expectedNegativePathLogs": true,
+      "productionWrites": false,
+      "migrationAdded": false,
+      "liveDeployment": false,
+      "pushed": false
+    },
+    "wp138To142MigrationFreeCloseout": {
+      "status": "DONE",
+      "workPackages": [
+        "WP-138",
+        "WP-139",
+        "WP-140",
+        "WP-141",
+        "WP-142"
+      ],
+      "completed": 5,
+      "maxAllowed": 5,
+      "migrationAdded": false,
+      "productionTouched": false,
+      "pushed": false,
+      "f4": "PARTIAL: tested purchase-order read and foreign cancel/approval isolation across stock/accessory/asset families; full 503-endpoint matrix remains open.",
+      "f5": {
+        "status": "PARTIAL",
+        "controls": 2265,
+        "routes": 65,
+        "staticVerifiersPassed": 85,
+        "staticVerifiersFailed": 0,
+        "hostedChromiumExit": 0,
+        "allControlsIndividuallyExecuted": false,
+        "reproducibleCurrentUiFailure": false
+      },
+      "f6": "PARTIAL: WP-099 protected secret controls pass; live posture, broad security/legal review and live-customer acceptance remain open.",
+      "f1": {
+        "stepsAtoD": "BLOCKED: Nov 3 dump unavailable locally and no authorized server-side restore/SQL channel; prior hash/manifest match not recomputed; no restore, first-122 ID comparison, five-migration rehearsal, or row-count comparison claimed.",
+        "stepE": "85/85 static validators PASS; prior two failures and causes documented.",
+        "stepF": "324/324 full isolated PostgreSQL tests PASS.",
+        "stepG": "Both WP-099 tests PASS."
+      }
+    },
+    "wp143CanonicalGoalSync": {
+      "status": "PASS",
+      "targetFile": "C:/Users/Lenovo/Desktop/EnvanterTR/CODEX-HEDEF-4.md",
+      "worktreeFile": "AGENTS.md",
+      "targetSha256": "661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE",
+      "agentsSha256": "661FC84C86F9E29F5828E2A6D3462E53750BFFD95E3129D01AAB28E86657A6CE",
+      "byteIdentical": true,
+      "previousAgentsSha256": "8DF36DC6EABAF8E52FB5551732017FC361309A624A0C1D4F619D3D942B278F8A",
+      "gitDiffCheck": "PASS",
+      "applicationChanged": false,
+      "migrationChanged": false,
+      "productionTouched": false,
+      "pushed": false,
+      "measuredBeforeCommit": "c1b3b74475b8cea458ed4b7336cb720c260b48e0",
+      "commit": "9409879276b42e1292a6cc06c52b48f8e0c4fc30"
+    },
+    "wp144F0Remeasurement": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "releaseBuild": {
+        "status": "PASS",
+        "command": "docker build --no-cache --target build --tag envantertr-f0-web:wp144 .",
+        "sdk": "mcr.microsoft.com/dotnet/sdk:10.0",
+        "releaseTarget": "dotnet publish src/EnvanterTR.Web/EnvanterTR.Web.csproj -c Release --no-restore",
+        "exitCode": 0,
+        "warningOutput": 0,
+        "errorOutput": 0,
+        "imageManifestDigest": "6854c8c121d3e772d74eae2bbf5bf45ce18ed8e570275ef5c65069f36440eb05",
+        "hostDotnetInstalled": false
+      },
+      "sourceVerifiers": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "command": "node tools/Verify-*.mjs"
+      },
+      "uiInventory": {
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2265,
+        "pageRoutes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79
+      },
+      "sourceMigrationInventory": {
+        "status": "MEASURED",
+        "count": 127,
+        "latest": "20261104190000_AddProtectedSoftwareLicenseKeys",
+        "databaseConnected": false,
+        "newMigrationAdded": false
+      },
+      "previousFullPostgresRunApplicability": {
+        "status": "SAME_APPLICATION_AND_TEST_CODE",
+        "total": 324,
+        "passed": 324,
+        "failed": 0,
+        "xunitDurationMinutes": 49.8462,
+        "runnerExitCode": 0,
+        "sourceTreeUnchangedFromBase": true,
+        "acceptanceTestFileBlob": "2c4acd254b82462b781d2cde4723c9aa3d665f28",
+        "finalRunForCurrentContinuation": "DEFERRED_UNTIL_AFTER_F4_F5_F6"
+      },
+      "f1BackupRehash": {
+        "status": "BLOCKED_NOT_RECOMPUTED",
+        "expectedFile": "daily-20261103T000015Z.dump",
+        "foundInDesktopOrDownloads": false,
+        "historicalWp101Sha256": "ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d",
+        "restoreOrMigrationIdsCompared": false,
+        "note": "Coolify browser terminal could not be attached through the current computer-use bridge; prior server hash retained as historical evidence only."
+      },
+      "productionTouched": false,
+      "migrationAddedOrRun": false,
+      "pushed": false
+    },
+    "wp145F1EvidenceCheckpoint": {
+      "status": "DONE_CHECKPOINT_F1_GATE_BLOCKED",
+      "measuredAt": "2026-11-05",
+      "backup": {
+        "expectedFile": "daily-20261103T000015Z.dump",
+        "localDesktopDownloadsMatch": false,
+        "historicalWp101Sha256": "ab4ed598eb722ce4ea843134d650c40084dbf61f9e242fa3b47755dafa4552d",
+        "historicalHashMatchedManifest": true,
+        "rehashedThisPackage": false
+      },
+      "cloneAndMigrationParity": {
+        "status": "BLOCKED",
+        "localClone": "envantertr-f1-restore-20261102",
+        "localCloneState": "Exited (255); predates the Nov 3 dump",
+        "dumpRestored": false,
+        "first122MigrationIdsCompared": false,
+        "fiveMigrationRehearsalRun": false,
+        "beforeAfterRowCountsCompared": false,
+        "reason": "No local target dump and current UI bridge cannot attach to the Coolify terminal."
+      },
+      "staticValidators": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "priorFailures": [
+          {
+            "name": "Verify-HostedCheckoutBrowserAcceptance.mjs",
+            "cause": "Stale Synthetic Invited Viewer fixture expectation; current fixture is Synthetic Invited Finance."
+          },
+          {
+            "name": "Verify-NoNativeBrowserDialogs.mjs",
+            "cause": "Native confirm() at index.html:8614; replaced with the in-app confirmation flow in WP-103."
+          }
+        ]
+      },
+      "wp099Tests": {
+        "status": "EXIST_AND_PASS",
+        "count": 2,
+        "names": [
+          "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+          "Software_license_key_plaintext_never_enters_host_logs"
+        ],
+        "priorTargetedPassed": 2,
+        "includedInWp142FullRun": true,
+        "includedInWp148FullRun": true
+      },
+      "finalFullRunForCurrentContinuation": "COMPLETED_IN_WP148: 325/325 PASS, 0 FAIL, xUnit 53.8500 min, runner exit 0",
+      "productionTouched": false,
+      "migrationAddedOrRun": false,
+      "pushed": false
+    },
+    "wp146F4SupplierCatalogIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations",
+      "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Supplier_catalog_read_and_write_matrix_is_company_scoped_and_rejects_foreign_mutations'",
+      "passed": 1,
+      "failed": 0,
+      "xunitDuration": "1.0069 minutes",
+      "runnerExitCode": 0,
+      "attempts": 2,
+      "attempt1": "Test fixture sent viewer header but retained persisted admin membership; no product defect.",
+      "coverage": [
+        "Company-scoped active and archived supplier lists despite forged companyId",
+        "Own detail 200 and foreign detail 404",
+        "Foreign update/archive/restore return 404",
+        "Persisted viewer membership archive returns 403",
+        "All seeded supplier rows and foreign audit state remain unchanged"
+      ],
+      "isolatedPostgres": true,
+      "runnerCleanup": "Disposable PostgreSQL container and isolated network removed",
+      "productionWrites": false,
+      "migrationAdded": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; other method-route families remain unverified"
+    },
+    "wp147F5CurrentUiReconciliation": {
+      "status": "DONE_PARTIAL_GATE",
+      "measuredAt": "2026-11-05",
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "routes": 65,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
         "tables": 79,
-        "menuGroups": 10
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "currentBrowserMatrix": {
+        "sourceUnchangedSinceWp140": true,
+        "passed": 75,
+        "failed": 0,
+        "blocked": 0,
+        "runnerExitCode": 0,
+        "allControlsIndividuallyExecuted": false,
+        "evidencePackage": "WP-140"
+      },
+      "staticVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85,
+        "evidencePackage": "WP-144"
+      },
+      "reproducibleUiFailuresFound": 0,
+      "uiCodeChanged": false,
+      "f5Status": "PARTIAL; inventory controls were not all individually exercised"
+    },
+    "wp148F6AndFinalFullPostgresAcceptance": {
+      "status": "DONE",
+      "measuredAt": "2026-11-05",
+      "packageSequence": "WP-146 through WP-148: 3/3 DONE",
+      "measuredCommit": "c239d827a465f8a2bd67c78e4cf29eb3468e6cff",
+      "fullPostgresAcceptance": {
+        "total": 325,
+        "passed": 325,
+        "failed": 0,
+        "xunitDurationMinutes": 53.85,
+        "runnerExitCode": 0,
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "command": "./deploy/testing/run-security-acceptance.ps1"
+      },
+      "wp099SecurityTests": {
+        "count": 2,
+        "passed": 2,
+        "failed": 0,
+        "names": [
+          "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped",
+          "Software_license_key_plaintext_never_enters_host_logs"
+        ]
+      },
+      "f4Status": "PARTIAL; WP-146 supplier read/write matrix passed; the full 503 method-route inventory remains unverified",
+      "f5Status": "PARTIAL; 2265 controls over 65 routes inventoried; latest hosted matrix 75 PASS / 0 FAIL / 0 BLOCKED; not every control was individually executed",
+      "f6Status": "PARTIAL; isolated secret/security acceptance passed; live posture and wider security/legal/customer acceptance remain open",
+      "f1Status": "BLOCKED for dump rehash, clone restore, first-122 ID parity, five-migration rehearsal, and row-count comparison",
+      "migrationAdded": false,
+      "sourceMigrationFilesChanged": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "cleanup": "Disposable acceptance and PostgreSQL containers plus isolated network removed by Compose"
+    },
+    "wp149F4CompanySecurityPolicy": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Company_security_policy_ignores_forged_foreign_company_selectors",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_security_policy_ignores_forged_foreign_company_selectors'",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationSeconds": 58.5243,
+        "runnerExitCode": 0
+      },
+      "attempts": 4,
+      "failedAttempts": [
+        "Attempt 1: B-membership fixture absent; legitimate B request was 403 before assertion.",
+        "Attempt 2: Company A expiry expected value compared at unsupported sub-microsecond precision.",
+        "Attempt 3: Company B unchanged expiry expected value compared at unsupported sub-microsecond precision."
+      ],
+      "isolationAssertions": [
+        "Company A admin forged URL companyId and X-Company-Id for Company B; GET still returned A security policy.",
+        "Forged PUT changed A policy only; B policy remained unchanged.",
+        "A session expiry reflected A policy; B expiry/revocation remained unchanged.",
+        "Security-policy audit row was created only for A."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated Docker network stopped and removed by Compose.",
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "sourceMigrationFilesChanged": false,
+      "migrationAdded": false,
+      "productionWrites": false,
+      "liveTouched": false,
+      "deployment": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; the added tenant-policy route family does not cover the complete 503 method-route inventory."
+    },
+    "wp150Continuation": {
+      "status": "DONE",
+      "completedWorkPackages": [
+        "WP-149",
+        "WP-150"
+      ],
+      "packageCount": 2,
+      "f1StepsAtoD": "BLOCKED: dump unavailable locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
+      "staticVerifiers": "85/85 PASS; two historical failures and causes documented in PROJECT-STATUS.md.",
+      "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete.",
+      "f5Status": "PARTIAL; inventory 2265 controls / 65 routes; latest browser matrix 75 PASS / 0 FAIL / 0 BLOCKED; not every control individually exercised.",
+      "f6Status": "PARTIAL; WP-099 isolated tests pass; live posture and broader security/legal/customer acceptance remain open.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false
+    },
+    "wp151CompanyProfileBranding": {
+      "status": "PASS",
+      "measuredAt": "2026-11-05",
+      "test": "Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_profile_and_branding_ignore_forged_foreign_company_selectors_and_writes'",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.2243,
+        "runnerExitCode": 0
+      },
+      "baseCommit": "e7d83710153b0b70bf6eb141b4412d619dd1ffe6",
+      "testSourceBlob": "2ea0baaa9c61f604cc1862e5da68fd6bb5e70b29",
+      "isolatedPostgres": true,
+      "assertions": [
+        "Company A GET /api/company/profile and /api/company/branding returned only A values with forged companyId query and X-Company-Id=B.",
+        "Company A profile PUT updated only A.",
+        "Company B profile and audit state remained unchanged; only A received ProfileUpdated audit."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Compose removed disposable PostgreSQL container and isolated network.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; full 503 method-route tenant matrix remains incomplete."
+    },
+    "goalContinuation": {
+      "status": "IN_PROGRESS",
+      "completedWorkPackages": [
+        "WP-154"
+      ],
+      "packageCount": 1,
+      "packageLimit": 5,
+      "priorFullPostgresRun": {
+        "total": 328,
+        "passed": 328,
+        "failed": 0,
+        "xunitDurationHours": 1.0631,
+        "runnerExitCode": 0,
+        "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8"
+      },
+      "f1StepsAtoD": "BLOCKED: Nov 3 dump not found locally; no fresh hash, clone restore, first-122 migration-ID comparison, five-migration rehearsal or row counts.",
+      "f4Status": "PARTIAL; WP-154 company-unit hostile-selector test passed; full 503 method-route tenant matrix incomplete.",
+      "f5Status": "PARTIAL; 2265 controls / 65 routes; latest browser evidence 75 PASS / 0 FAIL / 0 BLOCKED; not all controls individually exercised.",
+      "f6Status": "PARTIAL; isolated WP-099 security tests pass; live posture and wider security/legal/customer acceptance remain open.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "nextWorkPackage": "WP-155: select an independent migration-free F4/F5/F6 acceptance gap; full PostgreSQL suite only at session end."
+    },
+    "wp152LabelSettingsTenantMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.1827,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_label_settings_and_templates_ignore_forged_foreign_company_selectors'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "behavior": "Forged companyId and X-Company-Id read/write selectors stayed in Company A; Company B JSON remained unchanged; viewer PUTs for both endpoints returned 403.",
+      "measuredTestFileBlob": "44ebddb182a5e9dea4b28b3c1e7bdfe14182fe25",
+      "cleanup": "Disposable PostgreSQL container and isolated network removed.",
+      "note": "Test-only change. One initial compile failure from wrong local helper overload and one fixture-role mismatch were corrected before final passing run; no application code changed."
+    },
+    "wp153FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "total": 328,
+      "passed": 328,
+      "failed": 0,
+      "xunitDurationHours": 1.0631,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "measuredCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "migrationsExecutedOnlyInDisposableAcceptanceDatabase": true,
+      "includedTests": [
+        "Company_label_settings_and_templates_ignore_forged_foreign_company_selectors: PASS",
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "cleanup": "Compose stopped and removed disposable acceptance and PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "note": "Single unfiltered PostgreSQL acceptance run requested for WP-153. xUnit reported Test Run Successful; negative-path error logs occurred inside passing tests.",
+      "packageCount": 5,
+      "packageLimit": 5,
+      "ledgerUpdated": true,
+      "statusDocumentsUpdated": [
+        "docs/LEDGER.md",
+        "docs/PROJECT-STATUS.md",
+        "docs/HANDOFF.md",
+        "tests/reports/summary.json"
+      ]
+    },
+    "wp154CompanyUnitHostileSelectorMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.2999,
+      "runnerExitCode": 0,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Company_units_ignore_forged_foreign_company_selectors_for_reads_and_writes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "measuredProductCommit": "a51fefdcf97f6484854751f93a12f312134a9eb8",
+      "assertions": [
+        "A unit collection ignored forged companyId and X-Company-Id, kept A visible, and excluded B.",
+        "Foreign unit update/archive returned 404; creating under a foreign parent returned 400.",
+        "Viewer write returned 403; B unit row and foreign audit stayed unchanged; no forged A rows were created."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
+    },
+    "wp155DepartmentHostileSelectorMatrix": {
+      "status": "PASS",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "xunitDurationMinutes": 1.3432,
+      "runnerExitCode": 0,
+      "attempts": 3,
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Departments_ignore_forged_foreign_company_selectors_for_reads_and_writes'",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "assertions": [
+        "Forged companyId and X-Company-Id left Company A's catalog department visible and excluded Company B's department.",
+        "Foreign update/archive/manager/move returned 404; create beneath a foreign parent returned 400; viewer create returned 403.",
+        "Company B department row and foreign audit state remained unchanged; rejected Company A rows were not created."
+      ],
+      "buildWarnings": 4,
+      "buildErrors": 0,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "migrationAdded": false,
+      "liveTouched": false,
+      "pushed": false,
+      "attemptNotes": [
+        "Attempt 1: assertion attempted GetGuid on a null departmentId.",
+        "Attempt 2: list rows for catalog-only departments have null departmentId; assertion did not match.",
+        "Attempt 3: assert seeded own catalog row by exact name and isCatalogEntry; PASS."
+      ],
+      "scopeNote": "One directory method family only; F4 full 503 method-route matrix remains incomplete."
+    },
+    "wp156UiInventoryAndChromium": {
+      "status": "PASS_WITH_UNCLASSIFIED_CONSOLE_404S",
+      "measuredAt": "2026-11-06",
+      "inventory": {
+        "status": "PASS",
+        "staticControls": 2265,
+        "pageRoutes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79,
+        "command": "node tools/Generate-UiInventory.mjs --check"
+      },
+      "hostedChromium": {
+        "runnerExitCode": 0,
+        "passSummaryLines": 77,
+        "explicitFailSummaryLines": 0,
+        "blockedSummaryLines": 0,
+        "command": "./deploy/testing/run-hosted-checkout-browser-acceptance.ps1",
+        "productionWrites": false,
+        "syntheticApi": true,
+        "unclassifiedConsole404s": true,
+        "note": "Command-palette scenario logged console 404 resource errors without request URLs; no failed assertion. The 2,265 controls were inventoried, not individually executed."
+      },
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "pushed": false
+    },
+    "wp157UiFixtureStaticResources": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "redTest": {
+        "status": "FAIL_AS_EXPECTED",
+        "missingLocal404Responses": 16,
+        "paths": [
+          "/onboarding.css",
+          "/onboarding.js"
+        ]
+      },
+      "fix": "Copy the real onboarding.css/js assets into the isolated browser test image and serve them from the loopback mock fixture.",
+      "focusedChromium": {
+        "status": "PASS",
+        "passSummaryLines": 3,
+        "missingLocal404Responses": 0,
+        "pageErrors": 0,
+        "runnerExitCode": 0,
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local command-palette.mjs"
+      },
+      "productionTouched": false,
+      "migrationAdded": false,
+      "deployed": false,
+      "pushed": false
+    },
+    "wp158FinalFullPostgresAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "command": "./deploy/testing/run-security-acceptance.ps1",
+      "filtered": false,
+      "runnerExitCode": 0,
+      "total": 330,
+      "passed": 330,
+      "failed": 0,
+      "countEvidence": "WP-153 baseline 328 plus exactly two new [Fact] tests in WP-154 and WP-155; WP-156/157 changed only the browser fixture.",
+      "xunitDuration": null,
+      "xunitDurationNote": "Closing xUnit duration line was not retained by the interactive terminal output; no duration is claimed.",
+      "measuredCommit": "e82c2d12e5b469b8f25631e871f9399729167537",
+      "isolatedDatabase": true,
+      "productionWrites": false,
+      "productionTouched": false,
+      "sourceMigrationFilesChanged": false,
+      "newMigrationAdded": false,
+      "wp099Tests": [
+        "Software_license_keys_are_encrypted_audited_and_company_role_csrf_scoped: PASS",
+        "Software_license_key_plaintext_never_enters_host_logs: PASS"
+      ],
+      "cleanup": "Compose removed disposable acceptance/PostgreSQL containers and isolated network; post-run docker ps -a and docker network ls filters returned no matches.",
+      "liveDeploymentPaymentCoolifyOrPushChanged": false
+    },
+    "wp159EmployeeImportMappingTenantIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Saved_asset_import_mappings_are_validated_and_private_to_their_owner",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Saved_asset_import_mappings_are_validated_and_private_to_their_owner'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.2216,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "Company A owner listing returns its employee mapping profile.",
+        "Another Company A user sees no owner-private mapping.",
+        "The same user without Company B membership receives HTTP 401 on the employee mapping route."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable database and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
+    },
+    "wp160InstalledSoftwareTenantIsolation": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Installed_software_inventory_is_company_scoped_and_hides_foreign_assets",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Installed_software_inventory_is_company_scoped_and_hides_foreign_assets'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1386,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "Forged companyId did not change Company A's asset context.",
+        "Only Company A's present software row was returned; removed and foreign rows were absent.",
+        "The Company B asset path returned HTTP 404 without disclosing its software marker."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL; 503 method-route tenant matrix remains incomplete."
+    },
+    "wp161CustomerApiSoftwareSnapshotBoundary": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1723,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "An assets:read token received HTTP 403 when writing an installed-software snapshot.",
+        "An assets:write token persisted Company A software and a Company A software-inventory.synced audit.",
+        "The same token received HTTP 404 for the Company B asset and created no Company B row or audit."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL",
+      "f6Status": "PARTIAL"
+    },
+    "wp162AccessoryCategoryTenantMatrix": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "test": "Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived",
+      "command": "./deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived'",
+      "focusedAcceptance": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "xunitDurationMinutes": 1.1282,
+        "runnerExitCode": 0
+      },
+      "assertions": [
+        "A forged companyId list contained Company A's category and excluded Company B's ID and name.",
+        "Foreign rename and archive requests returned HTTP 404.",
+        "The Company B row remained active and unchanged and received no audit entry."
+      ],
+      "isolatedPostgres": true,
+      "cleanup": "Disposable PostgreSQL container and isolated network removed by Compose.",
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f4Status": "PARTIAL"
+    },
+    "wp163UiInventoryAndStaticVerifiers": {
+      "status": "PASS",
+      "measuredAt": "2026-11-06",
+      "uiInventory": {
+        "status": "PASS",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2265,
+        "routes": 65,
+        "menuGroups": 10,
+        "links": 53,
+        "buttons": 958,
+        "forms": 113,
+        "inputs": 627,
+        "selects": 204,
+        "textareas": 42,
+        "modals": 109,
+        "tabs": 5,
+        "tables": 79
+      },
+      "sourceVerifiers": {
+        "status": "PASS",
+        "total": 85,
+        "passed": 85,
+        "failed": 0,
+        "command": "PowerShell ordered loop over tools/Verify-*.mjs"
+      },
+      "allControlsIndividuallyExecuted": false,
+      "productCodeChanged": false,
+      "migrationAdded": false,
+      "liveTouched": false,
+      "deployed": false,
+      "paymentTouched": false,
+      "coolifyTouched": false,
+      "pushed": false,
+      "f5Status": "PARTIAL"
+    }
+  },
+  "historicalBaseline": {
+    "measuredAt": "2026-11-02T21:03:48Z",
+    "source": {
+      "repository": "EnvanterTR/EnvanterCodex",
+      "branch": "feat/platform-checkout-readiness-20261020",
+      "commit": "eb5b93a",
+      "workingTreeHasPreexistingChanges": true
+    },
+    "results": {
+      "releaseBuild": {
+        "status": "PASS",
+        "warnings": 0,
+        "errors": 0,
+        "evidence": "Docker SDK container; EnvanterTR.Web.csproj Release build"
+      },
+      "testProjects": 1,
+      "postgresSecurityAcceptance": {
+        "status": "PASS",
+        "passed": 244,
+        "failed": 0,
+        "duration": "40m 12s",
+        "isolatedDatabase": true,
+        "productionWrites": false
       },
       "hostedChromiumAcceptance": {
-        "note": "Full hosted Chromium acceptance runner completed on this candidate; exit code 0; synthetic API fixtures; no production writes.",
         "status": "PASS",
         "exitCode": 0,
         "fullSuite": true,
         "productionWrites": false,
-        "evidence": "tests/reports/live-derived-candidate-hosted-chromium-20261102.md"
+        "testedSidebarDestinations": 53
       },
-      "migrationIdSetMatchesBase": true,
       "sourceVerifiers": {
-        "passed": 85,
+        "status": "PASS",
+        "passed": 83,
         "failed": 0,
-        "total": 85,
-        "status": "PASS"
+        "total": 83,
+        "failures": []
       },
-      "commit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-      "migrationCount": 122,
-      "baseDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-      "productionDeployment": false
-    }
-  },
-  "catalog": [
-    {
-      "id": "A01",
-      "group": "A",
-      "requirement": "Varlık: oluştur/oku/güncelle/sil, klonla, toplu güncelle, toplu sil, arşivle, iade, zimmet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A02",
-      "group": "A",
-      "requirement": "Model: marka + model + kategori + üretici + model no + ömür sonu (EOL)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A03",
-      "group": "A",
-      "requirement": "Durum etiketi: Dağıtılabilir / Dağıtımda / Arşivlendi / Arızalı (renk kodlu)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: durum etiketi düzenleme/renk, geçiş matrisi, arşiv sınırı ve yenilenen seçiciler PASS."
-    },
-    {
-      "id": "A04",
-      "group": "A",
-      "requirement": "Kategori, üretici, tedarikçi, departman, lokasyon, grup",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A05",
-      "group": "A",
-      "requirement": "Değer, satın alma, garanti, sigorta, amortisman (%)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A06",
-      "group": "A",
-      "requirement": "Dinamik özel alanlar: metin, açılır liste, onay kutusu, tarih",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A07",
-      "group": "A",
-      "requirement": "Varlık fotoğrafı, dosya eki",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "A08",
-      "group": "A",
-      "requirement": "Varlık geçmişi (zaman çizelgesi)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: varlık geçmişi not kaydı ve timeline yenilemesi PASS."
-    },
-    {
-      "id": "B01",
-      "group": "B",
-      "requirement": "Giriş/çıkış (checkin/checkout): kullanıcıya, lokasyona, varlığa",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B02",
-      "group": "B",
-      "requirement": "Zimmet zaman çizelgesi; kimde ne kadar kaldı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B03",
-      "group": "B",
-      "requirement": "Toplu zimmet / toplu iade",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: çoklu atama ve iade akışları PASS; kapsamın tamamı tekil doğrulanmadı."
-    },
-    {
-      "id": "B04",
-      "group": "B",
-      "requirement": "Zimmet formu: PDF + dijital imza + e-posta + QR",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "B05",
-      "group": "B",
-      "requirement": "Bekleyen talepler; rezervasyon (gelecek tarihli)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: gelecek tarihli rezervasyon oluşturma/onay/ret/iptal PASS."
-    },
-    {
-      "id": "C01",
-      "group": "C",
-      "requirement": "Ad, koltuk, kalan, bitiş, anahtar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C02",
-      "group": "C",
-      "requirement": "Koltuk atama / geri alma",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: lisans tekli/toplu atama, iptal ve EULA akışları PASS."
-    },
-    {
-      "id": "C03",
-      "group": "C",
-      "requirement": "Lisans dosyası yükleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C04",
-      "group": "C",
-      "requirement": "Süre yaklaşan uyarılar (30/15/7/3/1 gün)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "C05",
-      "group": "C",
-      "requirement": "Maliyet takibi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D01",
-      "group": "D",
-      "requirement": "Aksesuar (klavye, mouse, kablo): zimmetlenir",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D02",
-      "group": "D",
-      "requirement": "Sarf (toner, pil, kağıt): tükenir, minimum stok",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D03",
-      "group": "D",
-      "requirement": "Bileşen (RAM, SSD): varlığa takılır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D04",
-      "group": "D",
-      "requirement": "Kit: laptop + çanta + mouse = hazır set",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "D05",
-      "group": "D",
-      "requirement": "Hepsi: ekle/düzenle/sil + zimmet + stok + minimum stok uyarısı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E01",
-      "group": "E",
-      "requirement": "Arıza, bakım, onarım: tip + başlangıç + bitiş + maliyet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E02",
-      "group": "E",
-      "requirement": "Fiziksel sayım (audit); son/gelecek denetim",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "E03",
-      "group": "E",
-      "requirement": "Bakım geçmişi, dosya eki",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F01",
-      "group": "F",
-      "requirement": "Ekle/düzenle/sil, profil fotoğrafı, departman, lokasyon, yönetici",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F02",
-      "group": "F",
-      "requirement": "Toplu içe aktarma (CSV)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F03",
-      "group": "F",
-      "requirement": "Devre dışı bırakınca otomatik iade",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "F04",
-      "group": "F",
-      "requirement": "Roller: Süper Admin, Şirket Yöneticisi, Editör, Okuyucu, Sınırlı, Muhasebe",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G01",
-      "group": "G",
-      "requirement": "Dosya yükleme (varlık, kullanıcı, lisans)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G02",
-      "group": "G",
-      "requirement": "Etkinlik günlüğü (audit)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G03",
-      "group": "G",
-      "requirement": "Raporlar: varlık, lisans, aksesuar, bakım, denetim, maliyet, zimmet",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G04",
-      "group": "G",
-      "requirement": "İçe/dışa aktarma (Excel/CSV)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G05",
-      "group": "G",
-      "requirement": "LDAP / AD / SAML / SSO / Google OAuth (2FA ayrıca H10'da)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G06",
-      "group": "G",
-      "requirement": "REST API + API anahtarı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G07",
-      "group": "G",
-      "requirement": "Ayarlar: logo, para birimi, tarih, barkod",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G08",
-      "group": "G",
-      "requirement": "Bildirimler (e-posta)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "G09",
-      "group": "G",
-      "requirement": "Yedekleme (SQL + Excel/CSV/JSON)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H01",
-      "group": "H",
-      "requirement": "Gerçek çok kiracılık + mimari düzeyde kiracılar arası sızıntı engeli",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H02",
-      "group": "H",
-      "requirement": "Sınırsız şirket + paket bazlı kullanıcı (0–200 / 200–500 / 500+)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H03",
-      "group": "H",
-      "requirement": "Whitelabel (logo, renk, favicon)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H04",
-      "group": "H",
-      "requirement": "Modern tek sayfa deneyimi, sağ tık menüsü, Ctrl+K komut paleti, kısayollar, hover kart",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: Ctrl+K ve tüm 53 yan menü hedefi PASS; hover/sağ tık/kısayol kapsamı tam değil."
-    },
-    {
-      "id": "H05",
-      "group": "H",
-      "requirement": "Barkod/QR/kamera (kamera ile okuma, USB okuyucu, etiket tasarımı)",
-      "status": "KISMEN",
-      "evidence": "Hosted Chromium: gerçek QR/Code128 video kare çözümü ve kamera hata durumları PASS."
-    },
-    {
-      "id": "H06",
-      "group": "H",
-      "requirement": "Dijital imza + anında PDF rapor",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H07",
-      "group": "H",
-      "requirement": "Tek tıkla tam sistem yedeği (SQL, Excel, CSV, JSON)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H08",
-      "group": "H",
-      "requirement": "Iyzico abonelik + webhook + anında şirket kurulumu (KİLİTLİ, F14)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H09",
-      "group": "H",
-      "requirement": "Canlı dashboard grafikleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H10",
-      "group": "H",
-      "requirement": "2FA (TOTP), KVKK uyumu için teknik kontrol listesi, otomatik yedekleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H11",
-      "group": "H",
-      "requirement": "Optimistik arayüz; saten parlak modern tasarım; koyu/açık tema",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "H12",
-      "group": "H",
-      "requirement": "5 dil: Türkçe (ana dil), İngilizce, Makedonca, Rusça, Ukraynaca (teknik terimler İngilizce kalabilir)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I01",
-      "group": "I",
-      "requirement": "2FA zorunlu (Google/Microsoft Authenticator); IP beyaz liste (opsiyonel); ayrıntılı oturum kayıtları (IP, cihaz, tarayıcı, konum); 5 hatalı denemede 5 dakika kilit; kritik işlemlerde MFA yeniden doğrulama; oturum 8 saat (beni hatırla 30 gün)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I02",
-      "group": "I",
-      "requirement": "toplam şirket (aktif+pasif+demo), aylık gelir (MRR ₺), yeni kayıtlar, 7 gün içinde bitecek abonelikler, başarısız ödemeler (acil), aktif kullanıcı sayısı, sistem sağlığı (CPU/RAM/Disk/DB), bugünkü girişler",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I03",
-      "group": "I",
-      "requirement": "12 aylık gelir trendi (çizgi), şirket büyümesi (çubuk), plan dağılımı (pasta), en çok kullanılan modül (bar), coğrafi dağılım (harita)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I04",
-      "group": "I",
-      "requirement": "son 10 kayıt, son 10 ödeme, yaklaşan yenilemeler",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I05",
-      "group": "I",
-      "requirement": "ödemesi 3+ gün gecikmiş (kırmızı), lisansı 7 gün içinde bitecek (turuncu), bugün kayıt olup işlem yapmayan (mavi), kapasite limitine yaklaşan (sarı)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I06",
-      "group": "I",
-      "requirement": "kolonlar (logo, firma, subdomain, plan, kullanıcı sayısı, durum, kayıt tarihi, aylık ücret, bitiş tarihi); arama, filtre (plan/durum/tarih), sıralama, sayfalama (50/100/250), toplu işlem (askıya al/sil/duyuru/plan değiştir), CSV/Excel dışa aktarma",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I07",
-      "group": "I",
-      "requirement": "(1) Genel: künye, subdomain, logo, plan, yetkili, vergi, MRR, LTV; (2) Kullanıcılar: liste, şifre sıfırla, rol değiştir, devre dışı, sil; (3) Abonelik: plan, aylık ücret, sonraki ödeme, geçmiş (PDF), manuel fatura, uzat (1/3/12 ay bedava), plan değiştir, askıya al, aktifleştir, iptal, iade; (4) Kullanım: varlık, kullanıcı, lisans, disk, API, kapasite (%); (5) İletişim: mesaj, bildirim, geçmiş; (6) Log: giriş/çıkış, API, kritik işlem; (7) Tehlikeli: sil (30 gün geri alınabilir), sıfırla, tüm verileri indir",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I08",
-      "group": "I",
-      "requirement": "\"Panele Gir\" düğmesi; parolasız giriş; sarı banner (\"ABC Ltd. paneline taklit modunda giriş – Çıkış\"); Süper Admin adına log; çıkışta süper admin paneline dönüş; müşteriye bildirim gitmez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I09",
-      "group": "I",
-      "requirement": "4 düzenlenebilir plan, fiyat geçmişi, karşılaştırma önizlemesi, kuponlar (yüzde/sabit/ilk ay bedava), ekstra kaynak (disk, kullanıcı, premium modül)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I10",
-      "group": "I",
-      "requirement": "aktif abonelikler; Iyzico ödeme takipleri; başarısız ödeme için 1/3/7. gün yeniden deneme; fatura üretimi; KDV raporu; demo hesap yönetimi (14→30 gün uzatma, sıfırlama) (ödemeye bağlı kısımlar KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I11",
-      "group": "I",
-      "requirement": "toplu/hedefli mesaj (e-posta/uygulama/SMS), çok dilli şablonlar (hoş geldin, ödeme, bakım), üst banner duyuruları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I12",
-      "group": "I",
-      "requirement": "tüm şirketlerdeki kullanıcılar, parola sıfırlama zorunluluğu, oturum sonlandırma, ücretsiz özel kullanıcı rozetleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I13",
-      "group": "I",
-      "requirement": "gerçek zamanlı sağlık (CPU/RAM/Disk/Ağ); servis durumları (uygulama, Postgres, proxy, Cloudflare, Iyzico, Google); günlük/haftalık otomatik yedek; 30 günlük yedek geçmişi; yedek indir/geri yükle; ayrıntılı sistem logları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I14",
-      "group": "I",
-      "requirement": "gelir (12 aylık, net, KDV); müşteri (churn oranı, ARPU); sistem kullanım yoğunluğu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I15",
-      "group": "I",
-      "requirement": "genel site; Iyzico API (sandbox/canlı); SMTP e-posta; güvenlik (MFA, kaba kuvvet koruması); entegrasyonlar (Google, Cloudflare, Slack, Webhook, SMS)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "I16",
-      "group": "I",
-      "requirement": "sol kenar çubuğu `#0A0A0F` koyu lacivert; Inter yazı tipi; saten parlak kartlar; 300 ms cubic-bezier geçişler; menü: Dashboard, Şirketler, Kullanıcılar, Abonelikler, Faturalar, Planlar, Kuponlar, Demo, Duyurular, Loglar, Raporlar, Sistem, Yedekleme, Ayarlar, Çıkış; üst çubuk: arama (Ctrl+K), hızlı işlem, bildirim, profil, tema; kısayollar: Ctrl+K, G+D/S/U, N+C/U, Esc",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J01",
-      "group": "J",
-      "requirement": "Dashboard: varlık/zimmet/lisans/bakım özeti",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J02",
-      "group": "J",
-      "requirement": "Varlık oluşturma/düzenleme/silme, transfer",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J03",
-      "group": "J",
-      "requirement": "Lisans, aksesuar, sarf yönetimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J04",
-      "group": "J",
-      "requirement": "Bakım ve sayım modülleri",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J05",
-      "group": "J",
-      "requirement": "Paket limitleri içinde kullanıcı/rol yönetimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J06",
-      "group": "J",
-      "requirement": "Departman ve lokasyon tanımları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J07",
-      "group": "J",
-      "requirement": "Şirket içi özel raporlar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J08",
-      "group": "J",
-      "requirement": "Excel/CSV dışa aktarma",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J09",
-      "group": "J",
-      "requirement": "Whitelabel ayarları",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J10",
-      "group": "J",
-      "requirement": "Veri yedeği indirme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "J11",
-      "group": "J",
-      "requirement": "firma yöneticileri başka şirketin verisini, süper admin panelini ve sistem geneli fiyat/plan yönetim ekranlarını ASLA göremez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K01",
-      "group": "K",
-      "requirement": "Hero: ürün tanıtımı + 2 dakikalık video",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K02",
-      "group": "K",
-      "requirement": "9+ modül özellik kartı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K03",
-      "group": "K",
-      "requirement": "Fiyatlandırma tablosu: 4 plan karşılaştırması (ödeme açılana kadar \"Demo iste/Ön kayıt\", çalışmayan \"Satın al\" düğmesi YOK)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K04",
-      "group": "K",
-      "requirement": "Çözüm segmentleri: KOBİ / orta / kurumsal",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K05",
-      "group": "K",
-      "requirement": "Kaynaklar: dokümantasyon, video, SSS",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K06",
-      "group": "K",
-      "requirement": "İletişim: `admin@envantertr.com` + WhatsApp (wa.me)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K07",
-      "group": "K",
-      "requirement": "5 dil, koyu/açık tema, tam mobil uyum",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "K08",
-      "group": "K",
-      "requirement": "Formlarda aydınlatma metni linki; pazarlama e-postası için önceden onay",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L01",
-      "group": "L",
-      "requirement": "Kayıt formu: firma, subdomain, e-posta, parola, yetkili",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L02",
-      "group": "L",
-      "requirement": "Subdomain canlı kontrol",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L03",
-      "group": "L",
-      "requirement": "E-posta doğrulama",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L04",
-      "group": "L",
-      "requirement": "Plan seçimi",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L05",
-      "group": "L",
-      "requirement": "Iyzico güvenli ödeme (KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L06",
-      "group": "L",
-      "requirement": "Webhook → otomatik şirket kurulumu (KİLİTLİ)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L07",
-      "group": "L",
-      "requirement": "Karşılama + 5 adımlı onboarding: (1) firma bilgileri, (2) logo + renk, (3) ilk toplu veri aktarımı, (4) kullanıcı davetleri, (5) ilk varlık kaydı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "L08",
-      "group": "L",
-      "requirement": "Ödeme açılana kadar: platform yöneticisi manuel aktivasyon (ücretsiz pilot; para tahsilatı yok)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M01",
-      "group": "M",
-      "requirement": "Her kiracı tablosunda zorunlu kiracı anahtarı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M02",
-      "group": "M",
-      "requirement": "Kiracılar arası veri sızıntısı İMKANSIZ: otomatik testle kanıtlanır",
-      "status": "KISMEN",
-      "evidence": "İzole PostgreSQL/security kabul: 244/244 PASS; bu, tüm endpoint ve her hostile-ID sınıfı için canlı kabul değildir."
-    },
-    {
-      "id": "M03",
-      "group": "M",
-      "requirement": "Ara katman alt alan adından kiracıyı çözer",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M04",
-      "group": "M",
-      "requirement": "Tüm sorgulara kiracı filtresi otomatik uygulanır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M05",
-      "group": "M",
-      "requirement": "Oturum + kiracı bağlamı birlikte doğrulanır",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M06",
-      "group": "M",
-      "requirement": "Önbellek/kuyruk/dosya depolama anahtarları kiracı önekli",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M07",
-      "group": "M",
-      "requirement": "Sızıntı testleri her yayında otomatik koşar",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M08",
-      "group": "M",
-      "requirement": "Mevcut altyapıyı koru: sadece EKLE/DÜZELT; silmek için gerekçe + veri taşıma planı + risk analizi + sahibin onayı",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "M09",
-      "group": "M",
-      "requirement": "Wildcard yönlendirme: `^[a-z0-9-]+\\.envantertr\\.com$` (mevcut Coolify/proxy kurulumuyla uyumlu)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N01",
-      "group": "N",
-      "requirement": "Bulut SaaS (V1 kapsamı, öncelik)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N02",
-      "group": "N",
-      "requirement": "Yerel Windows EXE",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N03",
-      "group": "N",
-      "requirement": "Windows Server kurulumu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N04",
-      "group": "N",
-      "requirement": "Linux kurulumu",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "N05",
-      "group": "N",
-      "requirement": "Mobil iOS/Android",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O01",
-      "group": "O",
-      "requirement": "Her API'de yetki + kiracı kontrolü",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O02",
-      "group": "O",
-      "requirement": "Oturum + yenileme, CSRF, hız sınırı",
-      "status": "KISMEN",
-      "evidence": "İzole PostgreSQL/security ve hosted Chromium oturum/CSRF/MFA akışları PASS; tam güvenlik matrisi henüz eşlenmedi."
-    },
-    {
-      "id": "O03",
-      "group": "O",
-      "requirement": "Girdi doğrulama/temizleme (XSS, SQL enjeksiyonu)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O04",
-      "group": "O",
-      "requirement": "CSP başlığı, zorunlu HTTPS",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O05",
-      "group": "O",
-      "requirement": "Güçlü parola özeti (mevcut mekanizma korunur, maliyet ayarı güvenli düzeyde)",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O06",
-      "group": "O",
-      "requirement": "Sırlar yalnızca ortam değişkeninde; `.env` depoya girmez",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "O07",
-      "group": "O",
-      "requirement": "KVKK teknik kontrol listesi ve güncel mevzuat izleme",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: Bu gereksinim için tekil kabul kanıtı henüz eşleştirilmedi; var kabul edilmedi."
-    },
-    {
-      "id": "P01",
-      "group": "P",
-      "requirement": "Önceden kanıtlı iddia edilen platform, lisans, CRM, güvenlik, Docker ve login teşhis modüllerinin korunup yeniden doğrulanması",
-      "status": "ÇALIŞTIRILMADI",
-      "evidence": "F0: listedeki her modül için ayrı kabul eşlemesi henüz yok."
-    },
-    {
-      "id": "Q01",
-      "group": "Q",
-      "requirement": "Önceden kısmen tamam denilen tüm SaaS, tenant, modül, UI, güvenlik, CI, kurulum ve dokümantasyon kapsamı",
-      "status": "KISMEN",
-      "evidence": "Geniş kapsamın parçaları bu oturumda test edildi; 244/244 PostgreSQL/security ve tam hosted Chromium paketi PASS. Ancak Q maddelerinin her biri tekil kanıtla eşleştirilmedi."
-    }
-  ],
-  "liveBackup": {
-    "status": "LOCALLY_HASHED_AND_RESTORED",
-    "coolifyTask": "EnvanterTR daily consistent PostgreSQL backup",
-    "taskId": "irsodh1rfb6jx4n6fzin63sn",
-    "executedAtUtc": "2026-11-02T12:21:17Z",
-    "durationSeconds": 5,
-    "result": "Success",
-    "sanitizedOutput": "DAILY_SQL_BACKUP_OK",
-    "archiveSizeDisplayed": "453.55 KB",
-    "archiveName": "daily-20261102T122121Z.dump",
-    "archivePermissions": "600",
-    "sha256Manifest": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-    "sha256RecomputedLocally": true,
-    "pgRestoreListValidatedByTask": true,
-    "independentRestore": true,
-    "isolatedClone": true,
-    "productionDatabaseWrites": false,
-    "note": "Archive downloaded only to the authorized isolated-rehearsal workflow; local SHA-256 matched the Coolify manifest. pg_restore --list and restore into the isolated clone passed. Production DB was not written.",
-    "productionDataTransferred": true
-  },
-  "isolatedRestoreTarget": {
-    "status": "REAL_ARCHIVE_RESTORED_AND_MIGRATION_ROLLBACK_REHEARSED",
-    "container": "envantertr-f1-restore-20261102",
-    "image": "postgres:17-alpine",
-    "networkMode": "none",
-    "publishedPorts": [],
-    "persistentVolumes": [],
-    "dataStorage": "temporary tmpfs",
-    "database": "envantertr_restorecheck",
-    "publicTableCount": 96,
-    "readyCheck": "pg_isready PASS",
-    "productionDataTransferred": true,
-    "migrationRows": 122,
-    "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-    "companyCount": 3,
-    "assetCount": 1
-  },
-  "restoredBackupMigrationHistoryComparison": {
-    "measuredAtUtc": "2026-11-02T21:15:43Z",
-    "source": "envantertr-f1-restore-20261102 / envantertr_restorecheck / public.__EFMigrationsHistory",
-    "target": "clean release candidate source migration IDs",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "candidateLiveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-    "comparison": "exact sorted ID set equality",
-    "status": "PASS",
-    "backupMigrationIds": 122,
-    "sourceMigrationIds": 122,
-    "onlyBackup": [],
-    "onlySource": [],
-    "productionWrites": false
-  },
-  "currentFeatureBranchReleaseBuild": {
-    "measuredAtUtc": "2026-11-02T21:23:09Z",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
-    "worktreeChangesIncluded": true,
-    "command": "C:\\Users\\Lenovo\\.dotnet\\dotnet.exe build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
-    "status": "PASS",
-    "exitCode": 0,
-    "warnings": 0,
-    "errors": 0,
-    "elapsed": "00:02:56.38",
-    "ciOrAcceptanceImplied": false,
-    "productionWrites": false
-  },
-  "currentFeatureBranchEfSnapshotCheck": {
-    "measuredAtUtc": "2026-11-02T21:28:03Z",
-    "branch": "feat/platform-checkout-readiness-20261020",
-    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
-    "worktreeChangesIncluded": true,
-    "command": "dotnet ef migrations has-pending-model-changes --project src/EnvanterTR.Web/EnvanterTR.Web.csproj --startup-project src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
-    "status": "PASS",
-    "result": "No changes have been made to the model since the last migration.",
-    "databaseConnected": false,
-    "migrationExecuted": false,
-    "liveMigrationSetParityProven": false
-  },
-  "localRestoreRunner": {
-    "status": "SYNTHETIC_E2E_PASS",
-    "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
-    "purpose": "Verify manifest SHA-256, enforce an isolated local PostgreSQL target, and restore without writing to production.",
-    "powerShellParse": "PASS",
-    "productionBackupUsed": false,
-    "restoreCompleted": true,
-    "syntheticFixtureCounts": {
-      "publicTables": 3,
-      "migrationRows": 1,
-      "companies": 1,
-      "assets": 1
-    },
-    "argumentPassingBugFoundAndFixed": true,
-    "realArchiveRestore": {
-      "status": "PASS",
-      "archiveName": "daily-20261102T122121Z.dump",
-      "archiveBytes": 464439,
-      "localSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-      "manifestMatch": true,
-      "pgRestoreList": "PASS",
-      "publicTables": 96,
-      "migrationRows": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "companies": 3,
-      "assets": 1,
-      "productionWrites": false
-    }
-  },
-  "currentReleaseMigrationAcceptance": {
-    "measuredAtUtc": "2026-11-02T13:40:38Z",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "command": "deploy/testing/run-current-release-migration-acceptance.ps1",
-    "test": "Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently",
-    "status": "PASS",
-    "passed": 1,
-    "failed": 0,
-    "durationSeconds": 52.7033,
-    "isolatedSyntheticDatabase": true,
-    "temporaryComposeResourcesRemoved": true,
-    "productionDataTransferred": false,
-    "productionWrites": false
-  },
-  "migrationRehearsalHarness": {
-    "measuredAtUtc": "2026-11-02T21:03:48Z",
-    "file": "deploy/coolify/rehearse-migrations.sh",
-    "status": "REAL_BACKUP_NO_PENDING_MIGRATION_AND_ROLLBACK_PASS",
-    "syntheticBaseline": {
-      "migrationCount": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "companies": 1,
-      "assets": 1
-    },
-    "syntheticCandidate": {
-      "migrationCount": 123,
-      "latestMigration": "20261102000000_F1SyntheticProof"
-    },
-    "firstApply": "PASS",
-    "repeatApplyIdempotency": "PASS",
-    "existingTableRowCountsPreserved": true,
-    "rollbackCloneMatchesUntouchedBaseline": true,
-    "temporaryCandidateAndRollbackDatabasesCleaned": true,
-    "restoredBaseDatabaseRetained": true,
-    "productionArchiveUsed": false,
-    "productionWrites": false,
-    "firstRunCleanupDefectFoundAndFixed": true,
-    "realBackup": {
-      "archiveSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
-      "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-      "candidateMigrationCount": 122,
-      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
-      "pendingMigrations": 0,
-      "candidateSql": "latest-to-latest 3-byte no-op",
-      "candidateSqlSha256": "F1945CD6C19E56B3C1C78943EF5EC18116907A4CA1EFC40A57D48AB1DB7ADFC5",
-      "firstApply": "PASS",
-      "repeatApplyIdempotency": "PASS",
-      "existingPublicTableRowCountsPreserved": true,
-      "rollbackCloneMatchesRestoredBaseline": true,
-      "restoredBaselineRetained": true,
-      "temporaryCandidateAndRollbackDatabasesCleaned": true,
-      "productionWrites": false
-    }
-  },
-  "knownLimitations": [
-    "Iyzico/real payment remains locked: owner has no Iyzico merchant account and goal requires legal company confirmation.",
-    "Live deploy and live DB migration were not performed. The authorized Coolify archive SHA-256 was recomputed locally and matched; real archive restore and current-candidate no-pending migration/rollback rehearsal passed in an isolated network-none PostgreSQL clone. Real tenant acceptance was not performed in this run.",
-    "F1 feature-branch migration parity is unresolved: live/candidate have 122 EF migration IDs; dirty feature has 121, with five live IDs absent and four Nov 1 IDs not deployed. Static source search also found no SubscriptionCoupon, EmployeeHandoverEmailAttempt, or PlatformImpersonationSession model references in the feature worktree; the drift includes application model/source, not only migration files. Exact IDs are recorded in migrationParity; no migration was run or copied blindly.",
-    "Full-history EF idempotent SQL generation failed at already-applied migration 20261010215527_AddAssetModelNumbersAndDefaultLocation because raw SQL statements omit semicolons inside generated DO blocks. The applied migration was not edited; current candidate has no pending migrations. Feature-branch migration/model parity remains unresolved."
-  ],
-  "migrationParity": {
-    "measuredAtUtc": "2026-11-02T13:16:07Z",
-    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
-    "liveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
-    "candidateMigrationIdCount": 122,
-    "featureMigrationIdCount": 121,
-    "candidateMatchesLive": true,
-    "liveIdsMissingFromFeature": [
-      "20261020174959_AddSubscriptionCoupons",
-      "20261023190000_AddExistingCompanyCheckoutContext",
-      "20261024010000_AddPlatformImpersonationSessions",
-      "20261024212238_AddRecoverableCompanyDeletion",
-      "20261026083058_AddHandoverEmailAttempts"
-    ],
-    "featureOnlyMigrationIds": [
-      "20261101212918_AddCheckoutWebhookReceipts",
-      "20261101214246_AddCompanyPayments",
-      "20261101220912_AddCompanyInvoices",
-      "20261101230628_AddPlatformAnnouncements"
-    ],
-    "liveMigrationOrProductionChanges": false,
-    "featureSourceDrift": {
-      "type": "STATIC_SEARCH",
-      "featureWorktreeContainsReferences": {
-        "SubscriptionCoupon": false,
-        "EmployeeHandoverEmailAttempt": false,
-        "PlatformImpersonationSession": false
+      "uiInventory": {
+        "status": "CURRENT",
+        "command": "node tools/Generate-UiInventory.mjs --check",
+        "staticControls": 2240,
+        "pageRoutes": 66,
+        "menuGroups": 10,
+        "links": 52,
+        "buttons": 950,
+        "forms": 111,
+        "inputs": 616,
+        "selects": 202,
+        "textareas": 41,
+        "modals": 107,
+        "tabs": 5,
+        "tables": 80
       },
-      "meaning": "The five missing live migration IDs are not only absent migration files; at least three feature model/source changes are also absent. Do not copy migration files alone.",
-      "executedDatabaseChanges": false
+      "migrationSourceCount": 121,
+      "liveReadOnly": {
+        "apex": "HTTP 200 ready",
+        "firm": "HTTP 200 ready",
+        "publicPlans": 8,
+        "checkout": "unavailable",
+        "applicationReportedMigrations": 122,
+        "sourceLiveMigrationDifference": 1,
+        "checkedBy": "node tools/Check-CoolifyProduction.mjs",
+        "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "deploymentHistory": "Coolify latest successful deployment 2026-11-01 08:42 UTC",
+        "liveCommitMigrationCount": 122,
+        "liveCommitLatestMigration": "20261026083058_AddHandoverEmailAttempts",
+        "liveCommitOnlyMigrations": [
+          "20261020174959_AddSubscriptionCoupons",
+          "20261023190000_AddExistingCompanyCheckoutContext",
+          "20261024010000_AddPlatformImpersonationSessions",
+          "20261024212238_AddRecoverableCompanyDeletion",
+          "20261026083058_AddHandoverEmailAttempts"
+        ],
+        "worktreeOnlyMigrations": [
+          "20261101212918_AddCheckoutWebhookReceipts",
+          "20261101214246_AddCompanyPayments",
+          "20261101220912_AddCompanyInvoices",
+          "20261101230628_AddPlatformAnnouncements"
+        ]
+      },
+      "sourceLineage": {
+        "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "mergeBaseWithFeatureHead": "36c5937440229b6105c3c8b5f9e86cafa655e2c0",
+        "originMainMergeBaseWithDeployedSha": "4d55270827be312775ebffe60c5a6d74011d7802",
+        "originMainOnlyCommits": 74,
+        "featureBranchOnlyCommits": 13,
+        "featureBranch": "feat/platform-checkout-readiness-20261020",
+        "worktreeDirty": true,
+        "mergeOrDeployPerformed": false
+      },
+      "liveDerivedReleaseCandidate": {
+        "releaseBuild": {
+          "errors": 0,
+          "warnings": 0,
+          "status": "PASS"
+        },
+        "postgresSecurityAcceptance": {
+          "failed": 0,
+          "duration": "1.9849 hours",
+          "cleanup": "Compose containers, network, and volume removed",
+          "isolatedDatabase": true,
+          "status": "PASS",
+          "productionWrites": false,
+          "passed": 413
+        },
+        "evidence": "tests/reports/live-derived-candidate-security-20261102.md",
+        "branch": "release/v1-candidate-20261102",
+        "uiInventory": {
+          "forms": 117,
+          "tabs": 5,
+          "links": 58,
+          "textareas": 45,
+          "staticControls": 2304,
+          "inputs": 627,
+          "selects": 206,
+          "buttons": 976,
+          "modals": 110,
+          "pageRoutes": 71,
+          "status": "CURRENT",
+          "tables": 79,
+          "menuGroups": 10
+        },
+        "hostedChromiumAcceptance": {
+          "note": "Full hosted Chromium acceptance runner completed on this candidate; exit code 0; synthetic API fixtures; no production writes.",
+          "status": "PASS",
+          "exitCode": 0,
+          "fullSuite": true,
+          "productionWrites": false,
+          "evidence": "tests/reports/live-derived-candidate-hosted-chromium-20261102.md"
+        },
+        "migrationIdSetMatchesBase": true,
+        "sourceVerifiers": {
+          "passed": 85,
+          "failed": 0,
+          "total": 85,
+          "status": "PASS"
+        },
+        "commit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+        "migrationCount": 122,
+        "baseDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+        "productionDeployment": false
+      }
     }
-  },
-  "featureMigrationReview": {
-    "type": "SOURCE_ONLY_STATIC_REVIEW",
-    "reviewedMigrationIds": [
-      "20261101212918_AddCheckoutWebhookReceipts",
-      "20261101214246_AddCompanyPayments",
-      "20261101220912_AddCompanyInvoices",
-      "20261101230628_AddPlatformAnnouncements"
-    ],
-    "upOperations": "All four create new tables/indexes and foreign keys; no destructive Up operation found by source inspection.",
-    "dependencies": [
-      "CheckoutWebhookReceipts -> Companies, CompanyCheckoutOrders",
-      "CompanyPayments -> Companies, CompanyCheckoutOrders",
-      "CompanyInvoices -> Companies, CompanyPayments, AspNetUsers",
-      "PlatformAnnouncements -> Companies, AspNetUsers"
-    ],
-    "downOrder": [
-      "AddPlatformAnnouncements",
-      "AddCompanyInvoices",
-      "AddCompanyPayments",
-      "AddCheckoutWebhookReceipts"
-    ],
-    "caveat": "Down methods drop these tables; this is not a DB execution test or production authorization. Payment-related schema remains behind locked F14."
   }
 }

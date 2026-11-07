@@ -11,7 +11,7 @@ assert.ok(appScript, 'application inline script must be present');
 new Script(appScript, { filename: path });
 const ids = [
   'employeesPage','employeeSearch','employeeDepartmentFilter','employeeManagerFilterSearch','employeeManagerFilter',
-  'employeeState','employeeStartedFrom','employeeStartedTo','employeeRows','employeeCount','employeePrev','employeeNext',
+  'employeeState','employeeIncludeArchived','employeeStartedFrom','employeeStartedTo','employeeRows','employeeCount','employeePrev','employeeNext',
   'newEmployeeButton','exportEmployeesButton','employeeImportOpen','employeeDialog','editEmployeeDialog','editEmployeeForm','employeeImportDialog',
   'employeeActionDialog','employeeActionForm','employeeActionSummary','employeeActionSubmit',
   'employeeProfilePhoto','employeeDirectReports','employeeAssetRows','employeeAccessoryRows','employeeLicenseRows',
@@ -23,7 +23,7 @@ const listStart = html.indexOf('async function loadEmployees(page = employeePage
 const listEnd = html.indexOf('let directorySuggestionsTimer', listStart);
 assert.ok(listStart >= 0 && listEnd > listStart, 'employee list loader must be present');
 const list = html.slice(listStart, listEnd);
-for (const token of ['employeeListRequestId','requestId !== employeeListRequestId','/api/employees?${params}',"params.set('active'", "params.set('startedFrom'", "params.set('startedTo'", "params.set('department'", "params.set('managerId'", 'updateEmployeeBulkControls()', 'employeeNext'])
+for (const token of ['employeeListRequestId','requestId !== employeeListRequestId','/api/employees?${params}',"params.set('active'", "params.set('includeArchived'", "$('#employeeIncludeArchived').checked", "params.set('startedFrom'", "params.set('startedTo'", "params.set('department'", "params.set('managerId'", 'employee.isArchived', '/archive', '/restore', 'updateEmployeeBulkControls()', 'employeeNext'])
   assert.ok(list.includes(token), `employee list must include ${token}`);
 for (const field of ['displayName','employeeNumber','email','jobTitle','location','companyUnitName']) assert.ok(list.includes(`textContent = employee.${field}`) || list.includes(`textContent=employee.${field}`), `employee list must render ${field} as text`);
 assert.ok(html.includes('<th>Şirket birimi</th>') && html.includes('cell.colSpan = 11') && html.includes('colspan="11"'), 'employee list must render the location-linked company unit column and matching empty/loading spans');

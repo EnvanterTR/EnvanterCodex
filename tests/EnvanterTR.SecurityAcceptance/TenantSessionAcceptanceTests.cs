@@ -30,6 +30,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace EnvanterTR.SecurityAcceptance;
 
@@ -40,6 +41,7 @@ public sealed class TenantSessionAcceptanceCollection { }
 public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
 {
     private const string TestScheme = "SecurityAcceptance";
+    private readonly ITestOutputHelper _testOutput;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _sameCompanyOtherUserId = Guid.NewGuid();
     private readonly Guid _viewerUserId = Guid.NewGuid();
@@ -2080,6 +2082,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
 
+    public TenantSessionAcceptanceTests(ITestOutputHelper testOutput)
+    {
+        _testOutput = testOutput;
+    }
+
     [Fact]
     public void Account_lockout_matches_five_failed_attempts_and_five_minutes()
     {
@@ -2097,7 +2104,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/api", StringComparison.OrdinalIgnoreCase) == true)
             .ToArray();
 
-        Assert.True(endpoints.Length >= 300, $"Expected the complete API endpoint inventory, found {endpoints.Length}.");
+        var inventory = endpoints.Select(DescribeEndpoint).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var methodRouteCount = endpoints.Sum(endpoint => Math.Max(1,
+            endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Count ?? 0));
+        var inventoryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", inventory))));
+        var publicEndpointCount = endpoints.Count(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null);
+        var protectedEndpointCount = endpoints.Length - publicEndpointCount;
+        _testOutput.WriteLine($"API_ENDPOINT_INVENTORY endpoints={endpoints.Length}; methodRoutes={methodRouteCount}; public={publicEndpointCount}; protected={protectedEndpointCount}; sha256={inventoryHash}");
+
+        Assert.True(endpoints.Length == 503, $"API endpoint count changed; review the inventory before updating its baseline. Found {endpoints.Length}.");
+        Assert.True(methodRouteCount == 503, $"HTTP method/route count changed; review the inventory before updating its baseline. Found {methodRouteCount}.");
+        Assert.True(inventoryHash == "D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4",
+            $"API method/route inventory changed; review public access and tenant policy before updating its fingerprint. Found {inventoryHash}.");
         var unprotected = endpoints.Where(endpoint =>
                 endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null &&
                 !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any())
@@ -3039,7 +3057,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                    JsonContent.Create(Request("Plan açılış gerekçesi"))))
             Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
         using (var invalidCloudLimit = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
-                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 10)), requestToken, antiforgeryCookie))
+                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 0)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidCloudLimit.StatusCode);
         using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
                    JsonContent.Create(Request("   ")), requestToken, antiforgeryCookie))
@@ -3049,7 +3067,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.Forbidden, companyAdminDenied.StatusCode);
 
         using var create = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
-            JsonContent.Create(Request("Cloud paket kataloğunu başlat")), requestToken, antiforgeryCookie);
+            JsonContent.Create(Request("Cloud paket kataloğunu başlat", maxLoginUsers: 10)), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var planId = createdPayload.RootElement.GetProperty("id").GetGuid();
@@ -3064,14 +3082,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await publicPlans.Content.ReadAsStringAsync());
             var published = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
             Assert.Equal(1200m, published.GetProperty("monthlyPrice").GetDecimal());
-            Assert.Equal(JsonValueKind.Null, published.GetProperty("maxLoginUsers").ValueKind);
+            Assert.Equal(10, published.GetProperty("maxLoginUsers").GetInt32());
         }
 
         using (var tooShortReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
                    JsonContent.Create(Request("kısa", monthly: 1800m)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, tooShortReason.StatusCode);
         using var update = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
-            JsonContent.Create(Request("Maliyet ve yıllık fiyatlandırma güncellendi", "Cloud package v2", 1800m, 18000m, isPublic: false)),
+            JsonContent.Create(Request("Maliyet ve yıllık fiyatlandırma güncellendi", "Cloud package v2", 1800m, 18000m, isPublic: false, maxLoginUsers: 20)),
             requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         using (var publicPlans = await _client.GetAsync("/api/plans"))
@@ -3085,6 +3103,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var updated = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
             Assert.Equal("Cloud package v2", updated.GetProperty("name").GetString());
             Assert.Equal(1800m, updated.GetProperty("monthlyPrice").GetDecimal());
+            Assert.Equal(20, updated.GetProperty("maxLoginUsers").GetInt32());
             Assert.Equal("{\"reports\":true,\"api\":true,\"maintenance\":true}", updated.GetProperty("featureFlagsJson").GetString());
             Assert.False(updated.GetProperty("isPublic").GetBoolean());
         }
@@ -5658,12 +5677,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cloud_company_invites_are_unlimited_even_for_legacy_capped_plans_while_local_caps_remain_enforced()
+    public async Task Cloud_company_invites_obey_plan_seat_caps_while_local_caps_remain_enforced()
     {
         var plan = new SubscriptionPlan
         {
             Code = $"c-{_companyId:N}", Name = "Cloud invite regression", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = 4, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5692,7 +5711,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var cloudPlan = plansPayload.RootElement.EnumerateArray()
                 .Single(x => x.GetProperty("code").GetString() == plan.Code);
             Assert.Equal("cloud", cloudPlan.GetProperty("deploymentKind").GetString());
-            Assert.Equal(JsonValueKind.Null, cloudPlan.GetProperty("maxLoginUsers").ValueKind);
+            Assert.Equal(4, cloudPlan.GetProperty("maxLoginUsers").GetInt32());
         }
 
         var cloudInviteEmail = $"cloud-invite-{Guid.NewGuid():N}@example.invalid";
@@ -5700,6 +5719,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                    System.Net.Http.Json.JsonContent.Create(new { fullName = "Cloud invite regression", email = cloudInviteEmail, roleKey = "viewer" }),
                    requestToken, antiforgeryCookie, role: "admin"))
             Assert.Equal(HttpStatusCode.Created, cloudInvite.StatusCode);
+
+        var overLimitInviteEmail = $"cloud-over-limit-{Guid.NewGuid():N}@example.invalid";
+        using (var overLimitInvite = await SendAsUserAsync(HttpMethod.Post, "/api/members/invite", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { fullName = "Over limit invite", email = overLimitInviteEmail, roleKey = "viewer" }),
+                   requestToken, antiforgeryCookie, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, overLimitInvite.StatusCode);
+            Assert.Contains("4 giriş hesabıyla sınırlı", await overLimitInvite.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5720,7 +5748,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.Conflict, localInvite.StatusCode);
             var body = await localInvite.Content.ReadAsStringAsync();
-            Assert.Contains("1 giriş hesabıyla sınırlı", body, StringComparison.Ordinal);
+            Assert.Contains("4 giriş hesabıyla sınırlı", body, StringComparison.Ordinal);
         }
     }
 
@@ -5731,7 +5759,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var plan = new SubscriptionPlan
         {
             Code = $"m-{_companyId:N}", Name = "Multi-company invite", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = 2, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -6288,6 +6316,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _userId, _companyId))
         using (var ownEmployee = JsonDocument.Parse(await ownEmployeeList.Content.ReadAsStringAsync()))
             Assert.Equal(employeeProfileId, Assert.Single(ownEmployee.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
+        using (var otherCompanyEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, otherCompanyEmployeeList.StatusCode);
 
         using (var ownConsumableList = await SendAsUserAsync(HttpMethod.Get, "/api/consumables/import-mappings", _userId, _companyId))
         using (var ownConsumable = JsonDocument.Parse(await ownConsumableList.Content.ReadAsStringAsync()))
@@ -7762,6 +7793,44 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             kitId = payload.RootElement.GetProperty("id").GetGuid();
         }
 
+        var foreignKitId = Guid.NewGuid();
+        const string foreignKitName = "FOREIGN-TENANT-KIT-123";
+        await using (var seedForeignKitScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = seedForeignKitScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AccessoryKits.Add(new AccessoryKit { Id = foreignKitId, CompanyId = _otherCompanyId, Name = foreignKitName });
+            db.AccessoryKitLines.Add(new AccessoryKitLine
+            {
+                CompanyId = _otherCompanyId, AccessoryKitId = foreignKitId,
+                ItemType = "Accessory", AccessoryId = _otherCompanyAccessoryId, Quantity = 2
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var foreignUpdate = await SendAsRoleAsync(HttpMethod.Put, $"{kitPath}/{foreignKitId}", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = "Stolen kit update", description = "cross-tenant", items = item }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignUpdate.StatusCode);
+        using (var foreignArchive = await SendAsRoleAsync(HttpMethod.Delete, $"{kitPath}/{foreignKitId}", "admin",
+                   null, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignArchive.StatusCode);
+        using (var foreignRestore = await SendAsRoleAsync(HttpMethod.Post, $"{kitPath}/{foreignKitId}/restore", "admin",
+                   new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRestore.StatusCode);
+
+        await using (var verifyForeignKitScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyForeignKitScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreignKit = await db.AccessoryKits.SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == foreignKitId);
+            Assert.Equal(foreignKitName, foreignKit.Name);
+            Assert.True(foreignKit.IsActive);
+            var foreignLine = await db.AccessoryKitLines.SingleAsync(x => x.CompanyId == _otherCompanyId && x.AccessoryKitId == foreignKitId);
+            Assert.Equal(_otherCompanyAccessoryId, foreignLine.AccessoryId);
+            Assert.Equal(2, foreignLine.Quantity);
+            Assert.False(await db.AuditEntries.AnyAsync(x => x.TargetId == foreignKitId &&
+                (x.Action == "updated" || x.Action == "archived" || x.Action == "restored")));
+        }
+
         using (var duplicate = await SendAsRoleAsync(HttpMethod.Post, kitPath, "admin",
                    System.Net.Http.Json.JsonContent.Create(new { name = kitName.ToLowerInvariant(), description = (string?)null, items = item }),
                    requestToken, antiforgeryCookie))
@@ -8544,6 +8613,76 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Employee_archive_and_restore_are_authorized_company_scoped_reversible_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        await SetCompanyRoleAsync("viewer");
+        using (var viewerArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerArchive.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var activeArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, activeArchive.StatusCode);
+        using (var crossTenantArchive = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_otherCompanyEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantArchive.StatusCode);
+
+        using (var deactivated = await SendAsRoleAsync(HttpMethod.Patch, $"/api/employees/{_ownEmployeeId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        using var archived = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/archive", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, archived.StatusCode);
+        using var archivedPayload = JsonDocument.Parse(await archived.Content.ReadAsStringAsync());
+        Assert.True(archivedPayload.RootElement.GetProperty("isArchived").GetBoolean());
+
+        using (var defaultList = await SendAsAdminAsync("/api/employees?active=false"))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaultList.StatusCode);
+            using var payload = JsonDocument.Parse(await defaultList.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.GetProperty("items").EnumerateArray(),
+                item => item.GetProperty("id").GetGuid() == _ownEmployeeId);
+        }
+        using (var archivedList = await SendAsAdminAsync("/api/employees?active=false&includeArchived=true"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archivedList.StatusCode);
+            using var payload = JsonDocument.Parse(await archivedList.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(),
+                row => row.GetProperty("id").GetGuid() == _ownEmployeeId);
+            Assert.True(item.GetProperty("isArchived").GetBoolean());
+        }
+
+        using var restored = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/restore", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { reason = "Employee record cleanup acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        using var restoredPayload = JsonDocument.Parse(await restored.Content.ReadAsStringAsync());
+        Assert.False(restoredPayload.RootElement.GetProperty("isArchived").GetBoolean());
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var employee = await db.Employees.AsNoTracking().SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownEmployeeId);
+        Assert.False(employee.IsActive);
+        Assert.Null(employee.ArchivedAt);
+        Assert.Contains(await db.AuditEntries.AsNoTracking().Where(item => item.CompanyId == _companyId && item.TargetId == _ownEmployeeId).ToListAsync(),
+            item => item.Action == "Archived");
+        Assert.Contains(await db.AuditEntries.AsNoTracking().Where(item => item.CompanyId == _companyId && item.TargetId == _ownEmployeeId).ToListAsync(),
+            item => item.Action == "Restored");
+    }
+
+    [Fact]
     public async Task Employee_private_notes_are_restricted_company_scoped_trimmed_and_audited_without_copying_content()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -9097,6 +9236,122 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 .Select(x => x.Action).ToArrayAsync();
             Assert.Contains("Trashed", auditActions);
             Assert.Contains("RestoredFromTrash", auditActions);
+        }
+    }
+
+    [Fact]
+    public async Task Bulk_asset_trash_is_atomic_tenant_scoped_and_audited()
+    {
+        var assetIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var hiddenAssetId = Guid.NewGuid();
+        var allowedLocationId = Guid.NewGuid();
+        var hiddenLocationId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            db.CompanyLocations.AddRange(
+                new CompanyLocation { Id = allowedLocationId, CompanyId = _companyId, Name = "Bulk trash allowed", NormalizedName = "BULK TRASH ALLOWED" },
+                new CompanyLocation { Id = hiddenLocationId, CompanyId = _companyId, Name = "Bulk trash hidden", NormalizedName = "BULK TRASH HIDDEN" });
+            db.Assets.AddRange(assetIds.Select((id, index) => new Asset
+            {
+                Id = id, CompanyId = _companyId, AssetTag = $"BULK-TRASH-{Guid.NewGuid():N}",
+                Name = $"Bulk trash acceptance {index + 1}", CategoryId = categoryId, LocationCatalogId = allowedLocationId
+            }).Append(new Asset
+            {
+                Id = hiddenAssetId, CompanyId = _companyId, AssetTag = $"BULK-TRASH-HIDDEN-{Guid.NewGuid():N}",
+                Name = "Bulk trash out-of-scope acceptance", CategoryId = categoryId, LocationCatalogId = hiddenLocationId
+            }));
+            var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _userId);
+            membership.LocationAccessMode = CompanyLocationAccess.Restricted;
+            db.CompanyMembershipLocationAccesses.Add(new CompanyMembershipLocationAccess
+                { CompanyId = _companyId, UserId = _userId, LocationId = allowedLocationId });
+            (await db.Assets.IgnoreQueryFilters().SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId)).LocationCatalogId = allowedLocationId;
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        await SetCompanyRoleAsync("viewer");
+        using (var readOnly = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "read-only role" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], _otherCompanyAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+
+        using (var outOfLocation = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], hiddenAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, outOfLocation.StatusCode);
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "csrf required" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], assetIds[0] }, note = "duplicate" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+
+        using (var emptySelection = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = Array.Empty<Guid>(), note = "empty" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, emptySelection.StatusCode);
+
+        using (var oversizedSelection = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = Enumerable.Range(0, 101).Select(_ => Guid.NewGuid()).ToArray(), note = "too many" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, oversizedSelection.StatusCode);
+
+        using (var blockedRelation = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], _ownAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, blockedRelation.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unchanged = await db.Assets.IgnoreQueryFilters().Where(x => assetIds.Contains(x.Id))
+                .Select(x => x.DeletedAt).ToArrayAsync();
+            Assert.Equal(2, unchanged.Length);
+            Assert.All(unchanged, deletedAt => Assert.Null(deletedAt));
+            Assert.Null(await db.Assets.IgnoreQueryFilters().Where(x => x.Id == hiddenAssetId).Select(x => x.DeletedAt).SingleAsync());
+        }
+
+        using (var completed = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "retired batch" }),
+                   requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+            using var result = JsonDocument.Parse(await completed.Content.ReadAsStringAsync());
+            Assert.Equal(assetIds.Length, result.RootElement.GetProperty("trashedCount").GetInt32());
+            Assert.Equal(assetIds.Order().ToArray(), result.RootElement.GetProperty("assetIds").EnumerateArray()
+                .Select(value => value.GetGuid()).Order().ToArray());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var trashed = await db.Assets.IgnoreQueryFilters().Where(x => assetIds.Contains(x.Id)).ToListAsync();
+            Assert.Equal(2, trashed.Count);
+            Assert.All(trashed, asset =>
+            {
+                Assert.NotNull(asset.DeletedAt);
+                Assert.Equal(_userId, asset.DeletedByUserId);
+            });
+            Assert.Equal(2, await db.AssetEvents.CountAsync(x => assetIds.Contains(x.AssetId) && x.EventType == "Trashed"));
+            Assert.Equal(2, await db.AuditEntries.CountAsync(x => x.TargetId.HasValue && assetIds.Contains(x.TargetId.Value) && x.Action == "Trashed"));
         }
     }
 
@@ -10300,6 +10555,13 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using var listPayload = JsonDocument.Parse(await maintenanceList.Content.ReadAsStringAsync());
         var row = Assert.Single(listPayload.RootElement.EnumerateArray());
         Assert.Equal(maintenanceId, row.GetProperty("id").GetGuid());
+        Assert.Equal("Inspection", row.GetProperty("maintenanceType").GetString());
+        Assert.Equal(today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            row.GetProperty("startedOn").GetString());
+        Assert.Equal(today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            row.GetProperty("completedOn").GetString());
+        Assert.Equal(1200m, row.GetProperty("cost").GetDecimal());
+        Assert.Equal("TRY", row.GetProperty("currency").GetString());
         Assert.Equal("Completed", row.GetProperty("status").GetString());
         Assert.Equal(_ownEmployeeId, row.GetProperty("responsibleEmployeeId").GetGuid());
 
@@ -10508,6 +10770,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var secret = created.RootElement.GetProperty("secret").GetString()!;
         Assert.StartsWith("etr_live_", secret, StringComparison.Ordinal);
 
+        var ownAssetCustomFieldKey = $"api_a_{_userId:N}";
+        var foreignAssetCustomFieldKey = $"api_b_{_userId:N}";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -10516,6 +10780,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var accessory = await db.Accessories.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId);
             accessory.Notes = "PRIVATE-ACCESSORY-NOTES-SENTINEL";
             accessory.UnitCost = 9876.54m;
+            db.AssetCustomFieldDefinitions.AddRange(
+                new AssetCustomFieldDefinition
+                {
+                    CompanyId = _companyId, Key = ownAssetCustomFieldKey, Name = "Company A integration field", FieldType = "text"
+                },
+                new AssetCustomFieldDefinition
+                {
+                    CompanyId = _otherCompanyId, Key = foreignAssetCustomFieldKey, Name = "Company B private integration field", FieldType = "text"
+                });
             await db.SaveChangesAsync();
         }
 
@@ -10527,6 +10800,25 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(64, storedHash.Length);
         }
 
+        using var selectorProbeClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = false
+        });
+        async Task AssertForeignCompanySelectorIsStrippedAsync(string requestUri, string apiSecret)
+        {
+            using var selectorRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            selectorRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiSecret);
+            selectorRequest.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            using var selectorResponse = await selectorProbeClient.SendAsync(selectorRequest);
+            Assert.Equal(HttpStatusCode.SeeOther, selectorResponse.StatusCode);
+            var safeLocation = selectorResponse.Headers.Location?.OriginalString;
+            Assert.False(string.IsNullOrWhiteSpace(safeLocation));
+            Assert.DoesNotContain("companyId", safeLocation!, StringComparison.OrdinalIgnoreCase);
+        }
+
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/assets?page=1&pageSize=20&companyId={_otherCompanyId:D}", secret);
         using (var assetsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/assets?page=1&pageSize=20"))
         {
             assetsRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
@@ -10540,6 +10832,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 .Select(x => x.GetProperty("id").GetGuid()));
         }
 
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/asset-custom-fields?companyId={_otherCompanyId:D}", secret);
+        using (var customFieldsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/asset-custom-fields"))
+        {
+            customFieldsRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            customFieldsRequest.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            using var customFieldsResponse = await _client!.SendAsync(customFieldsRequest);
+            Assert.Equal(HttpStatusCode.OK, customFieldsResponse.StatusCode);
+            using var customFields = JsonDocument.Parse(await customFieldsResponse.Content.ReadAsStringAsync());
+            var returnedKeys = customFields.RootElement.EnumerateArray()
+                .Select(field => field.GetProperty("key").GetString()).ToArray();
+            Assert.Contains(ownAssetCustomFieldKey, returnedKeys);
+            Assert.DoesNotContain(foreignAssetCustomFieldKey, returnedKeys);
+        }
+
         using (var readOnlyWriteAttempt = new HttpRequestMessage(HttpMethod.Post, "/api/v1/assets")
         {
             Content = System.Net.Http.Json.JsonContent.Create(new { assetTag = "API-READ-ONLY-MUST-FAIL", name = "No write", categoryId = Guid.NewGuid() })
@@ -10548,6 +10855,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             readOnlyWriteAttempt.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
             using var deniedWrite = await _client!.SendAsync(readOnlyWriteAttempt);
             Assert.Equal(HttpStatusCode.Forbidden, deniedWrite.StatusCode);
+        }
+
+        using (var readOnlySoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_ownAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "read-only-token",
+                items = new[] { new { name = "MUST-NOT-BE-WRITTEN", publisher = "Acceptance", version = "1.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            readOnlySoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            using var deniedSnapshot = await _client!.SendAsync(readOnlySoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.Forbidden, deniedSnapshot.StatusCode);
         }
 
         using (var wrongScopeRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories"))
@@ -10562,6 +10884,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, expandedScopeResponse.StatusCode);
         using var expandedScopePayload = JsonDocument.Parse(await expandedScopeResponse.Content.ReadAsStringAsync());
         var expandedSecret = expandedScopePayload.RootElement.GetProperty("secret").GetString()!;
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/accessories?page=1&pageSize=20&companyId={_otherCompanyId:D}", expandedSecret);
         using (var accessoriesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories?page=1&pageSize=20"))
         {
             accessoriesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
@@ -10578,6 +10902,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(_otherCompanyAccessoryId, accessories.RootElement.GetProperty("items").EnumerateArray()
                 .Select(x => x.GetProperty("id").GetGuid()));
         }
+        await AssertForeignCompanySelectorIsStrippedAsync(
+            $"/api/v1/employees?page=1&pageSize=20&companyId={_otherCompanyId:D}", expandedSecret);
         using (var employeesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/employees?page=1&pageSize=20"))
         {
             employeesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
@@ -10593,8 +10919,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(_otherCompanyEmployeeId, employees.RootElement.GetProperty("items").EnumerateArray()
                 .Select(x => x.GetProperty("id").GetGuid()));
         }
-        using (var caseInsensitiveEmployeeSearch = new HttpRequestMessage(HttpMethod.Get,
-                   $"/api/v1/employees?q={Uri.EscapeDataString($"own-{_userId:N}".ToLowerInvariant())}&page=1&pageSize=20"))
+        var employeeSearch = $"/api/v1/employees?q={Uri.EscapeDataString($"own-{_userId:N}".ToLowerInvariant())}&page=1&pageSize=20";
+        await AssertForeignCompanySelectorIsStrippedAsync($"{employeeSearch}&companyId={_otherCompanyId:D}", expandedSecret);
+        using (var caseInsensitiveEmployeeSearch = new HttpRequestMessage(HttpMethod.Get, employeeSearch))
         {
             caseInsensitiveEmployeeSearch.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
             caseInsensitiveEmployeeSearch.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
@@ -10610,6 +10937,47 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, writeTokenResponse.StatusCode);
         using var writeTokenPayload = JsonDocument.Parse(await writeTokenResponse.Content.ReadAsStringAsync());
         var writeSecret = writeTokenPayload.RootElement.GetProperty("secret").GetString()!;
+        var softwareMarker = $"API-INSTALLED-{_userId:N}";
+        using (var ownSoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_ownAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "customer-api-acceptance",
+                items = new[] { new { name = softwareMarker, publisher = "Acceptance", version = "1.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            ownSoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", writeSecret);
+            using var ownSnapshotResponse = await _client!.SendAsync(ownSoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.OK, ownSnapshotResponse.StatusCode);
+        }
+        using (var foreignSoftwareSnapshot = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/assets/{_otherCompanyAssetId}/installed-software")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new
+            {
+                isComplete = true,
+                source = "customer-api-acceptance",
+                items = new[] { new { name = softwareMarker, publisher = "Acceptance", version = "2.0", architecture = "x64", installDate = (DateOnly?)null } }
+            })
+        })
+        {
+            foreignSoftwareSnapshot.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", writeSecret);
+            using var foreignSnapshotResponse = await _client!.SendAsync(foreignSoftwareSnapshot);
+            Assert.Equal(HttpStatusCode.NotFound, foreignSnapshotResponse.StatusCode);
+        }
+        await using (var softwareScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = softwareScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Single(await db.AssetInstalledSoftware.Where(x =>
+                x.CompanyId == _companyId && x.AssetId == _ownAssetId && x.Name == softwareMarker).ToListAsync());
+            Assert.Empty(await db.AssetInstalledSoftware.Where(x =>
+                x.CompanyId == _otherCompanyId && x.AssetId == _otherCompanyAssetId && x.Name == softwareMarker).ToListAsync());
+            Assert.Contains(await db.AuditEntries.Where(x => x.CompanyId == _companyId && x.TargetId == _ownAssetId).ToListAsync(),
+                entry => entry.Action == "software-inventory.synced");
+            Assert.DoesNotContain(await db.AuditEntries.Where(x => x.CompanyId == _otherCompanyId && x.TargetId == _otherCompanyAssetId).ToListAsync(),
+                entry => entry.Action == "software-inventory.synced");
+        }
         Guid categoryId;
         const string standardFieldKey = "asset_tier";
         const string sensitiveFieldKey = "support_pin";
@@ -11255,7 +11623,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             foreignAsset.AssignedEmployeeId = _otherCompanyEmployeeId;
             foreignAsset.ExpectedReturnOn = today.AddDays(-1);
             var ownLicense = await db.SoftwareLicenses.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownLicenseId);
-            ownLicense.ExpirationDate = today.AddDays(5);
+            ownLicense.ExpirationDate = today.AddDays(7);
             db.AssetMaintenances.Add(new AssetMaintenance
             {
                 CompanyId = _companyId, AssetId = _ownAssetId, ResponsibleEmployeeId = _ownEmployeeId,
@@ -11268,11 +11636,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 ResponsibleEmployeeId = _ownEmployeeId, MaintenanceType = "Hidden location maintenance",
                 Description = "Must not leak to restricted location user", PlannedOn = today.AddDays(4), StartedOn = today, Status = "Scheduled"
             });
-            var visibleLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Visible location license", ExpirationDate = today.AddDays(5) };
+            var visibleLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Visible location license", ExpirationDate = today.AddDays(7) };
             db.SoftwareLicenses.Add(visibleLicense);
             db.SoftwareLicenseAssignments.Add(new SoftwareLicenseAssignment
                 { CompanyId = _companyId, LicenseId = visibleLicense.Id, EmployeeId = _ownEmployeeId, ActorUserId = _userId });
-            var hiddenLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Hidden location license", ExpirationDate = today.AddDays(5) };
+            var hiddenLicense = new SoftwareLicense { CompanyId = _companyId, Name = "Hidden location license", ExpirationDate = today.AddDays(7) };
             db.SoftwareLicenses.Add(hiddenLicense);
             db.SoftwareLicenseAssignments.Add(new SoftwareLicenseAssignment
                 { CompanyId = _companyId, LicenseId = hiddenLicense.Id, AssetId = hiddenLocationAsset.Id, ActorUserId = _userId });
@@ -12020,6 +12388,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                        createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
                        createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using (var invalidCost = await SendAsRoleAsync(HttpMethod.Post, licensePath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { createBody.name, createBody.publisher, createBody.productVersion,
+                       createBody.licenseType, createBody.licenseReference, createBody.supplier, createBody.seats, unitCost = -0.01m,
+                       createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
+                       createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidCost.StatusCode);
 
         await SetCompanyRoleAsync("viewer");
         using (var denied = await SendAsRoleAsync(HttpMethod.Post, licensePath, "viewer",
@@ -12040,7 +12414,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var license = payload.RootElement.GetProperty("license");
             Assert.Equal(createBody.name, license.GetProperty("name").GetString());
             Assert.Equal(2, license.GetProperty("seats").GetInt32());
+            Assert.Equal(45.50m, license.GetProperty("unitCost").GetDecimal());
+            Assert.Equal("USD", license.GetProperty("currency").GetString());
             Assert.Equal(0, license.GetProperty("assigned").GetInt32());
+        }
+        using (var licenseList = await SendAsAdminAsync("/api/software-licenses?status=all"))
+        {
+            Assert.Equal(HttpStatusCode.OK, licenseList.StatusCode);
+            using var payload = JsonDocument.Parse(await licenseList.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(),
+                row => row.GetProperty("id").GetGuid() == licenseId);
+            Assert.Equal(45.50m, item.GetProperty("unitCost").GetDecimal());
+            Assert.Equal("USD", item.GetProperty("currency").GetString());
         }
         await using (var membershipScope = _factory!.Services.CreateAsyncScope())
         {
@@ -12081,9 +12466,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var stored = await verifyDb.SoftwareLicenses.SingleAsync(item => item.CompanyId == _companyId && item.Id == licenseId);
         Assert.Equal(updateBody.name, stored.Name);
         Assert.Equal(4, stored.Seats);
+        Assert.Equal(55.25m, stored.UnitCost);
         Assert.Equal("EUR", stored.Currency);
         Assert.True(stored.RequiresEulaAcceptance);
         Assert.Equal(0, await verifyDb.SoftwareLicenses.CountAsync(item => item.CompanyId == _otherCompanyId && item.Id == licenseId));
+        using (var exported = await SendAsAdminAsync("/api/software-licenses/export.csv?status=all"))
+        {
+            Assert.Equal(HttpStatusCode.OK, exported.StatusCode);
+            var csv = await exported.Content.ReadAsStringAsync();
+            Assert.Contains("55.25", csv, StringComparison.Ordinal);
+            Assert.Contains("EUR", csv, StringComparison.Ordinal);
+            Assert.Contains(updateBody.name, csv, StringComparison.Ordinal);
+        }
         var events = await verifyDb.SoftwareLicenseEvents.Where(item => item.CompanyId == _companyId && item.LicenseId == licenseId)
             .OrderBy(item => item.EventType).Select(item => item.EventType).ToListAsync();
         Assert.Equal(new[] { "Created", "Updated" }, events);
@@ -15929,6 +16323,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(outside.Id.ToString(), payload.RootElement.GetProperty("departmentCounts").EnumerateObject()
                 .Select(property => property.Name));
             Assert.DoesNotContain("D18 outside department", await scopedLocations.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            var employeeCounts = payload.RootElement.GetProperty("employeeCounts");
+            Assert.True(employeeCounts.TryGetProperty(root.Id.ToString(), out var rootEmployees) && rootEmployees.GetInt32() >= 1);
+            Assert.False(employeeCounts.TryGetProperty(outside.Id.ToString(), out _));
+        }
+        using (var outsideEmployees = await SendAsUserAsync(HttpMethod.Get, $"/api/employees?locationId={outside.Id}", _sameCompanyOtherUserId, _companyId, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, outsideEmployees.StatusCode);
+            using var outsidePayload = JsonDocument.Parse(await outsideEmployees.Content.ReadAsStringAsync());
+            Assert.Equal(0, outsidePayload.RootElement.GetProperty("total").GetInt32());
+        }
+        using (var rootEmployeesList = await SendAsUserAsync(HttpMethod.Get, $"/api/employees?locationId={root.Id}", _sameCompanyOtherUserId, _companyId, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, rootEmployeesList.StatusCode);
+            var body = await rootEmployeesList.Content.ReadAsStringAsync();
+            Assert.Contains("D18 scoped employee", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("D18 second scoped employee", body, StringComparison.Ordinal);
         }
         using (var idempotent = await SendAsUserAsync(HttpMethod.Put, $"/api/members/{_sameCompanyOtherUserId}/location-access", _userId, _companyId,
                    System.Net.Http.Json.JsonContent.Create(new { mode = "restricted", locationIds = new[] { root.Id } }), requestToken, antiforgeryCookie))
@@ -16124,6 +16534,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             (Role: "asset_operator", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "auditor", AssetRead: true, AssetWrite: false, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "viewer", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
+            (Role: "finance", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
             (Role: "hr_operator", AssetRead: false, AssetWrite: false, EmployeeRead: true, EmployeeWrite: true, HrFiles: true, SettingsManage: false)
         };
 
@@ -16329,6 +16740,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(_companyId, document.RootElement.GetProperty("company").GetProperty("id").GetGuid());
         Assert.DoesNotContain(_otherCompanyAssetId.ToString(), body, StringComparison.OrdinalIgnoreCase);
 
+        using (var tamperedSelectorResponse = await SendAsAdminAsync($"/api/company/export.json?companyId={_otherCompanyId:D}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, tamperedSelectorResponse.StatusCode);
+            var tamperedBody = await tamperedSelectorResponse.Content.ReadAsStringAsync();
+            using var tamperedDocument = JsonDocument.Parse(tamperedBody);
+            Assert.Equal(_companyId, tamperedDocument.RootElement.GetProperty("company").GetProperty("id").GetGuid());
+            Assert.DoesNotContain(_otherCompanyAssetId.ToString(), tamperedBody, StringComparison.OrdinalIgnoreCase);
+        }
+
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
@@ -16356,12 +16776,21 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains(invalidPreview.RootElement.GetProperty("errors").EnumerateArray(),
             error => error.GetString()!.Contains("Bakım türü", StringComparison.Ordinal));
 
-        using var archiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        using var archiveResponse = await SendAsAdminAsync($"/api/company/export.zip?companyId={_otherCompanyId:D}");
         var archiveBytes = await archiveResponse.Content.ReadAsByteArrayAsync();
         Assert.True(archiveResponse.StatusCode == HttpStatusCode.OK,
             $"Company ZIP export returned {(int)archiveResponse.StatusCode}: {System.Text.Encoding.UTF8.GetString(archiveBytes)}");
         using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
-        Assert.Contains(archive.Entries, entry => entry.FullName == "company-data.json");
+        var companyDataEntry = Assert.Single(archive.Entries, entry => entry.FullName == "company-data.json");
+        await using (var companyDataStream = companyDataEntry.Open())
+        using (var companyDataBytes = new MemoryStream())
+        {
+            await companyDataStream.CopyToAsync(companyDataBytes);
+            var companyDataJson = System.Text.Encoding.UTF8.GetString(companyDataBytes.ToArray());
+            using var companyData = JsonDocument.Parse(companyDataJson);
+            Assert.Equal(_companyId, companyData.RootElement.GetProperty("company").GetProperty("id").GetGuid());
+            Assert.DoesNotContain(_otherCompanyAssetId.ToString(), companyDataJson, StringComparison.OrdinalIgnoreCase);
+        }
         Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
         var supplierLogoEntry = Assert.Single(archive.Entries,
             entry => entry.FullName == $"media/catalog/suppliers/{supplierId:N}/{supplierLogoName}");
@@ -18030,6 +18459,203 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Annual_depreciation_rate_is_company_scoped_and_drives_asset_value_and_report()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var modelName = $"RATE-MODEL-{_userId:N}";
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = modelName,
+                depreciationAnnualRatePercent = 25m,
+                depreciationMinimum = 200m,
+                depreciationMinimumType = "amount",
+                depreciationMethod = "linear"
+            }), requestToken, antiforgeryCookie);
+        var createBody = await create.Content.ReadAsStringAsync();
+        Assert.True(create.StatusCode == HttpStatusCode.Created,
+            $"Expected 201 but got {(int)create.StatusCode}: {createBody}");
+        using var created = JsonDocument.Parse(createBody);
+        var modelId = created.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(25m, created.RootElement.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+
+        using (var modelList = await SendAsAdminAsync("/api/lookups/models"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelList.StatusCode);
+            using var listBody = JsonDocument.Parse(await modelList.Content.ReadAsStringAsync());
+            var listed = Assert.Single(listBody.RootElement.EnumerateArray(), item => item.GetProperty("id").GetGuid() == modelId);
+            Assert.Equal(25m, listed.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+        }
+
+        using (var modelDetails = await SendAsAdminAsync($"/api/models/{modelId}/details"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelDetails.StatusCode);
+            using var detailsPayload = JsonDocument.Parse(await modelDetails.Content.ReadAsStringAsync());
+            Assert.Equal(25m, detailsPayload.RootElement.GetProperty("model").GetProperty("depreciationAnnualRatePercent").GetDecimal());
+        }
+
+        var categoryId = await GetOwnCategoryIdAsync();
+        var purchaseDate = new DateOnly(2025, 1, 1);
+        var assetId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Assets.Add(new Asset
+            {
+                Id = assetId, CompanyId = _companyId, AssetTag = $"RATE-{_userId:N}", Name = "Annual rate asset",
+                CategoryId = categoryId, ModelId = modelId, PurchaseDate = purchaseDate, PurchaseCost = 1000m, Currency = "TRY"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var report = await SendAsAdminAsync("/api/reports/depreciation?asOf=2026-01-01&page=1&pageSize=10"))
+        {
+            var reportBody = await report.Content.ReadAsStringAsync();
+            Assert.True(report.StatusCode == HttpStatusCode.OK,
+                $"Expected 200 but got {(int)report.StatusCode}: {reportBody}");
+            using var payload = JsonDocument.Parse(reportBody);
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray(), row =>
+                row.GetProperty("name").GetString() == "Annual rate asset");
+            Assert.Equal(25m, item.GetProperty("annualDepreciationRatePercent").GetDecimal());
+            Assert.Equal(48, item.GetProperty("months").GetInt32());
+            Assert.Equal(16.67m, item.GetProperty("monthlyDepreciation").GetDecimal());
+            Assert.Equal(800m, item.GetProperty("bookValue").GetDecimal());
+            Assert.Equal(200m, item.GetProperty("accumulatedDepreciation").GetDecimal());
+        }
+
+        using (var assetDetails = await SendAsAdminAsync($"/api/assets/{assetId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, assetDetails.StatusCode);
+            using var assetPayload = JsonDocument.Parse(await assetDetails.Content.ReadAsStringAsync());
+            Assert.Equal(25m, assetPayload.RootElement.GetProperty("valuation").GetProperty("depreciationAnnualRatePercent").GetDecimal());
+            Assert.InRange(assetPayload.RootElement.GetProperty("valuation").GetProperty("currentValue").GetDecimal(), 200m, 1000m);
+        }
+
+        using var export = await SendAsAdminAsync("/api/reports/depreciation/export.csv?asOf=2026-01-01");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        var csv = await export.Content.ReadAsStringAsync();
+        Assert.Contains("Yıllık amortisman (%)", csv, StringComparison.Ordinal);
+        Assert.Contains("25.00", csv, StringComparison.Ordinal);
+
+        using var update = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}/depreciation", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { months = (int?)null, minimum = 200m, minimumType = "amount", method = "linear", annualRatePercent = 20m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using (var updatedPayload = JsonDocument.Parse(await update.Content.ReadAsStringAsync()))
+            Assert.Equal(20m, updatedPayload.RootElement.GetProperty("depreciationAnnualRatePercent").GetDecimal());
+
+        using var clear = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}/depreciation", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { months = (int?)null, minimum = (decimal?)null, minimumType = "amount", method = "linear", annualRatePercent = (decimal?)null }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
+        using (var clearedPayload = JsonDocument.Parse(await clear.Content.ReadAsStringAsync()))
+            Assert.True(clearedPayload.RootElement.GetProperty("depreciationAnnualRatePercent").ValueKind == JsonValueKind.Null);
+
+        using var conflictingPolicy = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"RATE-CONFLICT-{_userId:N}", depreciationMonths = 12, depreciationAnnualRatePercent = 25m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, conflictingPolicy.StatusCode);
+
+        using var outOfRangeRate = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"RATE-LOW-{_userId:N}", depreciationAnnualRatePercent = 0.33m }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRangeRate.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using var crossTenant = await SendAsAdminAsync($"/api/lookups/models/{modelId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+    }
+
+    [Fact]
+    public async Task Asset_model_end_of_life_is_company_scoped_and_round_trips_through_catalog_and_details()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var originalEndOfLife = new DateOnly(2030, 6, 30);
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", endOfLifeOn = originalEndOfLife }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var modelId = createdPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), createdPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+
+        using (var list = await SendAsAdminAsync("/api/lookups/models"))
+        {
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            using var listPayload = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+            var model = Assert.Single(listPayload.RootElement.EnumerateArray(), row => row.GetProperty("id").GetGuid() == modelId);
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), model.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using (var detail = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var detailPayload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), detailPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using (var modelDetails = await SendAsAdminAsync($"/api/models/{modelId}/details"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelDetails.StatusCode);
+            using var detailPayload = JsonDocument.Parse(await modelDetails.Content.ReadAsStringAsync());
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), detailPayload.RootElement.GetProperty("model").GetProperty("endOfLifeOn").GetString());
+        }
+
+        var updatedEndOfLife = new DateOnly(2032, 12, 31);
+        using var update = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", endOfLifeOn = updatedEndOfLife, modelNumber = "EOL-2032" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using (var updated = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+            using var updatedPayload = JsonDocument.Parse(await updated.Content.ReadAsStringAsync());
+            Assert.Equal(updatedEndOfLife.ToString("yyyy-MM-dd"), updatedPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using var clear = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", modelNumber = "EOL-2032", clearEndOfLifeOn = true }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
+        using (var cleared = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+            using var clearedPayload = JsonDocument.Parse(await cleared.Content.ReadAsStringAsync());
+            Assert.Equal(JsonValueKind.Null, clearedPayload.RootElement.GetProperty("endOfLifeOn").ValueKind);
+        }
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+        await db.SaveChangesAsync();
+
+        using var crossTenant = await SendAsAdminAsync($"/api/lookups/models/{modelId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using var crossTenantDetails = await SendAsAdminAsync($"/api/models/{modelId}/details", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenantDetails.StatusCode);
+
+        var audit = await db.AuditEntries.Where(entry => entry.CompanyId == _companyId && entry.TargetType == "models" && entry.TargetId == modelId && entry.Action == "Updated")
+            .OrderByDescending(entry => entry.OccurredAt).FirstAsync();
+        Assert.Contains("2032-12-31 → —", audit.Details, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Brand_model_category_and_images_are_company_scoped_and_reusable()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -18257,15 +18883,36 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var categoryId = categoryPayload.RootElement.GetProperty("id").GetGuid();
 
         var foreignCategoryId = Guid.NewGuid();
+        var foreignCategoryName = $"FOREIGN-{_userId:N}";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.AccessoryCategories.Add(new AccessoryCategory { Id = foreignCategoryId, CompanyId = _otherCompanyId, Name = $"FOREIGN-{_userId:N}" });
+            db.AccessoryCategories.Add(new AccessoryCategory { Id = foreignCategoryId, CompanyId = _otherCompanyId, Name = foreignCategoryName });
             await db.SaveChangesAsync();
+        }
+        using (var forgedList = await SendAsAdminAsync($"/api/accessory-categories?companyId={_otherCompanyId:D}"))
+        {
+            var body = await forgedList.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, forgedList.StatusCode);
+            Assert.Contains(categoryId.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignCategoryId.ToString("D"), body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(foreignCategoryName, body, StringComparison.Ordinal);
         }
         using var crossTenantRename = await SendAsUserAsync(HttpMethod.Patch, $"/api/accessory-categories/{foreignCategoryId}", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Cross tenant" }), requestToken, antiforgeryCookie, role: "admin");
         Assert.Equal(HttpStatusCode.NotFound, crossTenantRename.StatusCode);
+        using var crossTenantArchive = await SendAsUserAsync(HttpMethod.Post, $"/api/accessory-categories/{foreignCategoryId}/archive", _userId, _companyId,
+            new StringContent("{}", Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie, role: "admin");
+        Assert.Equal(HttpStatusCode.NotFound, crossTenantArchive.StatusCode);
+
+        await using (var verifyForeignScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyForeignScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreignCategory = await db.AccessoryCategories.AsNoTracking().SingleAsync(x => x.Id == foreignCategoryId);
+            Assert.Equal(foreignCategoryName, foreignCategory.Name);
+            Assert.False(foreignCategory.IsArchived);
+            Assert.False(await db.AuditEntries.AnyAsync(x => x.CompanyId == _otherCompanyId && x.TargetId == foreignCategoryId));
+        }
 
         using var createAccessory = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
             System.Net.Http.Json.JsonContent.Create(new

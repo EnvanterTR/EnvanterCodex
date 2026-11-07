@@ -34,6 +34,7 @@ COPY src/EnvanterTR.PublicSite/assets/images/asset-label-devices.png src/Envante
 COPY src/EnvanterTR.PublicSite/assets/images/account-security-product-preview.png /public-site/assets/images/account-security-product-preview.png
 COPY src/EnvanterTR.PublicSite/assets/images/farma-company-portal-preview.png /public-site/assets/images/farma-company-portal-preview.png
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
+COPY src/EnvanterTR.Web/wwwroot/onboarding.css src/EnvanterTR.Web/wwwroot/onboarding.js /checkout-site/
 COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
 COPY src/EnvanterTR.Web/wwwroot/vendor/zxing-browser-0.2.1.min.js src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js /checkout-site/vendor/
 COPY src/EnvanterTR.Web/wwwroot/report-print.js src/EnvanterTR.Web/wwwroot/scheduled-reports.js /checkout-site/

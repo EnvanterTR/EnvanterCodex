@@ -234,7 +234,7 @@ const server = createServer(async (request, response) => {
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
       usage: { generatedAt: '2026-10-16T15:00:00Z', assets: 28, employees: 12, loginAccounts: 4,
         licenses: 3, assignedLicenseSeats: 2, activeApiTokens: 1, planName: 'Cloud Pro', deploymentKind: 'cloud',
-        maxAssets: 500, maxLoginUsers: null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
+        maxAssets: 500, maxLoginUsers: 4, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
         storageNote: 'Eklerin boyut toplamı yalnız veritabanında kayıtlı dosya eklerini kapsar; şirket logoları ve medya dizinindeki dosyalar dahil değildir. Planlarda dosya alanı sınırı tanımlı değildir.' },
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
@@ -734,18 +734,19 @@ try {
   const inviteDialog = page.locator('#memberInviteDialog');
   await inviteDialog.waitFor({ state: 'visible' });
   await page.locator('#memberInviteCompany').selectOption(companyId);
-  await inviteDialog.locator('[name="fullName"]').fill('Synthetic Invited Viewer');
-  await inviteDialog.locator('[name="email"]').fill('qa-invitee@example.invalid');
-  await inviteDialog.locator('[name="roleKey"]').selectOption('viewer');
+  await inviteDialog.locator('[name="fullName"]').fill('Synthetic Invited Finance');
+  await inviteDialog.locator('[name="email"]').fill('qa-finance@example.invalid');
+  assert.equal(await inviteDialog.locator('[name="roleKey"] option[value="finance"]').innerText(), 'Muhasebe (salt okunur)');
+  await inviteDialog.locator('[name="roleKey"]').selectOption('finance');
   const invitationSaved = page.waitForResponse(response => response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/platform/members/invite' && response.status() === 200);
   await page.locator('#submitMemberInvite').click();
   await invitationSaved;
-  await page.locator('#membersTable').getByText('qa-invitee@example.invalid').waitFor({ state: 'visible' });
+  await page.locator('#membersTable').getByText('qa-finance@example.invalid').waitFor({ state: 'visible' });
   assert.equal(writes.length, securityWritesBeforeCancel + 5,
     'Exactly four confirmed account-security actions plus the invitation must write after the canceled action.');
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/members/invite',
-    body: { companyId, fullName: 'Synthetic Invited Viewer', email: 'qa-invitee@example.invalid', roleKey: 'viewer' }, csrf: csrfToken });
+    body: { companyId, fullName: 'Synthetic Invited Finance', email: 'qa-finance@example.invalid', roleKey: 'finance' }, csrf: csrfToken });
   const planListLoaded = page.waitForResponse(response => response.request().method() === 'GET'
     && new URL(response.url()).pathname === '/api/platform/plans');
   await page.locator('#nav [data-view="plans"]').click();
@@ -761,8 +762,9 @@ try {
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   assert.equal(await planForm.locator('#planMaintenanceEnabled').isChecked(), true,
     'New Cloud plans must include maintenance unless the platform admin disables it.');
-  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), true,
-    'Cloud plans must not receive a local login-user cap.');
+  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), false,
+    'Cloud plans must allow a plan-defined login-user cap.');
+  await planForm.locator('[name="maxLoginUsers"]').fill('4');
   await planForm.locator('[name="featureFlagsJson"]').fill('[]');
   const writesBeforeInvalidPlan = writes.length;
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
@@ -775,6 +777,7 @@ try {
   await planForm.locator('[name="name"]').fill('Synthetic Cloud Pro');
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   await planForm.locator('[name="currency"]').selectOption('TRY');
+  await planForm.locator('[name="maxLoginUsers"]').fill('4');
   await planForm.locator('[name="monthlyPrice"]').fill('990');
   await planForm.locator('[name="annualPrice"]').fill('9900');
   await planForm.locator('[name="maxAssets"]').fill('500');
@@ -789,7 +792,7 @@ try {
   await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   assert.equal(writes.length, writesBeforeInvalidPlan + 1);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
-    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
+    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: 4, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
 
   await page.locator(`#plansTable [data-edit-plan="${planId}"]`).click();
   assert.equal(await planForm.locator('#planReportsEnabled').isChecked(), false,
@@ -809,6 +812,8 @@ try {
   assert.equal(writes.at(-1).body.annualPrice, 8900);
   assert.equal(writes.at(-1).body.isPublic, false);
   assert.equal(writes.at(-1).body.changeReason, 'Synthetic annual price correction');
+  assert.equal(writes.at(-1).body.maxLoginUsers, 4,
+    'Updating another field must preserve the configured Cloud login-user cap.');
   assert.equal(writes.at(-1).body.featureFlagsJson, '{"reports":false,"api":false,"maintenance":false}',
     'Updating another plan field must preserve saved feature entitlements.');
   const hiddenPlanRow = page.locator('#plansTable tr').filter({ hasText: 'Synthetic Cloud Pro' });
@@ -880,7 +885,7 @@ try {
   const usagePanel = page.locator('#companyUsagePanel');
   await usagePanel.getByText('Etkin varlık').waitFor({ state: 'visible' });
   assert.match(await usagePanel.innerText(), /28\s*\/\s*500/, 'The company usage view must show asset usage against its active plan limit.');
-  assert.match(await usagePanel.innerText(), /4\s*\/\s*Sınırsız/, 'Cloud login-user quota must be reported as unlimited, not as an invented numeric cap.');
+  assert.match(await usagePanel.innerText(), /4\s*\/\s*4/, 'Cloud login-user usage must be reported against the configured plan cap.');
   assert.match(await usagePanel.innerText(), /1\s*MB/, 'The usage view must show bytes recorded for attachments.');
   assert.match(await usagePanel.innerText(), /şirket logoları ve medya dizinindeki dosyalar dahil değildir/i, 'The usage view must explain what recorded attachment storage excludes.');
   const listedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
@@ -1042,7 +1047,11 @@ try {
   assert.deepEqual(writes.at(-1), { method: 'PATCH', path: '/api/platform/companies/bulk-status', body: { companyIds: [companyId], isActive: false, note: 'Synthetic bulk suspension reason' }, csrf: csrfToken }, 'Bulk suspension must use the explicitly selected company, required reason, and CSRF token.');
 
   includeAlternatePlanOption = true;
-  await page.locator('#companiesTable [data-company-select]').first().check();
+  // Toplu askıya alma sonrası tablo yeniden çizilebilir; eski satırdaki seçim kaybolursa yeni satırda yeniden seç.
+  for (let attempt = 0; attempt < 5 && !(await page.locator('#bulkChangeCompanyPlan').isVisible()); attempt++) {
+    await page.locator('#companiesTable [data-company-select]').first().check().catch(() => {});
+    await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+  }
   await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible' });
   await page.locator('#bulkChangeCompanyPlan').click();
   const bulkPlanDialog = page.locator('#actionDialog');

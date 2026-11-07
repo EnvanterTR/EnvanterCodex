@@ -51,6 +51,17 @@ if (!source.includes('input.maxLength = 40; input.required = true;'))
   failures.push('Status label inputs must remain required and capped at 40 characters.');
 if (!source.includes("$('#assetStatusLabelsSave').hidden = !canManageSettings();"))
   failures.push('Saving controls must remain restricted to company settings managers.');
+const statusPillStart = source.indexOf('function applyAssetStatusPill(');
+const statusPillEnd = source.indexOf('\n    }', statusPillStart);
+const statusPill = statusPillStart >= 0 && statusPillEnd > statusPillStart ? source.slice(statusPillStart, statusPillEnd) : '';
+if (!source.includes('const defaultAssetStatusColors = { Available:') || !statusPill.includes('configured?.color') || !statusPill.includes('assetStatusConfiguration.customStatuses'))
+  failures.push('All built-in and tenant-defined status colors must be resolved through the shared status badge helper.');
+if (!source.includes('.pill.asset-status-pill:before{display:none}') || !source.includes('background:var(--asset-status-color)'))
+  failures.push('Status badges must render an accessible color marker and tint from the resolved color.');
+if (!source.includes('applyAssetStatusPill(statusPill, asset.status)') || !source.includes('applyAssetStatusPill(status, asset.status); applyAssetStatusPill(statusTop, asset.status);'))
+  failures.push('Asset list and detail status badges must use the shared color helper.');
+if ([...source.matchAll(/applyAssetStatusPill\(pill, item\.status\)/g)].length < 2)
+  failures.push('Status report and warranty report badges must use the shared color helper.');
 
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Verified built-in labels, company custom statuses, transition matrix, protected archive workflow, role-gated saves, and refreshed status selectors.');
+console.log('Verified built-in and company custom status colors, colored badges across asset/detail/report views, transition matrix, protected archive workflow, role-gated saves, and refreshed status selectors.');

@@ -109,6 +109,7 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 }
 builder.Services.AddSingleton<AssetCustomFieldProtection>();
+builder.Services.AddSingleton<SoftwareLicenseKeyProtection>();
 builder.Services.Configure<IyzipayOptions>(builder.Configuration.GetSection("Iyzipay"));
 builder.Services.AddHttpClient<IyzipayCheckoutClient>((services, client) =>
 {
@@ -584,6 +585,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapAssetEndpoints();
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();
+    app.MapCompanyOnboardingEndpoints();
     app.MapCompanyTaskEndpoints();
     app.MapSupportEndpoints();
     app.MapPlatformEndpoints();

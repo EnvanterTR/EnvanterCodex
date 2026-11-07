@@ -4,7 +4,7 @@
   const state = { page: 1, pageSize: 50, total: 0, memberRequest: 0, detailRequest: 0, timelineRequest: 0 };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const date = (value) => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
-  const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })[value] || value || '—';
+  const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', finance: 'Muhasebe (salt okunur)', hr_operator: 'İK operatörü' })[value] || value || '—';
   const api = (url, options = {}) => {
     if (typeof window.platformAdminApi !== 'function') throw new Error('Platform API istemcisi başlatılmadı.');
     return window.platformAdminApi(url, options);
@@ -182,7 +182,7 @@
     } else {
       const label = document.createElement('label'); label.className = 'field'; label.append(document.createTextNode('Yeni şirket rolü'));
       const select = document.createElement('select'); select.name = 'roleKey'; select.required = true;
-      for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })) {
+      for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', finance: 'Muhasebe (salt okunur)', hr_operator: 'İK operatörü' })) {
         const option = document.createElement('option'); option.value = value; option.textContent = text; option.selected = value === currentRole; select.append(option);
       }
       label.append(select); body.append(label);
@@ -243,7 +243,7 @@
     email.maxLength = 256; email.autocomplete = 'off'; emailLabel.append(email); body.append(emailLabel);
     const roleLabel = document.createElement('label'); roleLabel.className = 'field'; roleLabel.append(document.createTextNode('Eski sahibin kalacağı rol'));
     const role = document.createElement('select'); role.name = 'formerOwnerRoleKey'; role.required = true;
-    for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })) {
+    for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', finance: 'Muhasebe (salt okunur)', hr_operator: 'İK operatörü' })) {
       const option = document.createElement('option'); option.value = value; option.textContent = text; option.selected = value === 'admin'; role.append(option);
     }
     roleLabel.append(role); body.append(roleLabel);

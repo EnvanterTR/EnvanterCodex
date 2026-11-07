@@ -73,9 +73,9 @@ jobs:
         shell: bash
         run: node tools/Verify-AssetTrashUi.mjs
 
-      - name: Verify unlimited Cloud company users
+      - name: Verify Cloud plan seat limits
         shell: bash
-        run: node tools/Verify-CloudUnlimitedUsers.mjs
+        run: node tools/Verify-CloudPlanSeatLimits.mjs
 
       - name: Verify multi-company user invitations
         shell: bash
