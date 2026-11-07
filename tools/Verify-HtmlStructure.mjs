@@ -14,6 +14,8 @@ for (const relative of files) {
   const full = path.join(root, relative);
   if (!fs.existsSync(full)) continue;
   const source = fs.readFileSync(full, 'utf8').replace(/\r\n/g, '\n');
+  // Referans ürün adı yayımlanan arayüzde (yorumlar dahil) geçemez; güvenlik kabul testi de bunu denetler.
+  if (new RegExp(['snipe', '-?it'].join(''), 'i').test(source)) failures.push(`${relative}: referans ürün adı geçiyor (yorumlar dahil kaldırın)`);
   const bodyStart = source.indexOf('<body'), bodyEnd = source.lastIndexOf('</body>');
   if (bodyStart < 0 || bodyEnd < 0) { failures.push(`${relative}: <body> bulunamadı`); continue; }
   const blank = match => match.replace(/[^\n]/g, ' ');

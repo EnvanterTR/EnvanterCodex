@@ -1119,7 +1119,7 @@ public static class AssetEndpoints
                 .GroupBy(x => x.LocationCatalogId!.Value)
                 .Select(group => new { locationId = group.Key, count = group.Count() })
                 .ToDictionaryAsync(x => x.locationId.ToString(), x => x.count, cancellationToken);
-            // Snipe-IT "users" sayısı: konuma bağlı, arşivlenmemiş çalışanlar; çalışan birim kapsamı ve konum kapsamı uygulanır.
+            // Konum çalışan sayısı: konuma bağlı, arşivlenmemiş çalışanlar; çalışan birim kapsamı ve konum kapsamı uygulanır.
             var employeeLocationQuery = scopedEmployees.Where(x => x.ArchivedAt == null && x.LocationCatalogId != null);
             if (allowedLocations is not null)
                 employeeLocationQuery = employeeLocationQuery.Where(x => allowedLocations.Contains(x.LocationCatalogId!.Value));

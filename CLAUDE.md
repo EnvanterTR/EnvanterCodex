@@ -16,7 +16,7 @@ Dört dağıtım tek kod tabanından çıkar: Bulut SaaS (`firma.envantertr.com`
 1. Canlıya deploy, canlı veritabanına yazma, GitHub'a push, dal silme: yalnız sahibin açık onayıyla.
 2. F1 kapanana kadar yeni EF migration yok; uygulanmış migration değiştirilmez.
 3. Iyzico / gerçek ödeme kilitli (şirket kurulana kadar).
-4. Snipe-IT AGPL lisanslı: davranış referansıdır, kodu kopyalanmaz.
+4. Snipe-IT AGPL lisanslı: davranış referansıdır, kodu kopyalanmaz. Adı `src/` altındaki hiçbir dosyada (yorumlar dahil) geçmez.
 5. Parola, API anahtarı, token hiçbir dosyaya, loga, commit'e yazılmaz. DeepSeek inceleme anahtarı depo dışında: `C:\Users\Lenovo\Desktop\EnvanterTR\.secrets\`.
 6. Yüzdeyle ilerleme raporu verilmez; kanıt = çalıştırılan komut ve sonucu.
 

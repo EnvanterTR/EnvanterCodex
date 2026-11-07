@@ -5950,7 +5950,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         });
         const pathSegments = directoryKind === 'locations' ? String(item.name || '').split(' / ').map(part => part.trim()).filter(Boolean) : [];
         if (pathSegments.length > 1) {
-          // Snipe-IT "parent" bağlantısı: yolun üst parçaları o üst konumun (alt konumlar dahil) kayıtlarını açar.
+          // Üst konum bağlantısı: yolun üst parçaları o üst konumun (alt konumlar dahil) kayıtlarını açar.
           link.textContent = item.isActive === false ? `${pathSegments.at(-1)} · Arşivlendi` : pathSegments.at(-1);
           const trail = document.createElement('span'); trail.className = 'location-trail';
           pathSegments.slice(0, -1).forEach((segment, index) => {
