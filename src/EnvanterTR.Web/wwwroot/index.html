@@ -5823,7 +5823,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         photo.alt = ''; photo.setAttribute('aria-hidden','true'); photo.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
         photo.addEventListener('load', () => { initials.hidden = true; });
         photo.addEventListener('error', () => { photo.hidden = true; });
-        photo.src = `/api/employees/${employee.id}/photo?v=${encodeURIComponent(employee.id)}`;
+        if (!Array.isArray(result.photoIds) || result.photoIds.includes(employee.id)) photo.src = `/api/employees/${employee.id}/photo?v=${encodeURIComponent(employee.id)}`; else photo.hidden = true;
         avatar.append(initials, photo); personLink.type = 'button'; personLink.className = 'employee-profile-link'; personLink.textContent = employee.displayName;
          personLink.setAttribute('aria-label', `${employee.displayName}, ${translateUiText('çalışan profilini aç')}`); personLink.addEventListener('click', event => { event.stopPropagation(); openEmployee(employee.id); }); if (canManagePeople()) personWrap.append(employeeSelectBox); personWrap.append(avatar, personLink); person.append(personWrap);
         const number = document.createElement('td'); number.textContent = employee.employeeNumber;
@@ -10559,6 +10559,23 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#dismissIntegrationSecret').addEventListener('click', closeIntegrationSecretDialog);
     $('#integrationSecretDialog').addEventListener('cancel', clearIntegrationSecret);
     $('#integrationSecretDialog').addEventListener('close', clearIntegrationSecret);
+    // Rolün açamayacağı menü öğelerini gizler (tıklama korumaları aynı kalır); tüm alt öğeleri gizlenen grup da gizlenir.
+    function applyNavigationPermissions() {
+      const rules = [
+        [['Tablodan içe aktar','Verileri dışa aktar','Dışa aktarımlar','Yedekleme geçmişi','Geri yükle','Firma profili','Logo ve tema'], canManageSettings],
+        [['Çalışan kayıtları','Departmanlar','Şirket birimleri'], canReadPeople],
+        [['Lokasyonlar','Binalar ve odalar'], canReadAssets],
+        [['Uygulama kullanıcıları','Denetim kayıtları'], canReadAudit]
+      ];
+      for (const [pages, allowed] of rules) {
+        const visible = Boolean(allowed());
+        for (const page of pages) document.querySelectorAll(`#sidebar .sub-item[data-page="${CSS.escape(page)}"]`).forEach(item => { item.hidden = !visible; });
+      }
+      document.querySelectorAll('#sidebar .sub-menu').forEach(menu => {
+        const items = [...menu.querySelectorAll('.sub-item')]; if (!items.length) return;
+        const toggle = menu.previousElementSibling; if (toggle?.matches('.nav-item') && !toggle.dataset.page) toggle.hidden = items.every(item => item.hidden);
+      });
+    }
     document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => {
       const page = button.dataset.page;
       securityOverviewRequestId++;
@@ -10568,7 +10585,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
       const dataPages = ['Tablodan içe aktar','Verileri dışa aktar','Dışa aktarımlar','Yedekleme geçmişi','Geri yükle'];
       if (dataPages.includes(page) && !canManageSettings()) { notify('Şirket verisi aktarma işlemleri yalnızca şirket sahibi ve yöneticilerine açıktır.'); return; }
-      if (['Çalışan kayıtları','Departmanlar'].includes(page) && !canReadPeople()) { notify('Bu hesabın çalışan ve departman kayıtlarını görüntüleme yetkisi yok.'); return; }
+      if (['Çalışan kayıtları','Departmanlar','Şirket birimleri'].includes(page) && !canReadPeople()) { notify('Bu hesabın çalışan ve departman kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (['Lokasyonlar','Binalar ve odalar'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık konumlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Uygulama kullanıcıları' && !canReadAudit()) { notify('Şirket kullanıcılarını ve rollerini yalnızca şirket sahibi ve yöneticileri yönetebilir.'); return; }
       if (['Genel Bakış','Varlıklar','Tüm satın almalar','Varlık siparişleri','Zimmetler','İadeler','Hareket geçmişi','Transferler','Rezervasyonlar','Hazır raporlar','Garanti takibi','Denetimler','Bakım kayıtları','Bakım planları','Takvim','Siparişler','Hazır kitler','Stok talepleri'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
@@ -11134,7 +11151,8 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       return { key, value, mode, error: '' };
     }
     async function loadAssetCustomFieldDefinitions(force = false) {
-      if (assetCustomFieldDefinitions && !force) return assetCustomFieldDefinitions;
+      // Önbellekten dönerken de ayarlar tablosu çizilir; yoksa "Alanlar yükleniyor…" satırı kalıcı görünür.
+      if (assetCustomFieldDefinitions && !force) { renderAssetCustomFieldTable(); return assetCustomFieldDefinitions; }
       assetCustomFieldDefinitions = await api('/api/assets/custom-fields');
       ensureAssetCustomFieldFilter(); renderAssetCustomFieldFilterOptions();
       renderAssetCustomFieldTable();
@@ -13151,6 +13169,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       $('#companyName').textContent = session.companyName || 'Şirket çalışma alanı'; $('#welcomeCompany').textContent = `${session.companyName || 'Şirketiniz'} envanterinde yalnızca yetkili olduğunuz kayıtlar gösterilir.`;
       $('#newAssetButton').hidden = !canWriteAssets(); $('#scanAssetButton').hidden = !canReadAssets(); $('#newEmployeeButton').hidden = !canManagePeople(); $('#employeeImportOpen').hidden = !canManagePeople(); $('#exportButton').hidden = !canReadAssets(); $('#exportBackupButton').hidden = !canManageSettings(); $('#importPreviewButton').hidden = !canWriteAssets(); $('#globalSearch').disabled = !canReadAssets();
       $('#overview').hidden = !canReadAssets();
+      applyNavigationPermissions();
       if (canReadAssets() || canReadPeople()) await refreshDirectorySuggestions();
       if (canReadAssets()) { try { try { await loadAssetStatusLabels(); } catch (error) { console.warn('Varlık durum adları yüklenemedi.', error); } await loadDashboardPreferences(); await loadLookups(); restoreAssetRelationshipFiltersFromUrl(); const relationQuery = new URL(location.href).searchParams; if (['categoryId','brandId','modelId','location'].some(key => relationQuery.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click(); else await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } void loadOperationalAlerts(); if (!operationalAlertTimer) operationalAlertTimer = window.setInterval(() => { if (!document.hidden) void loadOperationalAlerts(); }, 15 * 60 * 1000); }
       else if (canReadPeople()) { $('#employeesPage').hidden = false; await loadEmployees(1); }

@@ -268,7 +268,7 @@ public static class OperationalEndpoints
         api.MapGet("/employees", async ([FromQuery] string? q, [FromQuery] string? department,
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
             [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeArchived = false, [FromQuery] Guid? locationId = null) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
@@ -342,7 +342,9 @@ public static class OperationalEndpoints
             var counts = canReadListAssetData
                 ? await EmployeeAssignmentCountsAsync(db, companyId, allowedLocations, items.Select(x => x.Id).ToList(), cancellationToken)
                 : new Dictionary<Guid, EmployeeAssignmentCounts>();
-            return Results.Ok(new { items, total, page, pageSize, counts });
+            // Fotoğrafı olmayan her çalışan için tarayıcının 404 alan istek atmaması için fotoğraflı kimlikler ayrıca döner.
+            var photoIds = items.Where(x => EmployeePhotoExists(configuration, companyId, x.Id)).Select(x => x.Id).ToArray();
+            return Results.Ok(new { items, total, page, pageSize, counts, photoIds });
         }).RequireAuthorization("people.read");
 
         var exportEmployees = async Task<IResult> ([FromQuery] string? q, [FromQuery] string? department,
@@ -3015,6 +3017,13 @@ public static class OperationalEndpoints
     private static string EmployeePhotoDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "employees", employeeId.ToString("N"));
+
+    private static bool EmployeePhotoExists(IConfiguration configuration, Guid companyId, Guid employeeId)
+    {
+        var directory = EmployeePhotoDirectory(configuration, companyId, employeeId);
+        return System.IO.File.Exists(Path.Combine(directory, "profile.png")) || System.IO.File.Exists(Path.Combine(directory, "profile.jpg")) ||
+            System.IO.File.Exists(Path.Combine(directory, "profile.webp"));
+    }
 
     private static string EmployeeDocumentDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
