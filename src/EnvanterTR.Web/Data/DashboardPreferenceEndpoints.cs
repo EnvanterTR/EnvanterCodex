@@ -7,8 +7,8 @@ namespace EnvanterTR.Web.Data;
 
 public sealed record UpdateDashboardPreferencesRequest(string[]? VisibleWidgets, string[]? WidgetOrder = null, DashboardChartDefinition[]? CustomCharts = null);
 public sealed record DashboardChartDefinition(string Dimension, string Type);
-internal sealed record DashboardPreferenceDocument(string[] VisibleWidgets, string[] WidgetOrder, DashboardChartDefinition[]? CustomCharts = null, string? Theme = null, string? Language = null, string? Palette = null);
-public sealed record UpdateAppearancePreferencesRequest(string? Theme, string? Language, string? Palette = null);
+internal sealed record DashboardPreferenceDocument(string[] VisibleWidgets, string[] WidgetOrder, DashboardChartDefinition[]? CustomCharts = null, string? Theme = null, string? Language = null, string? Palette = null, string? Layout = null);
+public sealed record UpdateAppearancePreferencesRequest(string? Theme, string? Language, string? Palette = null, string? Layout = null);
 internal sealed record DashboardChartItem(string Label, int Count, string? FilterValue = null);
 internal sealed record DashboardChartGroup(Guid? Id, int Count);
 
@@ -18,7 +18,8 @@ public static class DashboardPreferenceEndpoints
     private static readonly string[] DefaultWidgetOrder = ["stats", "assets", "activity", "upcoming", "status"];
     private static readonly string[] AllowedChartDimensions = ["status", "category", "brand", "model", "location"];
     private static readonly string[] AllowedChartTypes = ["bar", "donut"];
-    internal static readonly string[] AllowedPalettes = ["classic", "ocean", "aurora", "emerald", "sunset", "graphite", "rose", "arctic"];
+    internal static readonly string[] AllowedPalettes = ["classic", "ocean", "aurora", "emerald", "sunset", "graphite", "rose", "arctic", "maroon", "midnight", "forest", "violet", "obsidian"];
+    internal static readonly string[] AllowedLayouts = ["classic", "studio"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static void MapDashboardPreferenceEndpoints(this RouteGroupBuilder api)
@@ -30,7 +31,7 @@ public static class DashboardPreferenceEndpoints
                 .Where(x => x.CompanyId == companyId && x.UserId == userId)
                 .Select(x => x.VisibleWidgetsJson).SingleOrDefaultAsync(ct);
             var preferences = ReadDocument(json);
-            return Results.Ok(new { visibleWidgets = preferences.VisibleWidgets, widgetOrder = preferences.WidgetOrder, customCharts = preferences.CustomCharts, theme = preferences.Theme, language = preferences.Language, palette = preferences.Palette ?? "classic" });
+            return Results.Ok(new { visibleWidgets = preferences.VisibleWidgets, widgetOrder = preferences.WidgetOrder, customCharts = preferences.CustomCharts, theme = preferences.Theme, language = preferences.Language, palette = preferences.Palette ?? "classic", layout = preferences.Layout ?? "classic" });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/appearance/preferences", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -39,7 +40,7 @@ public static class DashboardPreferenceEndpoints
             var json = await db.DashboardPreferences.AsNoTracking().Where(x => x.CompanyId == companyId && x.UserId == userId)
                 .Select(x => x.VisibleWidgetsJson).SingleOrDefaultAsync(ct);
             var preferences = ReadDocument(json);
-            return Results.Ok(new { theme = preferences.Theme, language = preferences.Language, palette = preferences.Palette ?? "classic" });
+            return Results.Ok(new { theme = preferences.Theme, language = preferences.Language, palette = preferences.Palette ?? "classic", layout = preferences.Layout ?? "classic" });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/appearance/preferences", async ([FromBody] UpdateAppearancePreferencesRequest request,
@@ -55,6 +56,9 @@ public static class DashboardPreferenceEndpoints
             var palette = request.Palette?.Trim().ToLowerInvariant();
             if (palette is not null && !AllowedPalettes.Contains(palette, StringComparer.Ordinal))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["palette"] = ["Renk paleti geçersiz."] });
+            var layout = request.Layout?.Trim().ToLowerInvariant();
+            if (layout is not null && !AllowedLayouts.Contains(layout, StringComparer.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["layout"] = ["Tasarım seçimi geçersiz."] });
             var row = await db.DashboardPreferences.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.UserId == userId, ct);
             var preferences = ReadDocument(row?.VisibleWidgetsJson);
             if (row is null)
@@ -63,11 +67,12 @@ public static class DashboardPreferenceEndpoints
                 db.DashboardPreferences.Add(row);
             }
             palette ??= preferences.Palette ?? "classic";
-            row.VisibleWidgetsJson = JsonSerializer.Serialize(preferences with { Theme = theme, Language = language, Palette = palette }, JsonOptions);
+            layout ??= preferences.Layout ?? "classic";
+            row.VisibleWidgetsJson = JsonSerializer.Serialize(preferences with { Theme = theme, Language = language, Palette = palette, Layout = layout }, JsonOptions);
             row.UpdatedAt = DateTimeOffset.UtcNow;
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Görünüm tercihleri eşzamanlı olarak değiştirildi. Yenileyip tekrar deneyin." }); }
-            return Results.Ok(new { theme, language, palette, row.UpdatedAt });
+            return Results.Ok(new { theme, language, palette, layout, row.UpdatedAt });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/dashboard/preferences", async ([FromBody] UpdateDashboardPreferencesRequest request,
@@ -92,7 +97,7 @@ public static class DashboardPreferenceEndpoints
                 row = new DashboardPreference { CompanyId = companyId, UserId = userId, VisibleWidgetsJson = "[]" };
                 db.DashboardPreferences.Add(row);
             }
-            row.VisibleWidgetsJson = JsonSerializer.Serialize(new DashboardPreferenceDocument(widgets, order, customCharts, existing.Theme, existing.Language, existing.Palette), JsonOptions);
+            row.VisibleWidgetsJson = JsonSerializer.Serialize(new DashboardPreferenceDocument(widgets, order, customCharts, existing.Theme, existing.Language, existing.Palette, existing.Layout), JsonOptions);
             row.UpdatedAt = DateTimeOffset.UtcNow;
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Pano ayarları eşzamanlı olarak değiştirildi. Yenileyip tekrar deneyin." }); }
@@ -220,7 +225,8 @@ public static class DashboardPreferenceEndpoints
                 ValidCustomCharts(preferences?.CustomCharts) ? NormalizeCustomCharts(preferences?.CustomCharts ?? []) : [],
                 preferences?.Theme is "system" or "light" or "dark" ? preferences.Theme : null,
                 preferences?.Language is "tr" or "en" or "ru" or "uk" or "mk" ? preferences.Language : null,
-                preferences?.Palette is { } palette && AllowedPalettes.Contains(palette, StringComparer.Ordinal) ? palette : null);
+                preferences?.Palette is { } palette && AllowedPalettes.Contains(palette, StringComparer.Ordinal) ? palette : null,
+                preferences?.Layout is { } layout && AllowedLayouts.Contains(layout, StringComparer.Ordinal) ? layout : null);
         }
         catch (JsonException) { return new(AllowedWidgets, DefaultWidgetOrder, []); }
     }

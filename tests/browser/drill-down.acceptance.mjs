@@ -198,7 +198,7 @@ await check('Görünüm: cam renk paleti seçilir, kaydedilir, yenilemede korunu
   await page.goto(base + '/'); await page.waitForTimeout(1500);
   const palette = () => page.evaluate(() => document.documentElement.dataset.palette || 'classic');
   await page.click('#appearanceButton'); await page.locator('#appearanceDialog[open]').waitFor();
-  assert.equal(await page.locator('[data-palette-choice]').count(), 8, 'Sekiz palet seçeneği olmalı');
+  assert.equal(await page.locator('[data-palette-set="glass"]:visible').count(), 8, 'Klasik tasarımda sekiz palet seçeneği olmalı');
   await page.click('[data-palette-choice="sunset"]');
   assert.equal(await palette(), 'sunset', 'Palet önizlemesi uygulanmadı');
   await page.click('#appearanceCancel');
@@ -211,6 +211,23 @@ await check('Görünüm: cam renk paleti seçilir, kaydedilir, yenilemede korunu
   assert.ok(blur.includes('blur'), 'Cam efekti uygulanmadı');
   await page.click('#appearanceButton'); await page.click('[data-palette-choice="classic"]'); await page.click('#appearanceSave'); await page.waitForTimeout(1200);
   assert.equal(await palette(), 'classic', 'Klasik palete dönülemedi');
+});
+
+await check('Görünüm: Stüdyo tasarımı seçilir, koyu çerçeve ve dar menü uygulanır, Klasik tasarıma geri dönülür', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500);
+  const root = () => page.evaluate(() => [document.documentElement.dataset.layout || 'classic', document.documentElement.dataset.studio || '', document.documentElement.dataset.theme]);
+  await page.click('#appearanceButton'); await page.click('[data-layout-choice="studio"]');
+  assert.equal(await page.locator('[data-palette-set="studio"]:visible').count(), 5, 'Stüdyo için beş renk görünmeli');
+  assert.equal(await page.locator('[data-palette-set="glass"]:visible').count(), 0, 'Cam paletleri stüdyoda gizlenmeli');
+  await page.click('[data-palette-choice="midnight"]'); await page.click('#appearanceSave'); await page.waitForTimeout(1200);
+  assert.deepEqual(await root(), ['studio', 'midnight', 'dark']);
+  await page.mouse.move(900, 500); await page.waitForTimeout(400);
+  const width = await page.locator('#sidebar').evaluate(el => el.getBoundingClientRect().width);
+  assert.ok(width < 120, `Dar menü bekleniyordu, genişlik ${width}`);
+  await page.reload(); await page.waitForTimeout(2500);
+  assert.deepEqual(await root(), ['studio', 'midnight', 'dark'], 'Stüdyo tasarımı yenilemede korunmadı');
+  await page.click('#appearanceButton'); await page.click('[data-layout-choice="classic"]'); await page.click('[data-palette-choice="classic"]'); await page.click('#appearanceSave'); await page.waitForTimeout(1200);
+  assert.equal((await root())[0], 'classic', 'Klasik tasarıma dönülemedi');
 });
 
 await browser.close();

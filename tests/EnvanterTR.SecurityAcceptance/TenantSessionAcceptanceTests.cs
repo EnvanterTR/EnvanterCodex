@@ -6663,7 +6663,25 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, paletteUpdate.StatusCode);
             Assert.Equal("aurora", payload.RootElement.GetProperty("palette").GetString());
+            Assert.Equal("classic", payload.RootElement.GetProperty("layout").GetString());
         }
+
+        using (var invalidLayout = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "dark", language = "en", layout = "neon" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidLayout.StatusCode);
+
+        using (var studio = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "light", language = "tr", palette = "maroon", layout = "Studio" }), requestToken, antiforgeryCookie))
+        using (var payload = JsonDocument.Parse(await studio.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, studio.StatusCode);
+            Assert.Equal("studio", payload.RootElement.GetProperty("layout").GetString());
+            Assert.Equal("maroon", payload.RootElement.GetProperty("palette").GetString());
+        }
+
+        using (var backToAurora = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "light", language = "tr", palette = "aurora", layout = "classic" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, backToAurora.StatusCode);
 
         using (var noCsrf = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { theme = "dark", language = "en" })))
@@ -6688,6 +6706,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal("dark", payload.RootElement.GetProperty("theme").GetString());
             Assert.Equal("uk", payload.RootElement.GetProperty("language").GetString());
             Assert.Equal("aurora", payload.RootElement.GetProperty("palette").GetString());
+            Assert.Equal("classic", payload.RootElement.GetProperty("layout").GetString());
         }
 
         using (var otherUser = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _sameCompanyOtherUserId, _companyId))

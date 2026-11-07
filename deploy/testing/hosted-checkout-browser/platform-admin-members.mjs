@@ -1048,9 +1048,13 @@ try {
 
   includeAlternatePlanOption = true;
   // Toplu askıya alma sonrası tablo yeniden çizilebilir; eski satırdaki seçim kaybolursa yeni satırda yeniden seç.
-  for (let attempt = 0; attempt < 5 && !(await page.locator('#bulkChangeCompanyPlan').isVisible()); attempt++) {
-    await page.locator('#companiesTable [data-company-select]').first().check().catch(() => {});
-    await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+  await page.waitForFunction(() => !document.querySelector('#actionDialog')?.open, null, { timeout: 5000 }).catch(() => {});
+  for (let attempt = 0; attempt < 8 && !(await page.locator('#bulkChangeCompanyPlan').isVisible()); attempt++) {
+    const box = page.locator('#companiesTable [data-company-select]').first();
+    await box.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    if (await box.isChecked().catch(() => false)) await box.uncheck().catch(() => {});
+    await box.check().catch(() => {});
+    await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible', timeout: 1500 }).catch(() => {});
   }
   await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible' });
   await page.locator('#bulkChangeCompanyPlan').click();

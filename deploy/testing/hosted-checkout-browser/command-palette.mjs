@@ -645,9 +645,9 @@ try {
     && document.querySelector('#securityOverviewMfa')?.textContent === 'Off'
     && document.querySelector('#securityOverviewSessionsNote')?.textContent === 'Active sessions for this account.');
   const appearanceWrite = apiRequests.find(item => item.path === '/api/appearance/preferences' && item.method === 'PUT');
-  assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en', palette: 'classic' });
+  assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
   assert.equal(appearanceWrite?.csrf, 'synthetic-viewer-csrf');
-  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('envantertr.appearance'))), { theme: 'dark', language: 'en', palette: 'classic' });
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('envantertr.appearance'))), { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
   assert.deepEqual(pageErrors, [], 'The command palette and route navigation must not throw browser errors.');
 
   subscriptionMode = 'readOnly';
@@ -681,7 +681,7 @@ try {
   ].sort());
   assert.ok(writes.filter(item => item.path === '/api/session/2fa/setup').every(item => item.csrf === 'synthetic-viewer-csrf'),
     'Each explicit TOTP enrollment request must include CSRF protection.');
-  assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en', palette: 'classic' });
+  assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
 
   loginMode = true;
   const loginPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
