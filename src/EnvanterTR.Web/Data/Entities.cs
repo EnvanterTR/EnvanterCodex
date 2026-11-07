@@ -1291,6 +1291,34 @@ public static class AssetStatuses
     public const string ReturnedToSupplier = "ReturnedToSupplier";
 }
 
+/// <summary>Şirket olaylarını Slack, Microsoft Teams veya imzalı genel bir HTTPS uç noktasına ileten bildirim webhook'u.</summary>
+public sealed class CompanyWebhook
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    /// <summary>slack | teams | generic</summary>
+    public required string Kind { get; set; }
+    /// <summary>Veri koruma anahtarıyla şifrelenmiş hedef adres; API yanıtlarında asla dönmez.</summary>
+    public required string ProtectedUrl { get; set; }
+    /// <summary>Kullanıcıya gösterilen kısaltılmış adres (ana makine ve son 4 karakter).</summary>
+    public required string UrlHint { get; set; }
+    /// <summary>Genel webhook'larda HMAC-SHA256 imza sırrı (şifreli). Slack/Teams için null.</summary>
+    public string? ProtectedSigningSecret { get; set; }
+    public string EventsJson { get; set; } = "[]";
+    public bool IsActive { get; set; } = true;
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <summary>Teslim imleci: bu andan sonraki olaylar gönderilir (oluşturulduğu an; geçmiş olaylar gönderilmez).</summary>
+    public DateTimeOffset CursorOccurredAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid CursorEventId { get; set; }
+    public DateTimeOffset? LastDeliveryAt { get; set; }
+    public int? LastStatusCode { get; set; }
+    public string? LastError { get; set; }
+    public int ConsecutiveFailures { get; set; }
+}
+
 public sealed class AuditEntry
 {
     public Guid Id { get; set; } = Guid.NewGuid();

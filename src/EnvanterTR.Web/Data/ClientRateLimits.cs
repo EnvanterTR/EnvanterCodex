@@ -14,6 +14,12 @@ public static class ClientRateLimits
             {
                 PermitLimit = 10, Window = TimeSpan.FromMinutes(10), QueueLimit = 0, AutoReplenishment = true
             }));
+        options.AddPolicy("webhook-test", context => RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirst("company_id")?.Value}:{context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10, Window = TimeSpan.FromMinutes(10), QueueLimit = 0, AutoReplenishment = true
+            }));
     options.AddPolicy("login", context =>
         {
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";

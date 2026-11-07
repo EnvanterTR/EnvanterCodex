@@ -1216,6 +1216,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "AssetId", "OccurredAt");
 
+                    b.HasIndex("CompanyId", "OccurredAt", "Id");
+
                     b.ToTable("AssetEvents");
                 });
 
@@ -2665,6 +2667,87 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "ParentCompanyUnitId");
 
                     b.ToTable("CompanyUnits", (string)null);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyWebhook", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CursorEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CursorOccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventsJson")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("LastDeliveryAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ProtectedSigningSecret")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ProtectedUrl")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UrlHint")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("CompanyId", "CreatedAt");
+
+                    b.ToTable("CompanyWebhooks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CompanyWebhooks_Kind", "\"Kind\" IN ('slack', 'teams', 'generic')");
+                        });
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.ComponentAllocation", b =>
@@ -4322,10 +4405,6 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
-                    b.Property<string>("ProtectedLicenseKey")
-                        .HasMaxLength(12000)
-                        .HasColumnType("character varying(12000)");
-
                     b.Property<string>("LicenseType")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -4343,6 +4422,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("ProductVersion")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
+
+                    b.Property<string>("ProtectedLicenseKey")
+                        .HasMaxLength(12000)
+                        .HasColumnType("character varying(12000)");
 
                     b.Property<string>("Publisher")
                         .HasMaxLength(160)
@@ -6461,6 +6544,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "ParentCompanyUnitId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyWebhook", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.ComponentAllocation", b =>

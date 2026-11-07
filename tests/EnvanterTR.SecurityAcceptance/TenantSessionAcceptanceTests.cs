@@ -2112,9 +2112,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var protectedEndpointCount = endpoints.Length - publicEndpointCount;
         _testOutput.WriteLine($"API_ENDPOINT_INVENTORY endpoints={endpoints.Length}; methodRoutes={methodRouteCount}; public={publicEndpointCount}; protected={protectedEndpointCount}; sha256={inventoryHash}");
 
-        Assert.True(endpoints.Length == 503, $"API endpoint count changed; review the inventory before updating its baseline. Found {endpoints.Length}.");
-        Assert.True(methodRouteCount == 503, $"HTTP method/route count changed; review the inventory before updating its baseline. Found {methodRouteCount}.");
-        Assert.True(inventoryHash == "D27B6CE9E57CC59826FC22C20F00795447CE1339287CD8B04D94813B48925FC4",
+        Assert.True(endpoints.Length == 508, $"API endpoint count changed; review the inventory before updating its baseline. Found {endpoints.Length}.");
+        Assert.True(methodRouteCount == 508, $"HTTP method/route count changed; review the inventory before updating its baseline. Found {methodRouteCount}.");
+        Assert.True(inventoryHash == "2D7F7A80853D15DE66C7F5286C2A17547C75A44E4695849375664A5AC12927BE",
             $"API method/route inventory changed; review public access and tenant policy before updating its fingerprint. Found {inventoryHash}.");
         var unprotected = endpoints.Where(endpoint =>
                 endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null &&
@@ -5573,6 +5573,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                     ["Email:FromAddress"] = "no-reply@example.invalid",
                     ["Email:PublicBaseUrl"] = "https://portal.example.invalid",
                     ["Support:Email"] = "support@example.invalid",
+                    ["Webhooks:WorkerEnabled"] = "false",
                     ["Iyzipay:ApiKey"] = "",
                     ["Iyzipay:SecretKey"] = "",
                     ["Iyzipay:CallbackUrl"] = ""
@@ -6649,6 +6650,19 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.OK, defaults.StatusCode);
             Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("theme").ValueKind);
             Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("language").ValueKind);
+            Assert.Equal("classic", payload.RootElement.GetProperty("palette").GetString());
+        }
+
+        using (var invalidPalette = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "dark", language = "en", palette = "<script>" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidPalette.StatusCode);
+
+        using (var paletteUpdate = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "light", language = "tr", palette = "Aurora" }), requestToken, antiforgeryCookie))
+        using (var payload = JsonDocument.Parse(await paletteUpdate.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, paletteUpdate.StatusCode);
+            Assert.Equal("aurora", payload.RootElement.GetProperty("palette").GetString());
         }
 
         using (var noCsrf = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
@@ -6673,6 +6687,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.OK, sameUser.StatusCode);
             Assert.Equal("dark", payload.RootElement.GetProperty("theme").GetString());
             Assert.Equal("uk", payload.RootElement.GetProperty("language").GetString());
+            Assert.Equal("aurora", payload.RootElement.GetProperty("palette").GetString());
         }
 
         using (var otherUser = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _sameCompanyOtherUserId, _companyId))
@@ -6680,6 +6695,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, otherUser.StatusCode);
             Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("theme").ValueKind);
+            Assert.Equal("classic", payload.RootElement.GetProperty("palette").GetString());
         }
 
         using (var otherCompany = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _userId, _otherCompanyId))

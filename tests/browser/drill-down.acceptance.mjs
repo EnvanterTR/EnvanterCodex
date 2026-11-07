@@ -194,6 +194,25 @@ await check('Lokasyonlar: "Çalışanlar N" düğmesi o konumdaki çalışanlar�
   assert.ok(!await page.locator('#employeeLocationFilterChip').isVisible(), 'Menüden girişte konum filtresi kalmamalı');
 });
 
+await check('Görünüm: cam renk paleti seçilir, kaydedilir, yenilemede korunur; Vazgeç önizlemeyi geri alır', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500);
+  const palette = () => page.evaluate(() => document.documentElement.dataset.palette || 'classic');
+  await page.click('#appearanceButton'); await page.locator('#appearanceDialog[open]').waitFor();
+  assert.equal(await page.locator('[data-palette-choice]').count(), 8, 'Sekiz palet seçeneği olmalı');
+  await page.click('[data-palette-choice="sunset"]');
+  assert.equal(await palette(), 'sunset', 'Palet önizlemesi uygulanmadı');
+  await page.click('#appearanceCancel');
+  assert.equal(await palette(), 'classic', 'Vazgeç önizlemeyi geri almadı');
+  await page.click('#appearanceButton'); await page.click('[data-palette-choice="aurora"]'); await page.click('#appearanceSave'); await page.waitForTimeout(1200);
+  await page.evaluate(() => { localStorage.removeItem('envantertr.palette'); localStorage.removeItem('envantertr.appearance'); });
+  await page.reload(); await page.waitForTimeout(2500);
+  assert.equal(await palette(), 'aurora', 'Palet sunucudan geri yüklenmedi');
+  const blur = await page.locator('.panel').first().evaluate(el => getComputedStyle(el).backdropFilter);
+  assert.ok(blur.includes('blur'), 'Cam efekti uygulanmadı');
+  await page.click('#appearanceButton'); await page.click('[data-palette-choice="classic"]'); await page.click('#appearanceSave'); await page.waitForTimeout(1200);
+  assert.equal(await palette(), 'classic', 'Klasik palete dönülemedi');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;
