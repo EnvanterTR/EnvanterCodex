@@ -109,6 +109,21 @@ await check('Garanti takibi: konum tıklanabilir', async () => {
   const locations = await assetColumn(14); assert.ok(locations.length > 0 && locations.every(value => value.includes(locationName)));
 });
 
+await check('Çalışan kayıtları: Zimmetler sütunu doğru sayıları gösterir ve profili açar', async () => {
+  await go('Çalışan kayıtları');
+  const header = await page.$$eval('#employeeRows', () => [...document.querySelector('#employeeRows').closest('table').querySelectorAll('thead th')].map(th => th.textContent.trim()));
+  const column = header.indexOf('Zimmetler') + 1; assert.ok(column > 0, 'Zimmetler sütunu yok');
+  const apiCounts = await page.evaluate(async () => (await (await fetch('/api/employees?page=1&pageSize=50', { credentials: 'same-origin' })).json()));
+  const rowWithAssets = apiCounts.items.find(item => apiCounts.counts?.[item.id]?.assets > 0); assert.ok(rowWithAssets, 'API sayıları dönmüyor');
+  const expected = apiCounts.counts[rowWithAssets.id].assets;
+  const cellText = await page.locator('#employeeRows tr').filter({ hasText: rowWithAssets.displayName }).first().locator(`td:nth-child(${column})`).innerText();
+  assert.ok(cellText.includes(`${expected} varlık`), `Hücre: ${cellText}, beklenen ${expected} varlık`);
+  await page.locator('#employeeRows tr').filter({ hasText: rowWithAssets.displayName }).first().locator(`td:nth-child(${column}) .relationship-link`).first().click();
+  await page.waitForTimeout(1800);
+  const dialogText = await page.evaluate(() => [...document.querySelectorAll('dialog[open]')].map(d => d.innerText).join(' '));
+  assert.ok(dialogText.includes(rowWithAssets.displayName), 'Çalışan profili açılmadı');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;

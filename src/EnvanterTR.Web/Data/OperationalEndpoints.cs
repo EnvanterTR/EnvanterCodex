@@ -336,7 +336,12 @@ public static class OperationalEndpoints
                         .Select(manager => manager.DisplayName).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { items, total, page, pageSize });
+            var listRole = user.FindFirstValue("company_role");
+            var canReadListAssetData = listRole is "owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer" or "finance";
+            var counts = canReadListAssetData
+                ? await EmployeeAssignmentCountsAsync(db, companyId, allowedLocations, items.Select(x => x.Id).ToList(), cancellationToken)
+                : new Dictionary<Guid, EmployeeAssignmentCounts>();
+            return Results.Ok(new { items, total, page, pageSize, counts });
         }).RequireAuthorization("people.read");
 
         var exportEmployees = async Task<IResult> ([FromQuery] string? q, [FromQuery] string? department,
@@ -2780,6 +2785,52 @@ public static class OperationalEndpoints
 
     private static bool EmployeeIsInScope(Guid? locationId, Guid? companyUnitId, EmployeeAccessScope employeeAccessScope) =>
         employeeAccessScope.Allows(locationId, companyUnitId);
+
+    internal sealed record EmployeeAssignmentCounts(int Assets, int Accessories, int Licenses, int Consumables);
+
+    // Çalışan listesindeki sayılar; /employees/{id} profilindeki kapsam kurallarıyla aynıdır (konum yetkisi dahil).
+    private static async Task<Dictionary<Guid, EmployeeAssignmentCounts>> EmployeeAssignmentCountsAsync(AppDbContext db, Guid companyId,
+        HashSet<Guid>? allowedLocations, List<Guid> employeeIds, CancellationToken cancellationToken)
+    {
+        if (employeeIds.Count == 0) return new Dictionary<Guid, EmployeeAssignmentCounts>();
+        var assets = await db.Assets.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.AssignedEmployeeId.HasValue && employeeIds.Contains(x.AssignedEmployeeId.Value))
+            .AssetsInLocationScope(companyId, allowedLocations)
+            .GroupBy(x => x.AssignedEmployeeId!.Value).Select(group => new { group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+        var accessibleAccessories = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+        if (allowedLocations is not null)
+            accessibleAccessories = accessibleAccessories.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+        var accessories = await (from assignment in db.AccessoryAssignments.AsNoTracking()
+                                 join accessory in accessibleAccessories
+                                     on new { assignment.CompanyId, Id = assignment.AccessoryId } equals new { accessory.CompanyId, Id = accessory.Id }
+                                 where assignment.CompanyId == companyId && assignment.EmployeeId.HasValue && employeeIds.Contains(assignment.EmployeeId.Value) &&
+                                     assignment.ReturnedQuantity < assignment.Quantity
+                                 group assignment by assignment.EmployeeId!.Value into grouped
+                                 select new { grouped.Key, Count = grouped.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+        var licenses = await (from assignment in db.SoftwareLicenseAssignments.AsNoTracking()
+                              join license in db.SoftwareLicenses.AsNoTracking()
+                                  on new { assignment.CompanyId, Id = assignment.LicenseId } equals new { license.CompanyId, Id = license.Id }
+                              where assignment.CompanyId == companyId && assignment.EmployeeId.HasValue && employeeIds.Contains(assignment.EmployeeId.Value) &&
+                                  assignment.RevokedAt == null &&
+                                  (allowedLocations == null || !assignment.AssetId.HasValue || db.Assets.Any(asset => asset.CompanyId == companyId &&
+                                      asset.Id == assignment.AssetId && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)))
+                              group assignment by assignment.EmployeeId!.Value into grouped
+                              select new { grouped.Key, Count = grouped.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+        var consumables = await (from movement in db.ConsumableMovements.AsNoTracking()
+                                 join consumable in db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                                     (allowedLocations == null || x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value)))
+                                     on new { movement.CompanyId, Id = movement.ConsumableId } equals new { consumable.CompanyId, Id = consumable.Id }
+                                 where movement.CompanyId == companyId && movement.EmployeeId.HasValue && employeeIds.Contains(movement.EmployeeId.Value) &&
+                                     movement.MovementType == "Checkout"
+                                 group movement by movement.EmployeeId!.Value into grouped
+                                 select new { grouped.Key, Count = grouped.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+        return employeeIds.ToDictionary(id => id, id => new EmployeeAssignmentCounts(
+            assets.GetValueOrDefault(id), accessories.GetValueOrDefault(id), licenses.GetValueOrDefault(id), consumables.GetValueOrDefault(id)));
+    }
 
     private static IQueryable<Employee> EmployeesInScope(AppDbContext db, Guid companyId,
         EmployeeAccessScope employeeAccessScope, bool tracking = false)
