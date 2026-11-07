@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-11-07T19:25:07.871Z
+Oluşturulma: 2026-11-07T20:41:56.559Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -812,7 +812,7 @@ Oluşturulma: 2026-11-07T19:25:07.871Z
 | 783 | Düğme | Ayrıntı | type=button |
 | 784 | Düğme | Düzenle | type=button |
 | 785 | Düğme | Stok | type=button |
-| 786 | Düğme | Çıkış | type=button |
+| 786 | Düğme | ${translateUiText('Teslim et')} | type=button |
 | 787 | Düğme | Düzenle | id=editConsumableButton; başlangıçta gizli |
 | 788 | Düğme | Stok ekle / düzelt | id=consumableStockButton; başlangıçta gizli |
 | 789 | Düğme | item.issued) ? '' : 'hidden'}>Çalışana tüketim çıkışı | id=consumableCheckoutButton; başlangıçta gizli |
@@ -1862,7 +1862,7 @@ Oluşturulma: 2026-11-07T19:25:07.871Z
 | 1833 | Tablo | Para birimi / Kayıt / Toplam alış bedeli | id=reportCostRows |
 | 1834 | Tablo | Kategori / Toplam / Atanmış / Kullanılabilir / Bakımda / İşlem | id=reportCategoryRows |
 | 1835 | Tablo | Alış tarihi / Etiket / Varlık / Seri no / Kategori / Durum / Bedel / Konum | id=assetPurchaseReportRows |
-| 1836 | Tablo | Kategori / Bileşen / Toplam adet / Atanmış adet / Kullanılabilir adet / Düşük stok kaydı | id=componentReportRows |
+| 1836 | Tablo | Kategori / Bileşen çeşidi / Toplam adet / Atanmış adet / Kullanılabilir adet / Düşük stok kaydı | id=componentReportRows |
 | 1837 | Tablo | Tarih / Sonuç / Etiket / Varlık / Konum / Denetimi yapan / Açıklama / bulgu | id=auditReportRows |
 | 1838 | Tablo | Garanti bitişi / Etiket / Varlık / Durum / Konum / Zimmetli çalışan | id=warrantyReportRows |
 | 1839 | Tablo | Tür / Kayıt | id=maintenanceReportTypes |

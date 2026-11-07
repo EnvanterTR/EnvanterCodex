@@ -353,6 +353,7 @@ public static class AssetEndpoints
                     x.MinimumQuantity, x.TotalQuantity, x.IsArchived,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
+                    remaining = x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0),
                     x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.IsRequestable, x.UpdatedAt
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
