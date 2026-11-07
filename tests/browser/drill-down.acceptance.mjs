@@ -143,6 +143,21 @@ await check('Departmanlar: kat/konum tıklaması o konumun varlıklarını liste
   assert.ok((await relationChips()).some(chip => chip.includes(locationName)), 'Konum filtresi etiketi yok');
 });
 
+await check('Varlıklar: Tedarikçi / Sipariş No / Alış / Garanti sütunları varsayılan gizli, açılınca tedarikçi tıklaması arar', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500); await go('Varlıklar');
+  const hiddenByDefault = await page.$$eval('#assetColumnPicker [data-asset-column]', inputs => inputs.filter(input => Number(input.dataset.assetColumn) >= 18).map(input => input.checked));
+  assert.deepEqual(hiddenByDefault, [false, false, false, false], 'Yeni sütunlar varsayılan gizli olmalı');
+  await page.evaluate(() => { for (const input of document.querySelectorAll('#assetColumnPicker [data-asset-column]')) if (Number(input.dataset.assetColumn) >= 18) { input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); } });
+  await page.waitForTimeout(600);
+  const supplier = page.locator('#assetRows td:nth-child(20) .relationship-link').first();
+  if (!await supplier.count()) throw new Error('Tedarikçi bağlantısı yok (siparişe bağlı demo varlık gerekli)');
+  const name = (await supplier.textContent()).trim(); await supplier.click(); await page.waitForTimeout(1800);
+  const suppliers = await assetColumn(20); assert.ok(suppliers.length > 0 && suppliers.every(value => value === name), `Tedarikçi araması yanlış: ${suppliers}`);
+  const purchased = await assetColumn(22); assert.ok(purchased.every(value => value && value !== ''), 'Alış tarihi boş');
+  await page.evaluate(() => document.querySelector('#resetAssetColumns').click()); await page.waitForTimeout(400);
+  assert.equal(await page.locator('#assetRows td:nth-child(20)').first().isHidden(), true, 'Varsayılana dönünce yeni sütunlar gizlenmeli');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;

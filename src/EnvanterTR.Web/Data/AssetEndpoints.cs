@@ -157,6 +157,7 @@ public static class AssetEndpoints
                         location.CompanyUnitId != null && db.CompanyUnits.Any(unit => unit.CompanyId == companyId &&
                             unit.Id == location.CompanyUnitId && unit.Name.Contains(term))) ||
                     db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.ModelId && m.ModelNumber != null && m.ModelNumber.Contains(term)) ||
+                    db.AssetPurchaseOrders.Any(order => order.CompanyId == companyId && order.Id == x.PurchaseOrderId && (order.OrderNumber.Contains(term) || order.Supplier.Contains(term))) ||
                     scopedEmployees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)) ||
@@ -191,6 +192,8 @@ public static class AssetEndpoints
                         .Select(location => db.CompanyUnits.Where(unit => unit.CompanyId == companyId && unit.Id == location.CompanyUnitId)
                             .Select(unit => unit.Name).FirstOrDefault()).FirstOrDefault()),
                     x.PurchaseDate, x.PurchaseCost, x.Currency, x.InsuranceProvider, x.InsurancePolicyNumber, x.InsuranceExpiresAt,
+                    PurchaseOrderNumber = db.AssetPurchaseOrders.Where(order => order.CompanyId == companyId && order.Id == x.PurchaseOrderId).Select(order => order.OrderNumber).FirstOrDefault(),
+                    SupplierName = db.AssetPurchaseOrders.Where(order => order.CompanyId == companyId && order.Id == x.PurchaseOrderId).Select(order => order.Supplier).FirstOrDefault(),
                     DepreciationMonths = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMonths).FirstOrDefault(),
                     DepreciationAnnualRatePercent = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationAnnualRatePercent).FirstOrDefault(),
                     DepreciationMinimum = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimum).FirstOrDefault(),
@@ -200,6 +203,7 @@ public static class AssetEndpoints
             var items = rows.Select(row => row.Item with { PurchaseCost = row.PurchaseCost, Currency = row.Currency,
                 InsuranceProvider = row.InsuranceProvider, InsurancePolicyNumber = row.InsurancePolicyNumber,
                 InsuranceExpiresAt = row.InsuranceExpiresAt,
+                PurchaseDate = row.PurchaseDate, PurchaseOrderNumber = row.PurchaseOrderNumber, SupplierName = row.SupplierName,
                 CurrentValue = DepreciationReportEndpoints.CalculateListValue(row.PurchaseDate, row.PurchaseCost,
                     row.DepreciationMonths, row.DepreciationAnnualRatePercent, row.DepreciationMinimum, row.DepreciationMinimumType, row.DepreciationMethod, asOf) }).ToList();
             return Results.Ok(new { items, page, pageSize, total });

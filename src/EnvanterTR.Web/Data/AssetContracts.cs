@@ -171,4 +171,7 @@ public sealed record AssetListItem(
     decimal? CurrentValue = null,
     string? InsuranceProvider = null,
     string? InsurancePolicyNumber = null,
-    DateOnly? InsuranceExpiresAt = null);
+    DateOnly? InsuranceExpiresAt = null,
+    DateOnly? PurchaseDate = null,
+    string? PurchaseOrderNumber = null,
+    string? SupplierName = null);
