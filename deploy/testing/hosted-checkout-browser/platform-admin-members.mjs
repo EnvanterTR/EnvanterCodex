@@ -1047,7 +1047,11 @@ try {
   assert.deepEqual(writes.at(-1), { method: 'PATCH', path: '/api/platform/companies/bulk-status', body: { companyIds: [companyId], isActive: false, note: 'Synthetic bulk suspension reason' }, csrf: csrfToken }, 'Bulk suspension must use the explicitly selected company, required reason, and CSRF token.');
 
   includeAlternatePlanOption = true;
-  await page.locator('#companiesTable [data-company-select]').first().check();
+  // Toplu askıya alma sonrası tablo yeniden çizilebilir; eski satırdaki seçim kaybolursa yeni satırda yeniden seç.
+  for (let attempt = 0; attempt < 5 && !(await page.locator('#bulkChangeCompanyPlan').isVisible()); attempt++) {
+    await page.locator('#companiesTable [data-company-select]').first().check().catch(() => {});
+    await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+  }
   await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible' });
   await page.locator('#bulkChangeCompanyPlan').click();
   const bulkPlanDialog = page.locator('#actionDialog');

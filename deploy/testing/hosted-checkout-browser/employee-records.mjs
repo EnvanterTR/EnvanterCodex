@@ -1112,6 +1112,8 @@ try {
     const lastMove = requests.findLast(item => item.method === 'POST' && item.path === `/api/departments/${departmentOneId}/move-employees`);
     assert.equal(lastMove?.csrf, csrfToken, 'Moving a department batch must send CSRF protection.');
     assert.deepEqual(lastMove?.body, { targetDepartmentId: departmentTwoId, batchSize: 100 });
+    // Yanıt geldikten sonra ilerleme metni bir sonraki karede çizilir; okumadan önce beklenen metni bekle.
+    await page.waitForFunction(text => document.querySelector('#departmentMoveProgress')?.innerText.includes(text), `${expectedMoved} çalışan taşındı`, { timeout: 5000 }).catch(() => {});
     const progressText = await page.locator('#departmentMoveProgress').innerText();
     assert.ok(progressText.includes(`${expectedMoved} çalışan taşındı`), `Expected batch size ${expectedMoved}, got: ${progressText}`);
     assert.ok(progressText.includes(`${expectedRemaining} çalışan`), `Expected ${expectedRemaining} remaining employees, got: ${progressText}`);
