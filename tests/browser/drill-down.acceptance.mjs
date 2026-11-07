@@ -124,6 +124,17 @@ await check('Çalışan kayıtları: Zimmetler sütunu doğru sayıları göster
   assert.ok(dialogText.includes(rowWithAssets.displayName), 'Çalışan profili açılmadı');
 });
 
+await check('Yazılım lisansları: yayıncı filtreler, koltuk sayısı lisans detayını açar', async () => {
+  await go('Yazılım lisansları'); const publisher = page.locator('#licenseRows .inventory-filter-link').first();
+  if (!await publisher.count()) throw new Error('Lisans demo verisi yok veya yayıncı tıklanamıyor');
+  const name = (await publisher.textContent()).trim(); await publisher.click(); await page.waitForTimeout(1500);
+  assert.equal(await page.inputValue('#licenseSearch'), name);
+  const publishers = await page.$$eval('#licenseRows tr[data-id] td:nth-child(2) .inventory-filter-link', links => links.map(link => link.textContent.trim()));
+  assert.ok(publishers.length > 0 && publishers.every(value => value === name), `Farklı yayıncı: ${publishers}`);
+  await page.locator('#licenseRows tr[data-id] td:nth-child(4) .license-open').first().click(); await page.waitForTimeout(1500);
+  assert.ok(await page.locator('#licenseDialog').evaluate(dialog => dialog.open), 'Lisans detayı açılmadı');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;
