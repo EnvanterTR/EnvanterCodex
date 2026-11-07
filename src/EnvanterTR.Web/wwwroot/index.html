@@ -10788,7 +10788,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
           ? `<label class="muted" style="display:block;margin-top:5px">${translateUiText('Ömür sonu (EOL)')}<input data-model-eol="${item.id}" type="date" value="${escapeHtml(item.endOfLifeOn || '')}" aria-label="${escapeHtml(item.name)} ${translateUiText('Ömür sonu (EOL)')}"></label>`
           : item.endOfLifeOn ? `<div class="muted">${translateUiText('Ömür sonu (EOL)')}: ${escapeHtml(item.endOfLifeOn)}</div>` : '';
         const tr = document.createElement('tr');
-        const nameCell = canWriteAssets() ? `<input data-catalog-name="${item.id}" value="${escapeHtml(item.name)}" maxlength="120" aria-label="${escapeHtml(item.name)} ${translateUiText('Kayıt adını düzenle')}">` : escapeHtml(item.name);
+        const nameCell = canWriteAssets() ? `<input data-catalog-name="${item.id}" value="${escapeHtml(item.name)}" maxlength="120" aria-label="${escapeHtml(item.name)} ${translateUiText('Kayıt adını düzenle')}">` : item.assetCount > 0 && catalogDrillType ? assetDrillHtml(item.name, catalogDrillType, item.id) : escapeHtml(item.name);
         const blockedByAttachments = catalogKind === 'models' && item.attachmentCount > 0;
         const deleteBlocked = item.assetCount || item.modelCount || blockedByAttachments;
         const deleteReason = blockedByAttachments ? 'Ekli teknik dosyalar kaldırılmadan model silinemez' : 'Kullanımdaki kayıt silinemez';
