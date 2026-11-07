@@ -269,7 +269,7 @@ public static class OperationalEndpoints
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
             [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
-            [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeArchived = false) =>
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeArchived = false, [FromQuery] Guid? locationId = null) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -285,6 +285,7 @@ public static class OperationalEndpoints
             if (startedFrom is DateOnly from) query = query.Where(x => x.StartedOn >= from);
             if (startedTo is DateOnly to) query = query.Where(x => x.StartedOn <= to);
             if (managerId is Guid selectedManager) query = query.Where(x => x.ManagerEmployeeId == selectedManager);
+            if (locationId is Guid selectedLocation) query = query.Where(x => x.LocationCatalogId == selectedLocation);
             if (!string.IsNullOrWhiteSpace(department))
             {
                 var selectedDepartment = department.Trim();
@@ -347,7 +348,7 @@ public static class OperationalEndpoints
         var exportEmployees = async Task<IResult> ([FromQuery] string? q, [FromQuery] string? department,
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
             [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo, [FromQuery] string? language, HttpContext context,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, [FromQuery] Guid? locationId = null) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
             var exportLanguage = (language ?? "tr").Trim().ToLowerInvariant();
@@ -367,6 +368,7 @@ public static class OperationalEndpoints
             if (startedFrom is DateOnly from) query = query.Where(x => x.StartedOn >= from);
             if (startedTo is DateOnly to) query = query.Where(x => x.StartedOn <= to);
             if (managerId is Guid selectedManager) query = query.Where(x => x.ManagerEmployeeId == selectedManager);
+            if (locationId is Guid selectedLocation) query = query.Where(x => x.LocationCatalogId == selectedLocation);
             if (!string.IsNullOrWhiteSpace(department))
             {
                 var selectedDepartment = department.Trim();

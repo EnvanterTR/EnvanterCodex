@@ -1119,7 +1119,17 @@ public static class AssetEndpoints
                 .GroupBy(x => x.LocationCatalogId!.Value)
                 .Select(group => new { locationId = group.Key, count = group.Count() })
                 .ToDictionaryAsync(x => x.locationId.ToString(), x => x.count, cancellationToken);
-            return Results.Ok(new { items, total = items.Count, departmentCounts });
+            // Snipe-IT "users" sayısı: konuma bağlı, arşivlenmemiş çalışanlar; çalışan birim kapsamı ve konum kapsamı uygulanır.
+            var employeeLocationQuery = scopedEmployees.Where(x => x.ArchivedAt == null && x.LocationCatalogId != null);
+            if (allowedLocations is not null)
+                employeeLocationQuery = employeeLocationQuery.Where(x => allowedLocations.Contains(x.LocationCatalogId!.Value));
+            var employeeCounts = !user.HasClaim("company_permission", "people.read")
+                ? new Dictionary<string, int>()
+                : await employeeLocationQuery
+                    .GroupBy(x => x.LocationCatalogId!.Value)
+                    .Select(group => new { locationId = group.Key, count = group.Count() })
+                    .ToDictionaryAsync(x => x.locationId.ToString(), x => x.count, cancellationToken);
+            return Results.Ok(new { items, total = items.Count, departmentCounts, employeeCounts });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/locations/catalog", async ([FromBody] LocationCatalogRequest request,

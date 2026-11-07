@@ -181,6 +181,19 @@ await check('Binalar ve odalar: konumlar bina > kat > oda sırasıyla girintili,
   assert.ok(await assetTotal() > 0, 'Binada kayıt bulunamadı');
 });
 
+await check('Lokasyonlar: "Çalışanlar N" düğmesi o konumdaki çalışanları listeler, menüden girişte filtre temizlenir', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500); await go('Lokasyonlar');
+  const button = page.locator('#directoryRows button.btn', { hasText: /^Çalışanlar \d/ }).first();
+  if (!await button.count()) throw new Error('Çalışanlar düğmesi yok');
+  const expected = Number((await button.textContent()).replace(/\D/g, ''));
+  await button.click(); await page.waitForTimeout(1800);
+  assert.ok(await page.locator('#employeeLocationFilterChip').isVisible(), 'Konum filtresi etiketi görünmüyor');
+  const rows = await page.locator('#employeeRows tr').count();
+  assert.equal(rows, expected, `Beklenen ${expected} çalışan, görünen ${rows}`);
+  await go('Çalışan kayıtları');
+  assert.ok(!await page.locator('#employeeLocationFilterChip').isVisible(), 'Menüden girişte konum filtresi kalmamalı');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;

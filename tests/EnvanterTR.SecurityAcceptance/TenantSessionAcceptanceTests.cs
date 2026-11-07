@@ -16323,6 +16323,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(outside.Id.ToString(), payload.RootElement.GetProperty("departmentCounts").EnumerateObject()
                 .Select(property => property.Name));
             Assert.DoesNotContain("D18 outside department", await scopedLocations.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            var employeeCounts = payload.RootElement.GetProperty("employeeCounts");
+            Assert.True(employeeCounts.TryGetProperty(root.Id.ToString(), out var rootEmployees) && rootEmployees.GetInt32() >= 1);
+            Assert.False(employeeCounts.TryGetProperty(outside.Id.ToString(), out _));
+        }
+        using (var outsideEmployees = await SendAsUserAsync(HttpMethod.Get, $"/api/employees?locationId={outside.Id}", _sameCompanyOtherUserId, _companyId, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, outsideEmployees.StatusCode);
+            using var outsidePayload = JsonDocument.Parse(await outsideEmployees.Content.ReadAsStringAsync());
+            Assert.Equal(0, outsidePayload.RootElement.GetProperty("total").GetInt32());
+        }
+        using (var rootEmployeesList = await SendAsUserAsync(HttpMethod.Get, $"/api/employees?locationId={root.Id}", _sameCompanyOtherUserId, _companyId, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, rootEmployeesList.StatusCode);
+            var body = await rootEmployeesList.Content.ReadAsStringAsync();
+            Assert.Contains("D18 scoped employee", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("D18 second scoped employee", body, StringComparison.Ordinal);
         }
         using (var idempotent = await SendAsUserAsync(HttpMethod.Put, $"/api/members/{_sameCompanyOtherUserId}/location-access", _userId, _companyId,
                    System.Net.Http.Json.JsonContent.Create(new { mode = "restricted", locationIds = new[] { root.Id } }), requestToken, antiforgeryCookie))
