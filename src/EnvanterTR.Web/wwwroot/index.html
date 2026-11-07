@@ -765,7 +765,7 @@
     imagePreviewDialog.addEventListener('click', event => { if (event.target === imagePreviewDialog) imagePreviewDialog.close(); });
     imagePreview.addEventListener('click', () => imagePreviewDialog.close());
     let assetLocationIncludeChildren = false;
-    let toastTimer, requestToken = '', authSessionGeneration = 0, availableCompanyContexts = [], activeCompanyContextId = '', lookupCache = { categories: [], brands: [], models: [], locations: [] }, loadedAssets = [], selectedEmployeeIds = new Set(), selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, currentEmployeeProfile = null, employeeProfileRequestId = 0, employeeDialogProgrammaticCloseCount = 0, employeeImportPreviewRequestId = 0, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, auditScheduleRequestId = 0, auditSchedulePage = 1, auditSchedulePageSize = 50, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
+    let toastTimer, requestToken = '', authSessionGeneration = 0, availableCompanyContexts = [], activeCompanyContextId = '', lookupCache = { categories: [], brands: [], models: [], locations: [] }, loadedAssets = [], selectedEmployeeIds = new Set(), selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, currentEmployeeProfile = null, employeeProfileRequestId = 0, employeeDialogProgrammaticCloseCount = 0, employeeImportPreviewRequestId = 0, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryTreeView = false, directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, auditScheduleRequestId = 0, auditSchedulePage = 1, auditSchedulePageSize = 50, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let assignmentPage = 1, returnsPage = 1, assignmentRequestId = 0, returnsRequestId = 0, assignmentSearchTimer, returnsSearchTimer;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
@@ -5917,6 +5917,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     function renderDirectoryRows() {
       const search = $('#directorySearch').value.trim().toLocaleLowerCase('tr-TR');
       const entries = directoryEntries.filter(item => !search || `${item.name} ${item.departmentPath || ''} ${item.parentDepartmentName || ''} ${item.locationName || ''} ${item.managerName || ''} ${item.companyUnitName || ''}`.toLocaleLowerCase('tr-TR').includes(search));
+      // "Binalar ve odalar": aynı konum kataloğu, bina > kat > oda sırasıyla girintili ağaç görünümünde.
+      if (directoryTreeView) entries.sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'tr-TR'));
       const rows = $('#directoryRows'); rows.replaceChildren();
       if (!entries.length) {
         const row = document.createElement('tr'), cell = document.createElement('td');
@@ -5933,6 +5935,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           if (directoryKind === 'departments') {
             $('#employeeDepartmentFilter').value = item.name;
             $('[data-page="Çalışan kayıtları"]').click();
+          } else if (directoryTreeView && directoryEntries.some(entry => String(entry.name || '').startsWith(`${item.name} / `))) {
+            openDirectoryLocation(item, 'assets', { includeChildren: true });
           } else {
             openDirectoryLocation(item);
           }
@@ -5949,8 +5953,9 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
             ancestor.addEventListener('click', event => { event.stopPropagation(); openDirectoryLocation({ name: ancestorPath }, 'assets', { includeChildren: true }); });
             trail.append(ancestor, ' / ');
           });
-          name.append(trail);
+          if (!directoryTreeView) name.append(trail);
         }
+        if (directoryTreeView) { name.style.paddingLeft = `${12 + Math.max(0, pathSegments.length - 1) * 22}px`; if (pathSegments.length > 1) { name.prepend('└ '); link.title = item.name; } }
         name.append(link); row.append(name);
         const values = directoryKind === 'departments'
            ? [item.locationName || '—', item.managerName || (item.managerEmployeeId ? 'Pasif çalışan' : 'Atanmamış'), item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
@@ -6095,6 +6100,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     }
     async function loadDirectory(kind, titleOverride = '', locationId = '') {
       directoryKind = kind;
+      directoryTreeView = kind === 'locations' && titleOverride === 'Binalar ve odalar';
       directoryFilterLocationId = kind === 'departments' ? locationId : '';
       const departments = kind === 'departments';
       $('#directoryEyebrow').textContent = departments ? 'ŞİRKET ALANI / EKİP' : 'ŞİRKET ALANI / KONUM';
@@ -10601,7 +10607,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
        else if (page === 'Garanti takibi') { if (!canReadAssets()) { notify('Garanti kayıtlarını görüntüleme yetkiniz yok.'); return; } $('#reportPage').hidden = false; $('#pageTitle').textContent = page; [...$('#reportPage').children].forEach(child => { child.hidden = child.id !== 'warrantyReportPanel' && !child.classList.contains('page-head'); }); loadWarrantyReport(1).catch(error => notify(error.message)); }
        else if (page === 'Özel rapor oluştur') { if (!canReadAssets()) { notify('Özel varlık raporu için varlıkları görüntüleme yetkisi gerekir.'); return; } $('#customReportPage').hidden = false; $('#pageTitle').textContent = translateUiText('Özel varlık raporu'); loadCustomReportFields().then(loadCustomReportPresets).catch(error => { $('#customReportFeedback').textContent = error.message; }); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; applyCatalogPageLanguage(); $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
-      else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadLookups(), loadAssetCustomFieldDefinitions()]).then(() => { populateAssetCustomFieldScopeOptions($('#assetCustomFieldForm')); populateAssetCustomFieldScopeOptions($('#editAssetCustomFieldForm')); }).catch(error => notify(error.message)); }
+      else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadLookups(), loadAssetCustomFieldDefinitions()]).then(() => { const focusPanel = (page === 'Logo ve tema' ? $('#companyLogoForm') : $('#companyProfileForm'))?.closest('.panel'); focusPanel?.scrollIntoView({ block: 'start' }); populateAssetCustomFieldScopeOptions($('#assetCustomFieldForm')); populateAssetCustomFieldScopeOptions($('#editAssetCustomFieldForm')); }).catch(error => notify(error.message)); }
       else if (dataPages.includes(page)) {
         $('#dataToolsPage').hidden = false; $('#pageTitle').textContent = page === 'Geri yükle' ? 'Şirket verisini geri yükle' : page === 'Tablodan içe aktar' ? 'Tablodan içe aktar' : page === 'Yedekleme geçmişi' ? 'Yedekleme geçmişi' : 'Şirket verisini dışa aktar';
         $('#dataToolsTitle').textContent = $('#pageTitle').textContent;

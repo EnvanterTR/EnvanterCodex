@@ -169,6 +169,18 @@ await check('Lokasyonlar: konum yolunun üst parçası üst konumun kayıtların
   assert.ok(await assetTotal() > 0, 'Üst konumda kayıt bulunamadı');
 });
 
+await check('Binalar ve odalar: konumlar bina > kat > oda sırasıyla girintili, bina tıklaması alt konumlar dahil varlıkları açar', async () => {
+  await page.goto(base + '/'); await page.waitForTimeout(1500); await go('Binalar ve odalar');
+  const cells = await page.$$eval('#directoryRows tr td:first-child', tds => tds.map(td => ({ pad: parseInt(td.style.paddingLeft || '0', 10), text: td.textContent.trim() })));
+  assert.ok(cells.length > 1, 'Konum yok');
+  assert.ok(cells.some(cell => cell.pad > 12 && cell.text.startsWith('└')), 'Girintili alt konum yok');
+  assert.equal(await page.locator('#directoryRows .location-trail').count(), 0, 'Ağaç görünümünde yol izi gösterilmemeli');
+  await page.locator('#directoryRows .employee-profile-link').first().click(); await page.waitForTimeout(1800);
+  assert.ok(await page.locator('#assetRows').isVisible(), 'Varlık listesi açılmadı');
+  assert.ok((await relationChips()).some(chip => chip.includes('alt konumlar dahil')), 'Bina tıklaması alt konumları kapsamadı');
+  assert.ok(await assetTotal() > 0, 'Binada kayıt bulunamadı');
+});
+
 await browser.close();
 for (const [state, name, detail] of results) console.log(`${state}: ${name}${detail ? ` — ${detail}` : ''}`);
 const failed = results.filter(result => result[0] === 'FAIL').length;
