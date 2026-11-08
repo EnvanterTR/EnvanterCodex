@@ -24,7 +24,7 @@ requireSource(openReturn.includes('if (!asset || !canWriteAssets()') && openRetu
   'Opening an asset return dialog must be permission-gated and free of native browser dialogs.');
 requireSource(submitReturn.includes('if (!assetReturnTarget || !canWriteAssets()) return;') &&
   submitReturn.includes('`/api/assets/${target.id}/return`') && submitReturn.includes("method: 'POST'") &&
-  submitReturn.includes("target.source === 'returns' ? [loadAssetCheckouts('returns', returnsPage)] : []") &&
+  submitReturn.includes("target.source === 'returns' ? [loadAssetCheckouts('returns', returnsPage)] : target.source === 'assignments' ? [loadAssetCheckouts('assignments'") &&
   submitReturn.includes('feedback.hidden = false;'),
   'Asset return may write only after explicit submission, refresh its source list on success, and keep failures in the dialog.');
 const returnsPage = app.slice(app.indexOf('async function loadAssetCheckouts'), app.indexOf('async function loadAudit('));
