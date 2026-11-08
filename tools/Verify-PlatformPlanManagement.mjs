@@ -38,7 +38,12 @@ assert.match(acceptance, /Cloud_plan_entitlements_block_report_and_customer_api_
 assert.match(acceptance, /api\/maintenances/);
 assert.match(acceptance, /assetMaintenances/);
 assert.match(acceptance, /plan_feature_unavailable/);
-assert.match(api, /request\.DeploymentKind == "cloud" && request\.MaxLoginUsers is not null/);
+assert.match(api, /\.Select\(x => new \{ x\.Id, x\.Code, x\.Name, x\.Description, x\.DeploymentKind,[\s\S]*?x\.MaxLoginUsers, x\.MaxAssets/);
+assert.match(api, /plan\.MaxLoginUsers = request\.MaxLoginUsers/);
+assert.match(api, /request\.MaxLoginUsers is <= 0/);
+assert.match(api, /if \(subscription\.MaxLoginUsers is int seatLimit && memberCount >= seatLimit\)/);
+assert.match(page, /planUserLimit\.disabled=false/);
+assert.match(page, /Cloud ve yerel paketlerde isteğe bağlı giriş hesabı sınırı belirleyin\./);
 assert.match(contract, /string\? ChangeReason/);
 assert.match(page, /id="view-plans"/);
 assert.match(page, /name="changeReason" required minlength="8" maxlength="500"/);

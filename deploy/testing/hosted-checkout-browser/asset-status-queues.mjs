@@ -16,6 +16,10 @@ const states = [
   ['Available', 'Kullanılabilir'], ['Deployed', 'Atanmış'], ['Pending', 'Beklemede'],
   ['Maintenance', 'Bakımda'], ['Unusable', 'Kullanılamaz'], ['Archived', 'Arşiv']
 ];
+const statusColors = {
+  Available: '#20A779', Deployed: '#3478F6', Pending: '#D99A22',
+  Maintenance: '#D97706', Unusable: '#D64E5A', Archived: '#68758A'
+};
 const ownAssets = states.map(([status], index) => ({
   id: `77777777-7777-4777-8777-${String(index + 1).padStart(12, '0')}`, companyId,
   assetTag: `QA-STATUS-QUEUE-${status}`, name: `Status queue ${status}`, status,
@@ -49,8 +53,8 @@ const server = createServer(async (request, response) => {
   if (url.pathname === '/api/company/label-settings') { send(200, { isConfigured: false, settings: null }); return; }
   if (url.pathname === '/api/appearance/preferences') { send(200, { theme: 'system', language: 'tr' }); return; }
   if (url.pathname === '/api/assets/custom-fields') { send(200, []); return; }
-  if (url.pathname === '/api/assets/status-labels') { send(200, states.map(([status, label]) => ({ status, label }))); return; }
-  if (url.pathname === '/api/assets/status-config') { send(200, { version: 1, labels: {}, customStatuses: [], transitions: {} }); return; }
+  if (url.pathname === '/api/assets/status-labels') { send(200, states.map(([status, label]) => ({ status, label, color: statusColors[status] }))); return; }
+  if (url.pathname === '/api/assets/status-config') { send(200, { version: 1, labels: {}, builtInStatuses: states.map(([status, label]) => ({ status, label, color: statusColors[status] })), customStatuses: [], transitions: [] }); return; }
   if (url.pathname === '/api/lookups/categories') { send(200, []); return; }
   if (url.pathname === '/api/lookups/brands') { send(200, []); return; }
   if (url.pathname === '/api/lookups/models') { send(200, []); return; }
@@ -124,16 +128,23 @@ try {
     await row.getByText(`QA-STATUS-QUEUE-${status}`, { exact: true }).waitFor();
     assert.equal(await row.count(), 1, `${label} must render only its matching company record.`);
     assert.equal(await row.innerText().then(text => text.includes(label)), true);
+    const statusBadge = row.locator('.asset-status-pill');
+    assert.equal(await statusBadge.evaluate(element => element.style.getPropertyValue('--asset-status-color')), statusColors[status], `${label} badge must use its configured status color.`);
+    assert.equal(await statusBadge.locator('.asset-status-dot').evaluate(element => getComputedStyle(element).backgroundColor),
+      `rgb(${Number.parseInt(statusColors[status].slice(1, 3), 16)}, ${Number.parseInt(statusColors[status].slice(3, 5), 16)}, ${Number.parseInt(statusColors[status].slice(5, 7), 16)})`,
+      `${label} badge marker must render in its configured color.`);
     assert.equal(await page.locator('#assetCount').innerText(), '1 kayıt');
     assert.equal(requests.some(item => item.method !== 'GET'), false, 'Filtering queues must remain read-only.');
   }
   await statusFilter.selectOption('');
   await page.locator('#assetRows').getByText('QA-STATUS-QUEUE-Archived', { exact: true }).waitFor();
+  // "Archived" önceki filtreden ekranda kalmış olabilir; tüm liste gelene kadar bekle.
+  await page.waitForFunction(() => document.querySelectorAll('#assetRows tr[data-id]').length === 6).catch(() => {});
   assert.equal(await page.locator('#assetRows tr[data-id]').count(), 6);
   assert.equal(await page.locator('#assetRows').getByText('QA-STATUS-QUEUE-FOREIGN', { exact: true }).count(), 0,
     'The synthetic other-tenant record must never render in the selected company list.');
   assert.deepEqual(errors, []);
-  console.log('PASS: real Chromium asset list exposes all six built-in status queues, sends the selected filter, renders only matching company records, and keeps filtering read-only.');
+  console.log('PASS: real Chromium asset list exposes all six built-in status queues, renders each status badge in its configured color, sends the selected filter, renders only matching company records, and keeps filtering read-only.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

@@ -34,6 +34,7 @@ public static class AssetModelDetailEndpoints
                     x.Id,
                     x.Name,
                     x.ModelNumber,
+                    x.EndOfLifeOn,
                     x.BrandId,
                     BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId)
                         .Select(b => b.Name).FirstOrDefault(),
@@ -42,6 +43,7 @@ public static class AssetModelDetailEndpoints
                         .Select(c => c.Name).FirstOrDefault(),
                     HasPhoto = x.PhotoFileName != null,
                     x.DepreciationMonths,
+                    x.DepreciationAnnualRatePercent,
                     x.DepreciationMinimum,
                     x.DepreciationMinimumType,
                     x.DepreciationMethod

@@ -40,7 +40,7 @@ Değişmeyen asıl hedef: **Snipe-IT'nin işlev olarak 2026'daki daha modern, da
 
 ## 2. DÖNGÜ VE HATA KORUMA SİSTEMİ (EN ÖNEMLİ BÖLÜM)
 
-### 2.1 Onbir kural
+### 2.1 On iki kural
 
 **R1. Tek paket.** Aynı anda yalnızca BİR çalışma paketi (WP) açıktır. DONE ya da BLOCKED olmadan yenisi başlamaz.
 
@@ -63,6 +63,8 @@ Değişmeyen asıl hedef: **Snipe-IT'nin işlev olarak 2026'daki daha modern, da
 **R10. Yeni belge yasağı.** Yalnızca şu üç durum dosyası vardır: `docs/PROJECT-STATUS.md` (kapı tablosu), `docs/LEDGER.md` (WP kayıtları), `docs/HANDOFF.md` (sonraki oturum için not). Başka checklist/takip/rapor `.md` dosyası oluşturma. Test kanıt dosyaları (Bölüm 7.4) ve avukat için KVKK taslakları hariç.
 
 **R11. Dürüstlük.** Çalıştıramadığını, erişemediğini ya da doğrulayamadığını açıkça **ÇALIŞTIRILMADI** ya da **ENGELLİ** diye yaz. Canlı (production) ortama erişimin yoksa canlı durum hakkında bir şey iddia etme.
+
+**R12. F1 migration dondurması.** F1 kapısı `DONE` olmadan yeni EF migration oluşturma veya mevcut migration'ı değiştirme. Şema değişikliği gerektiren yeni iş `BEKLEMEDE` olarak kaydedilir; F1 tamamlanana kadar migration üretmeden sürdürülebilen bağımsız işler seçilir. F1 provası yalnızca açıkça onaylanmış, ağsız ve üretimden yalıtılmış klonda migration çalıştırabilir; canlı veritabanına migration uygulanamaz.
 
 ### 2.2 Kullanıcıya hiç kırık öğe gösterme
 Tamamlanmamış bir özellik arayüzde GÖRÜNMEZ (özellik bayrağı ya da gizleme). Ölü (tıklayınca bir şey yapmayan) buton, boş sayfa, "yakında" yazan çalışmayan menü bırakılmaz. Bir öğe ya çalışır ya yoktur.
@@ -137,7 +139,7 @@ Codex tek ajandır; 40 kişi paralel çalışamaz. Bunun yerine her WP'nin VERIF
 
 ## 5. HEDEF KATALOĞU (EKSİKSİZ — HİÇBİR SATIR SİLİNEMEZ)
 
-Kural: Bu listedeki her satıra K0/F0 ölçümünde **VAR / KISMEN / YOK / ÇALIŞTIRILMADI** durumu yazılır (kanıtlı). Hiçbir satır "kapsam dışı" diye silinmez; yalnızca faz sırası belirlenir (Bölüm 6). Durumlar `docs/PROJECT-STATUS.md` içinde tek tabloda tutulur.
+Kural: Bu listedeki her satıra K0/F0 ölçümünde **VAR / KISMEN / YOK / ÇALIŞTIRILMADI** durumu yazılır (kanıtlı). Hiçbir satır "kapsam dışı" diye silinmez; yalnızca faz sırası belirlenir (Bölüm 6). `docs/PROJECT-STATUS.md` ürün gereksinimleri ile F0–F15 faz kapılarını ayrı tablolarda tutar; ürün gereksinimi sayımına faz kapıları dahil edilmez. Her iki tabloda da **Kodda / Canlıda / Kabul edildi** durumları ayrı sütunlarda ve kanıtlarıyla yazılır.
 
 ### A. Çekirdek varlıklar
 - **A01** Varlık: oluştur/oku/güncelle/sil, klonla, toplu güncelle, toplu sil, arşivle, iade, zimmet
@@ -302,7 +304,7 @@ Her faz, yukarıdaki katalog satırlarını kapsar. Bir faz bitmeden sonraki ba�
 | Faz | Kapsam | Kabul (hepsi komutla kanıtlı) |
 |---|---|---|
 | **F0 Ölçüm** | Derle, tüm testleri koş, migration say, katalog durumlarını (VAR/KISMEN/YOK) kanıtla doldur, `PROJECT-STATUS.md`'yi tek tabloya indir | Tablo: her satırda durum + kanıt |
-| **F1 Güvenli migration** | R | 117 migration boş DB'de ve canlı kopyasında (92'lik şema) sorunsuz; yedek→migration→geri yükleme provası; yazılı geri dönüş planı. Canlıya basmayı sahibi yapar, sen komut ve kontrol listesi hazırla |
+| **F1 Güvenli migration** | R | 3 Kasım yedeğinin SHA-256'sını manifestle karşılaştır; yedeği ağsız/portsuz izole klona geri yükle; klon migration kimliklerini kaynakla karşılaştır; klonda onaylı migration provasını yap; önce/sonra tablo satır sayılarını ve geri yüklemeyi doğrula; yazılı geri dönüş planı. F1 `DONE` olana kadar R12 gereği yeni migration yok; canlıya migration/deploy uygulanmaz. |
 | **F2 Plan, kayıt, ödemesiz aktivasyon** | K03, L01–L04, L07, L08, I09 plan kısmı | Sıfırdan yeni şirket açıp panele girmeyi gösteren otomatik test. Planlar sahibinin verdiği adlarla yayımlanır (uydurma yok) |
 | **F3 E-posta** | G08, SMTP ayarı | Sahte SMTP testi + sahibin canlıda yaptığı test e-postası; doğrulama/davet/sıfırlama e-postaları gider |
 | **F4 Kiracı sızıntı testi** | M01–M09, O01 | Tüm API uç noktası envanteri; A şirketi B'nin verisine hiçbir uçtan (kayıt, dosya, rapor, dışa aktarma) erişemez; CI'da zorunlu |

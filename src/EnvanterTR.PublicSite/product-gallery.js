@@ -15,13 +15,17 @@
   const figure=document.querySelector('#assetLabelGallery');if(!figure)return;
   const original=figure.querySelector('img'),windowBox=document.createElement('div'),track=document.createElement('div');
   windowBox.className='label-gallery-window';track.className='label-gallery-track';original.before(windowBox);windowBox.append(track);track.append(original);
-  const sources=[['asset-label-devices.png','QR ve barkod etiketlerinin farklı cihazlarda kullanım örnekleri'],['asset-label-hardware.png','Dizüstü bilgisayar, sunucu ve monitör envanter etiketleri'],['asset-label-desktop.png','Masaüstü bilgisayarda QR ve barkod envanter etiketi']];
+  const sources=[['asset-label-desktop.png','Mini masaüstü bilgisayarda QR ve barkod envanter etiketi'],
+    ['label-photos/hw-1.jpg','Dizüstü bilgisayar avuç içi alanında envanter etiketi'],['label-photos/hw-2.jpg','Rafa monte sunucunun ön panelinde envanter etiketi'],['label-photos/hw-3.jpg','Sunucu kasası üzerinde envanter etiketi'],['label-photos/hw-4.jpg','Monitör arka kapağında envanter etiketi'],
+    ['label-photos/dev-01.jpg','Dizüstü bilgisayarda envanter etiketi'],['label-photos/dev-02.jpg','Masaüstü kasa yan yüzünde envanter etiketi'],['label-photos/dev-03.jpg','Monitör arkasında envanter etiketi'],
+    ['label-photos/dev-04.jpg','Sunucu disk kızakları üzerinde envanter etiketi'],['label-photos/dev-05.jpg','Ağ anahtarı (switch) üzerinde envanter etiketi'],['label-photos/dev-06.jpg','Yazıcı üzerinde envanter etiketi'],['label-photos/dev-07.jpg','IP telefonda envanter etiketi'],
+    ['label-photos/dev-08.jpg','Kabin anahtarlığında envanter etiketi'],['label-photos/dev-09.jpg','UPS cihazında envanter etiketi'],['label-photos/dev-10.jpg','Depo rafında envanter etiketi'],['label-photos/dev-11.jpg','Monitör ayağında envanter etiketi']];
   original.classList.add('label-gallery-slide');registerExpandable(original);
   for(const [file,alt] of sources){const image=document.createElement('img');image.src='/assets/images/'+file;image.alt=alt;image.loading='lazy';image.decoding='async';image.className='label-gallery-slide';registerExpandable(image);track.append(image);}
   const slides=[...track.children],clone=original.cloneNode(true);clone.alt='';clone.setAttribute('aria-hidden','true');track.append(clone);
   const controls=document.createElement('div');controls.className='label-gallery-controls';windowBox.after(controls);
   let index=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,hover=false,focused=false,timer;
-  const dots=slides.map((slide,i)=>{const button=document.createElement('button');button.type='button';button.textContent=String(i+1);button.addEventListener('click',()=>{index=i;move();schedule();});controls.append(button);return button;});
+  const dots=slides.map((slide,i)=>{const button=document.createElement('button');button.type='button';button.dataset.dot='';button.textContent=String(i+1);button.addEventListener('click',()=>{index=i;move();schedule();});controls.append(button);return button;});
   const pause=document.createElement('button');pause.type='button';controls.append(pause);
   function labels(){const w=words();dialog.setAttribute('aria-label',w[0]);close.textContent=w[1]+' ×';document.querySelectorAll('[data-preview-expand]').forEach(image=>{image.setAttribute('aria-label',w[0]);image.title=w[0];});dots.forEach((dot,i)=>{dot.setAttribute('aria-label',w[4]+' '+(i+1));dot.setAttribute('aria-pressed',String(i===index%slides.length));});pause.textContent=paused?'▶':'Ⅱ';pause.setAttribute('aria-label',w[paused?3:2]);}
   function move(){track.style.transform=`translateX(-${index*100}%)`;slides.forEach((slide,i)=>slide.setAttribute('aria-hidden',String(i!==index%slides.length)));labels();}

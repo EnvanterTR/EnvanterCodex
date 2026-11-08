@@ -29,8 +29,8 @@ if (!tableRule.includes('width:max-content') || !tableRule.includes('min-width:1
 if (!tableWrapRule.includes('overflow:auto')) {
   failures.push('The company asset table wrapper must provide horizontal scrolling.');
 }
-if (headerCount !== 20) {
-  failures.push(`The company asset table must keep one select column, 18 data columns, and one actions column; found ${headerCount} headers.`);
+if (headerCount !== 24) {
+  failures.push(`The company asset table must keep one select column, 22 data columns (18 default + supplier, order no, purchase date, warranty end hidden by default), and one actions column; found ${headerCount} headers.`);
 }
 
 if (!source.includes('function addAssetRow(asset, rowNumber)') ||

@@ -13,6 +13,7 @@ public sealed class OperationalNotificationEmailService(
     ILogger<OperationalNotificationEmailService> logger)
 {
     private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation", "assignment", "asset-life", "subscription"];
+    private static readonly int[] LicenseReminderDays = [30, 15, 7, 3, 1];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -62,7 +63,7 @@ public sealed class OperationalNotificationEmailService(
             if (recipient is null || !MailAddress.TryCreate(recipient.Email, out var parsedAddress) ||
                 !string.Equals(parsedAddress.Address, recipient.Email, StringComparison.OrdinalIgnoreCase)) continue;
 
-            var items = await GetUpcomingItemsAsync(preference.CompanyId, preference.UserId, kinds, from, to, cancellationToken);
+            var items = await GetUpcomingItemsAsync(preference.CompanyId, preference.UserId, kinds, today, from, to, cancellationToken);
             if (items.Count == 0) continue;
 
             var digest = await TryClaimDigestAsync(preference.CompanyId, preference.UserId, today, now, cancellationToken);
@@ -143,7 +144,7 @@ public sealed class OperationalNotificationEmailService(
     }
 
     private async Task<List<OperationalReminderItem>> GetUpcomingItemsAsync(Guid companyId, Guid userId, string[] kinds,
-        DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken)
+        DateOnly today, DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken)
     {
         var items = new List<OperationalReminderItem>();
         var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
@@ -182,8 +183,10 @@ public sealed class OperationalNotificationEmailService(
         }
         if (kinds.Contains("license", StringComparer.Ordinal))
         {
+            var reminderDates = LicenseReminderDays.Select(today.AddDays).ToArray();
             var licenseQuery = db.SoftwareLicenses.AsNoTracking()
-                .Where(license => license.CompanyId == companyId && license.ExpirationDate >= rangeStart && license.ExpirationDate <= rangeEnd)
+                .Where(license => license.CompanyId == companyId && license.ExpirationDate != null &&
+                    reminderDates.Contains(license.ExpirationDate.Value))
                 .LicensesInEmployeeScope(db, companyId, employeeScope);
             var rows = await licenseQuery
                 .OrderBy(license => license.ExpirationDate).ThenBy(license => license.Name)
@@ -358,6 +361,9 @@ public sealed class OperationalNotificationEmailService(
             .ToList();
         return selected;
     }
+
+    public static bool IsLicenseReminderDay(DateOnly today, DateOnly expirationDate) =>
+        LicenseReminderDays.Contains(expirationDate.DayNumber - today.DayNumber);
 
     private async Task<string> GetPreferredLanguageAsync(Guid companyId, Guid userId, CancellationToken cancellationToken)
     {

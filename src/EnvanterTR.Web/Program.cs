@@ -109,6 +109,12 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 }
 builder.Services.AddSingleton<AssetCustomFieldProtection>();
+builder.Services.AddSingleton<SoftwareLicenseKeyProtection>();
+builder.Services.AddSingleton<CompanyWebhookProtection>();
+// Webhook istemcisi: yönlendirme izlemez, yalnız genel internet adreslerine bağlanır (Webhooks:AllowPrivateTargets yalnız test ortamı içindir).
+builder.Services.AddHttpClient(CompanyWebhookEndpoints.HttpClientName)
+    .ConfigurePrimaryHttpMessageHandler(services => CompanyWebhookUrlPolicy.CreateHandler(
+        services.GetRequiredService<IConfiguration>().GetValue<bool>("Webhooks:AllowPrivateTargets")));
 builder.Services.Configure<IyzipayOptions>(builder.Configuration.GetSection("Iyzipay"));
 builder.Services.AddHttpClient<IyzipayCheckoutClient>((services, client) =>
 {
@@ -146,6 +152,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddHostedService<PlatformCrmFollowUpEmailWorker>();
     builder.Services.AddScoped<SupportTicketEmailService>();
     builder.Services.AddHostedService<SupportTicketEmailWorker>();
+    builder.Services.AddScoped<CompanyWebhookDeliveryService>();
+    builder.Services.AddHostedService<CompanyWebhookWorker>();
     builder.Services.AddIdentity<EnvanterUser, IdentityRole<Guid>>(options =>
     {
         options.User.RequireUniqueEmail = true;
@@ -584,11 +592,13 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapAssetEndpoints();
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();
+    app.MapCompanyOnboardingEndpoints();
     app.MapCompanyTaskEndpoints();
     app.MapSupportEndpoints();
     app.MapPlatformEndpoints();
     app.MapCheckoutEndpoints();
     app.MapCustomerApiEndpoints();
+    app.MapCompanyWebhookEndpoints();
 }
 else
 {

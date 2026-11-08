@@ -57,11 +57,13 @@ public sealed record AssetCustomFieldDefinitionRequest(
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null, int? DepreciationMonths = null,
     decimal? DepreciationMinimum = null, string? DepreciationMinimumType = null, string? DepreciationMethod = null,
     Guid? CategoryId = null, string? Website = null, string? SupportUrl = null, string? WarrantyUrl = null,
-    string? SupportPhone = null, string? SupportEmail = null, string? ModelNumber = null);
-public sealed record SetModelDepreciationRequest(int? Months, decimal? Minimum, string? MinimumType, string? Method);
+    string? SupportPhone = null, string? SupportEmail = null, string? ModelNumber = null, DateOnly? EndOfLifeOn = null,
+    decimal? DepreciationAnnualRatePercent = null);
+public sealed record SetModelDepreciationRequest(int? Months, decimal? Minimum, string? MinimumType, string? Method,
+    decimal? AnnualRatePercent = null);
 public sealed record RenameLookupRequest(string Name, string? Website = null, string? SupportUrl = null,
     string? WarrantyUrl = null, string? SupportPhone = null, string? SupportEmail = null, bool UpdateBrandDetails = false,
-    string? ModelNumber = null);
+    string? ModelNumber = null, DateOnly? EndOfLifeOn = null, bool ClearEndOfLifeOn = false);
 public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
 public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null,
     Guid? CompanyUnitId = null, bool ClearCompanyUnit = false);
@@ -100,6 +102,7 @@ public sealed record AssignAssetRequest(Guid EmployeeId, string? Note, DateOnly?
 public sealed record ReturnAssetRequest(string? Note);
 public sealed record ChangeAssetStatusRequest(string Status, string? Note);
 public sealed record AssetTrashRequest(string? Note);
+public sealed record BulkAssetTrashRequest(Guid[]? AssetIds, string? Note);
 public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
 public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note, DateOnly? ExpectedReturnOn = null);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);
@@ -168,4 +171,7 @@ public sealed record AssetListItem(
     decimal? CurrentValue = null,
     string? InsuranceProvider = null,
     string? InsurancePolicyNumber = null,
-    DateOnly? InsuranceExpiresAt = null);
+    DateOnly? InsuranceExpiresAt = null,
+    DateOnly? PurchaseDate = null,
+    string? PurchaseOrderNumber = null,
+    string? SupplierName = null);

@@ -117,16 +117,18 @@ const assetEndpoints = readFileSync(resolve('src/EnvanterTR.Web/Data/AssetEndpoi
 const locationsEndpointStart = assetEndpoints.indexOf('api.MapGet("/locations"');
 const locationsEndpointEnd = assetEndpoints.indexOf('api.MapPost("/locations/catalog"', locationsEndpointStart);
 const locationsEndpoint = locationsEndpointStart < 0 || locationsEndpointEnd < 0 ? '' : assetEndpoints.slice(locationsEndpointStart, locationsEndpointEnd);
-if (!locationsEndpoint.includes('Results.Ok(new { items, total = items.Count, departmentCounts })')) {
-  failures.push('The locations API must keep its documented items/total/departmentCounts response envelope.');
+if (!locationsEndpoint.includes('Results.Ok(new { items, total = items.Count, departmentCounts, employeeCounts })')) {
+  failures.push('The locations API must keep its documented items/total/departmentCounts/employeeCounts response envelope.');
 }
 const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
 const loginSubmitEnd = source.indexOf("$('#retryApiButton').addEventListener('click'", loginSubmitStart);
 const loginSubmitHandler = loginSubmitStart < 0 || loginSubmitEnd < 0 ? '' : source.slice(loginSubmitStart, loginSubmitEnd);
-if (!/catch\s*\(error\)\s*\{[\s\S]*?\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(loginSubmitHandler)) {
-  failures.push('The server connection check must remain visible after rejected login credentials.');
+// Rejected credentials keep the diagnostic; company choice and two-factor prompts are next steps, not errors.
+if (!/const isNextLoginStep = Boolean\(error\.payload\?\.twoFactorRequired\) \|\| needsCompanyChoice;/.test(loginSubmitHandler) ||
+    !/catch\s*\(error\)\s*\{[\s\S]*?\$\('#retryApiButton'\)\.hidden\s*=\s*isNextLoginStep/.test(loginSubmitHandler)) {
+  failures.push('The server connection check must remain visible after rejected login credentials (and only be hidden for company-choice / two-factor steps).');
 }
-if (!/else\s*\{\s*\$\('#authError'\)\.textContent\s*=\s*error\.message\s*;\s*void checkLoginConnection\(\)\s*;/.test(loginSubmitHandler) ||
+if (!/else\s*\{\s*\$\('#authError'\)\.textContent\s*=\s*error\.message\s*;\s*if \(!isNextLoginStep\) void checkLoginConnection\(\)\s*;/.test(loginSubmitHandler) ||
     !/async function checkLoginConnection\(\)[\s\S]*?api\('\/api\/status'[\s\S]*?api\('\/api\/setup\/status'[\s\S]*?status\.hidden\s*=\s*false/.test(source)) {
   failures.push('Rejected login responses must automatically show a separate, live server/setup diagnostic without replacing the credential error.');
 }

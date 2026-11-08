@@ -29,20 +29,20 @@ public static class ComponentEndpoints
             ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
 
-        api.MapGet("/components", async ([FromQuery]string? q,[FromQuery]string? stock,ClaimsPrincipal user,AppDbContext db,CancellationToken ct,[FromQuery]int page=1,[FromQuery]int pageSize=25)=>
+        api.MapGet("/components", async ([FromQuery]string? q,[FromQuery]string? stock,ClaimsPrincipal user,AppDbContext db,CancellationToken ct,[FromQuery]int page=1,[FromQuery]int pageSize=25,[FromQuery]bool includeArchived=false)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid(); page=Math.Max(1,page);pageSize=Math.Clamp(pageSize==0?25:pageSize,1,200);
-            var query=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId);
+            var query=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId&&(includeArchived||!x.IsArchived));
             var allowedLocations=await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db,companyId,UserId(user)!.Value,ct);if(allowedLocations is not null)query=query.Where(x=>x.LocationCatalogId.HasValue&&allowedLocations.Contains(x.LocationCatalogId.Value));
             if(!string.IsNullOrWhiteSpace(q)){var term=q.Trim();if(term.Length>120)return Results.ValidationProblem(new Dictionary<string,string[]>{{"q",["Arama 120 karakteri aşamaz."]}});query=query.Where(x=>x.Name.Contains(term)||(x.Category!=null&&x.Category.Contains(term))||(x.ModelNumber!=null&&x.ModelNumber.Contains(term))||(x.SerialNumber!=null&&x.SerialNumber.Contains(term))||(x.ItemNumber!=null&&x.ItemNumber.Contains(term))||(x.Supplier!=null&&x.Supplier.Contains(term))||(x.Location!=null&&x.Location.Contains(term)));}
             if(stock=="low")query=query.Where(x=>x.TotalQuantity-(db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0)<=x.MinimumQuantity);
             if(stock=="available")query=query.Where(x=>x.TotalQuantity>(db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0));
-            var total=await query.CountAsync(ct);var items=await query.OrderBy(x=>x.Name).ThenBy(x=>x.Id).Skip((page-1)*pageSize).Take(pageSize).Select(x=>new{x.Id,x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.MinimumQuantity,x.TotalQuantity,x.UnitCost,x.Currency,x.PurchaseDate,x.WarrantyExpiresAt,x.UpdatedAt,allocated=db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0}).ToListAsync(ct);
+            var total=await query.CountAsync(ct);var items=await query.OrderBy(x=>x.Name).ThenBy(x=>x.Id).Skip((page-1)*pageSize).Take(pageSize).Select(x=>new{x.Id,x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.MinimumQuantity,x.TotalQuantity,x.UnitCost,x.Currency,x.PurchaseDate,x.WarrantyExpiresAt,x.IsArchived,x.UpdatedAt,allocated=db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0}).ToListAsync(ct);
             return Results.Ok(new{items,page,pageSize,total});
         }).RequireAuthorization("asset.read");
         var exportComponents = async Task<IResult> ([FromQuery]string? q,[FromQuery]string? stock,HttpContext context,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
-            if(!Tenant(user,out var companyId))return Results.Forbid();var query=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId);var allowedLocations=await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db,companyId,UserId(user)!.Value,ct);if(allowedLocations is not null)query=query.Where(x=>x.LocationCatalogId.HasValue&&allowedLocations.Contains(x.LocationCatalogId.Value));
+            if(!Tenant(user,out var companyId))return Results.Forbid();var query=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId&&!x.IsArchived);var allowedLocations=await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db,companyId,UserId(user)!.Value,ct);if(allowedLocations is not null)query=query.Where(x=>x.LocationCatalogId.HasValue&&allowedLocations.Contains(x.LocationCatalogId.Value));
             if(!string.IsNullOrWhiteSpace(q)){var term=q.Trim();if(term.Length>120)return Results.ValidationProblem(new Dictionary<string,string[]>{{"q",["Arama 120 karakteri aşamaz."]}});query=query.Where(x=>x.Name.Contains(term)||(x.Category!=null&&x.Category.Contains(term))||(x.ModelNumber!=null&&x.ModelNumber.Contains(term))||(x.SerialNumber!=null&&x.SerialNumber.Contains(term))||(x.ItemNumber!=null&&x.ItemNumber.Contains(term))||(x.Supplier!=null&&x.Supplier.Contains(term))||(x.Location!=null&&x.Location.Contains(term)));}
             if(stock=="low")query=query.Where(x=>x.TotalQuantity-(db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0)<=x.MinimumQuantity);if(stock=="available")query=query.Where(x=>x.TotalQuantity>(db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0));
             if(await query.CountAsync(ct)>10000)return Results.ValidationProblem(new Dictionary<string,string[]>{{"export",["Dışa aktarım en fazla 10.000 satır içerir; filtreyi daraltın."]}});
@@ -106,7 +106,7 @@ public static class ComponentEndpoints
             var canReadMovementNotes=allowedLocations is null;
             var componentQuery=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId&&x.Id==id);
             if(allowedLocations is not null)componentQuery=componentQuery.Where(x=>x.LocationCatalogId.HasValue&&allowedLocations.Contains(x.LocationCatalogId.Value));
-            var component=await componentQuery.Select(x=>new{x.Id,x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.MinimumQuantity,x.TotalQuantity,x.UnitCost,x.Currency,x.PurchaseDate,x.WarrantyExpiresAt,x.Notes,x.UpdatedAt}).SingleOrDefaultAsync(ct);
+            var component=await componentQuery.Select(x=>new{x.Id,x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.MinimumQuantity,x.TotalQuantity,x.UnitCost,x.Currency,x.PurchaseDate,x.WarrantyExpiresAt,x.Notes,x.IsArchived,x.UpdatedAt}).SingleOrDefaultAsync(ct);
             if(component is null)return Results.NotFound();
             var allocationsQuery=db.ComponentAllocations.AsNoTracking().Where(a=>a.CompanyId==companyId&&a.ComponentId==id);
             if(allowedLocations is not null)allocationsQuery=allocationsQuery.Where(a=>db.Assets.Any(x=>x.CompanyId==companyId&&x.Id==a.AssetId&&x.LocationCatalogId.HasValue&&allowedLocations.Contains(x.LocationCatalogId.Value)));
@@ -125,6 +125,26 @@ public static class ComponentEndpoints
         api.MapPut("/components/{id:guid}",async(Guid id,UpdateRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid();var allowed=await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db,companyId,UserId(user)!.Value,ct);var query=db.InventoryComponents.Where(a=>a.CompanyId==companyId&&a.Id==id);if(allowed is not null)query=query.Where(a=>a.LocationCatalogId.HasValue&&allowed.Contains(a.LocationCatalogId.Value));var x=await query.SingleOrDefaultAsync(ct);if(x is null)return Results.NotFound();var assigned=await db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==id).SumAsync(a=>(int?)(a.Quantity-a.RemovedQuantity),ct)??0;var errors=Validate(r.Name,r.MinimumQuantity,x.TotalQuantity,r.UnitCost,r.Currency,r.Category,r.ModelNumber,r.ItemNumber,r.SerialNumber,r.Supplier,r.Location,r.Notes);if(r.WarrantyExpiresAt is { } warranty && r.PurchaseDate is { } purchase && warranty<purchase)errors["warrantyExpiresAt"]=["Garanti bitiş tarihi alış tarihinden önce olamaz."];if(x.TotalQuantity<assigned)errors["quantity"]=["Toplam stok atanmış miktardan az olamaz."];if(errors.Count>0)return Results.ValidationProblem(errors);if(!await CompanyLocationAccess.CanAccessLocationPathAsync(db,companyId,UserId(user)!.Value,r.Location,ct))return Results.ValidationProblem(new Dictionary<string,string[]>{{"location",["Bileşen için erişilebilir, etkin bir konum seçilmelidir."]}});x.Name=r.Name.Trim();x.Category=Clean(r.Category);x.ModelNumber=Clean(r.ModelNumber);x.ItemNumber=Clean(r.ItemNumber);x.SerialNumber=Clean(r.SerialNumber);x.Supplier=Clean(r.Supplier);x.SupplierId=await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db,companyId,r.Supplier,ct);x.Location=Clean(r.Location);x.LocationCatalogId=await AssetEndpoints.ResolveLocationCatalogIdAsync(db,companyId,r.Location,ct);x.MinimumQuantity=r.MinimumQuantity;x.UnitCost=r.UnitCost;x.Currency=r.Currency.Trim().ToUpperInvariant();x.PurchaseDate=r.PurchaseDate;x.WarrantyExpiresAt=r.WarrantyExpiresAt;x.Notes=Clean(r.Notes);x.UpdatedAt=DateTimeOffset.UtcNow;Audit(db,companyId,user,id,"component.updated",x.Name);await db.SaveChangesAsync(ct);return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+        api.MapDelete("/components/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); } catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.InventoryComponents.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            var allocated = await db.ComponentAllocations.Where(x => x.CompanyId == companyId && x.ComponentId == id).SumAsync(x => (int?)(x.Quantity - x.RemovedQuantity), ct) ?? 0;
+            if (allocated > 0) return Results.Conflict(new { message = "Varlığa takılı bileşenleri önce çıkarın; kayıt ve hareket geçmişi korunur." });
+            item.IsArchived = true; item.UpdatedAt = DateTimeOffset.UtcNow; Audit(db, companyId, user, id, "component.archived", item.Name);
+            await db.SaveChangesAsync(ct); return Results.Ok(new { item.Id, item.IsArchived });
+        }).RequireAuthorization("asset.write");
+        api.MapPost("/components/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db, HttpContext context, IAntiforgery antiforgery, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid actorId) return Results.Forbid();
+            try { await antiforgery.ValidateRequestAsync(context); } catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+            var item = await db.InventoryComponents.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct)) return Results.NotFound();
+            item.IsArchived = false; item.UpdatedAt = DateTimeOffset.UtcNow; Audit(db, companyId, user, id, "component.restored", item.Name);
+            await db.SaveChangesAsync(ct); return Results.Ok(new { item.Id, item.IsArchived });
         }).RequireAuthorization("asset.write");
         api.MapPost("/components/{id:guid}/stock",async(Guid id,StockRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {

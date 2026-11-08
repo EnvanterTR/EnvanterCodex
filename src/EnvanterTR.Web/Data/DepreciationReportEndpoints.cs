@@ -10,10 +10,10 @@ public static class DepreciationReportEndpoints
     private const int MaximumReportRows = 50_000;
     private sealed record SourceRow(Guid Id, string AssetTag, string Name, string? SerialNumber, string Category,
         string? Model, string? Location, string Status, DateOnly PurchaseDate, decimal PurchaseCost, string Currency,
-        int Months, decimal? Minimum, string MinimumType, string Method);
+        int? Months, decimal? AnnualRatePercent, decimal? Minimum, string MinimumType, string Method);
     private sealed record ReportRow(Guid Id, string AssetTag, string Name, string? SerialNumber, string Category,
         string? Model, string? Location, string Status, DateOnly PurchaseDate, decimal PurchaseCost, string Currency,
-        int Months, decimal? Minimum, string MinimumType, string Method, DateOnly EndOfLife, int ElapsedMonths,
+        int Months, decimal AnnualDepreciationRatePercent, decimal? Minimum, string MinimumType, string Method, DateOnly EndOfLife, int ElapsedMonths,
         int RemainingMonths, decimal MonthlyDepreciation, decimal BookValue, decimal AccumulatedDepreciation);
 
     public static void MapDepreciationReportEndpoints(this RouteGroupBuilder api)
@@ -71,11 +71,11 @@ public static class DepreciationReportEndpoints
                 var formula = value.TrimStart() is { Length: > 0 } trimmed && trimmed[0] is '=' or '+' or '-' or '@';
                 return "\"" + (formula ? "'" + value : value).Replace("\"", "\"\"") + "\"";
             }
-            var csv = new StringBuilder("Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n");
+            var csv = new StringBuilder("Etiket;Varlık;Seri no;Kategori;Model;Konum;Durum;Alış tarihi;Ömür sonu;Para birimi;Alış bedeli;Yıllık amortisman (%);Aylık amortisman;Birikmiş amortisman;Defter değeri;Kalan ay;Yöntem\r\n");
             foreach (var x in rows)
                 csv.AppendJoin(';', Cell(x.AssetTag), Cell(x.Name), Cell(x.SerialNumber), Cell(x.Category), Cell(x.Model), Cell(x.Location),
                     Cell(x.Status), Cell(x.PurchaseDate.ToString("yyyy-MM-dd")), Cell(x.EndOfLife.ToString("yyyy-MM-dd")), Cell(x.Currency),
-                    Number(x.PurchaseCost), Number(x.MonthlyDepreciation), Number(x.AccumulatedDepreciation), Number(x.BookValue),
+                    Number(x.PurchaseCost), Number(x.AnnualDepreciationRatePercent), Number(x.MonthlyDepreciation), Number(x.AccumulatedDepreciation), Number(x.BookValue),
                     x.RemainingMonths.ToString(System.Globalization.CultureInfo.InvariantCulture), Cell(MethodLabel(x.Method))).Append("\r\n");
             var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
             return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-amortisman-{effectiveDate:yyyyMMdd}.csv");
@@ -88,7 +88,7 @@ public static class DepreciationReportEndpoints
         join category in db.AssetCategories.AsNoTracking() on new { asset.CompanyId, asset.CategoryId } equals new { category.CompanyId, CategoryId = category.Id }
         where asset.CompanyId == companyId && asset.DeletedAt == null && asset.PurchaseDate != null && asset.PurchaseCost != null &&
               (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)) &&
-              model.DepreciationMonths != null &&
+              (model.DepreciationMonths != null || model.DepreciationAnnualRatePercent != null) &&
               (searchTerm == null || asset.AssetTag.Contains(searchTerm) || asset.Name.Contains(searchTerm) ||
                asset.SerialNumber != null && asset.SerialNumber.Contains(searchTerm) || category.Name.Contains(searchTerm) ||
                model.Name != null && model.Name.Contains(searchTerm) ||
@@ -100,12 +100,13 @@ public static class DepreciationReportEndpoints
             allowedLocations == null ? asset.Location : db.CompanyLocations
                 .Where(location => location.CompanyId == companyId && location.Id == asset.LocationCatalogId)
                 .Select(location => location.Name).FirstOrDefault(),
-            asset.Status, asset.PurchaseDate!.Value, asset.PurchaseCost!.Value, asset.Currency, model.DepreciationMonths!.Value,
-            model.DepreciationMinimum, model.DepreciationMinimumType, model.DepreciationMethod);
+            asset.Status, asset.PurchaseDate!.Value, asset.PurchaseCost!.Value, asset.Currency, model.DepreciationMonths,
+            model.DepreciationAnnualRatePercent, model.DepreciationMinimum, model.DepreciationMinimumType, model.DepreciationMethod);
 
     private static ReportRow Calculate(SourceRow source, DateOnly asOf)
     {
-        var lifeMonths = source.Months;
+        var lifeMonths = source.Months ?? MonthsFromAnnualRate(source.AnnualRatePercent!.Value);
+        var annualRatePercent = source.AnnualRatePercent ?? Math.Round(1200m / lifeMonths, 2, MidpointRounding.AwayFromZero);
         var endOfLife = source.PurchaseDate.AddMonths(lifeMonths);
         var elapsed = Math.Clamp(MonthsBetween(source.PurchaseDate, asOf), 0, lifeMonths);
         var floor = source.Minimum is null ? 0m : source.MinimumType == "percent"
@@ -132,19 +133,23 @@ public static class DepreciationReportEndpoints
         book = Math.Round(Math.Clamp(book, minimumBookValue, source.PurchaseCost), 2, MidpointRounding.AwayFromZero);
         var monthly = Math.Round((source.PurchaseCost - floor) / lifeMonths, 2, MidpointRounding.AwayFromZero);
         return new ReportRow(source.Id, source.AssetTag, source.Name, source.SerialNumber, source.Category, source.Model,
-            source.Location, source.Status, source.PurchaseDate, source.PurchaseCost, source.Currency, lifeMonths, source.Minimum,
+            source.Location, source.Status, source.PurchaseDate, source.PurchaseCost, source.Currency, lifeMonths, annualRatePercent, source.Minimum,
             source.MinimumType, source.Method, endOfLife, elapsed, Math.Max(0, lifeMonths - elapsed), monthly, book,
             Math.Round(source.PurchaseCost - book, 2, MidpointRounding.AwayFromZero));
     }
 
     internal static decimal? CalculateListValue(DateOnly? purchaseDate, decimal? purchaseCost, int? months,
-        decimal? minimum, string? minimumType, string? method, DateOnly asOf)
+        decimal? annualRatePercent, decimal? minimum, string? minimumType, string? method, DateOnly asOf)
     {
-        if (purchaseDate is null || purchaseCost is null || months is null || months <= 0) return null;
+        if (purchaseDate is null || purchaseCost is null || months is null && annualRatePercent is null ||
+            months is int configuredMonths && configuredMonths <= 0 ||
+            annualRatePercent is decimal configuredRate && configuredRate <= 0m) return null;
         var source = new SourceRow(Guid.Empty, "", "", null, "", null, null, "", purchaseDate.Value,
-            purchaseCost.Value, "TRY", months.Value, minimum, minimumType ?? "amount", method ?? "linear");
+            purchaseCost.Value, "TRY", months, annualRatePercent, minimum, minimumType ?? "amount", method ?? "linear");
         return Calculate(source, asOf).BookValue;
     }
+
+    private static int MonthsFromAnnualRate(decimal annualRatePercent) => (int)Math.Ceiling(1200m / annualRatePercent);
 
     internal static int? CalculateElapsedMonths(DateOnly? startDate, DateOnly asOf) =>
         startDate is DateOnly start ? MonthsBetween(start, asOf) : null;

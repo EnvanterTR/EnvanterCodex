@@ -6,6 +6,8 @@ import { chromium } from 'playwright';
 const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
+const onboardingCss = await readFile('/checkout-site/onboarding.css', 'utf8');
+const onboardingScript = await readFile('/checkout-site/onboarding.js', 'utf8');
 const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
 const appScripts = new Map(await Promise.all(['report-print.js', 'scheduled-reports.js'].map(async name => [
   `/${name}`,
@@ -17,6 +19,7 @@ const loginAttempts = [];
 let subscriptionMode = 'full';
 let loginMode = false;
 let companyMfaEnrollmentMode = false;
+let companyMfaVerificationFailuresRemaining = 0;
 let loginPendingMigrationCount = 0;
 let companyRole = 'viewer';
 let companySecurityPolicy = { passwordMinimumLength: 12, sessionDurationHours: 720, requireMfa: false };
@@ -31,6 +34,16 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     response.end(appHtml);
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/onboarding.css') {
+    response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+    response.end(onboardingCss);
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/onboarding.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+    response.end(onboardingScript);
     return;
   }
   if (request.method === 'GET' && url.pathname.startsWith('/assets/fonts/')) {
@@ -76,6 +89,12 @@ const server = createServer(async (request, response) => {
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/session/company-mfa/verify' && record.csrf === 'synthetic-viewer-csrf') {
+        if (companyMfaVerificationFailuresRemaining > 0) {
+          companyMfaVerificationFailuresRemaining--;
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+          response.end(JSON.stringify({ message: 'Authenticator kodu geçersiz. Yeniden deneyin.' }));
+          return;
+        }
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify({ authenticated: true, companyId: syntheticCompanyId, role: 'admin', platformAdmin: false,
           name: 'Synthetic Admin', recoveryCodes: Array.from({ length: 10 }, (_, index) => `SYNTHETIC-RECOVERY-${index + 1}`) }));
@@ -187,8 +206,16 @@ assert.ok(address && typeof address === 'object');
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
+const missingPageResources = [];
 page.on('pageerror', error => pageErrors.push(error.message));
 page.on('request', request => { if (new URL(request.url()).origin !== `http://127.0.0.1:${address.port}`) externalRequests.push(request.url()); });
+page.on('response', response => {
+  const url = new URL(response.url());
+  if (response.status() === 404 && url.origin === `http://127.0.0.1:${address.port}` && !url.pathname.startsWith('/api/')) {
+    missingPageResources.push(url.pathname);
+    console.error(`HTTP ${response.status()} ${response.url()}`);
+  }
+});
 page.on('console', message => { if (message.type() === 'error') console.error(`BROWSER ${message.text()}`); });
 
 try {
@@ -618,9 +645,9 @@ try {
     && document.querySelector('#securityOverviewMfa')?.textContent === 'Off'
     && document.querySelector('#securityOverviewSessionsNote')?.textContent === 'Active sessions for this account.');
   const appearanceWrite = apiRequests.find(item => item.path === '/api/appearance/preferences' && item.method === 'PUT');
-  assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en' });
+  assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
   assert.equal(appearanceWrite?.csrf, 'synthetic-viewer-csrf');
-  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('envantertr.appearance'))), { theme: 'dark', language: 'en' });
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('envantertr.appearance'))), { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
   assert.deepEqual(pageErrors, [], 'The command palette and route navigation must not throw browser errors.');
 
   subscriptionMode = 'readOnly';
@@ -654,7 +681,7 @@ try {
   ].sort());
   assert.ok(writes.filter(item => item.path === '/api/session/2fa/setup').every(item => item.csrf === 'synthetic-viewer-csrf'),
     'Each explicit TOTP enrollment request must include CSRF protection.');
-  assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en' });
+  assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en', palette: 'classic', layout: 'classic' });
 
   loginMode = true;
   const loginPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -711,18 +738,32 @@ try {
   assert.match(await loginPage.locator('#companyMfaEnrollmentQr').getAttribute('src'), /^data:image\/svg\+xml/);
   assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP');
   assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/setup')?.body?.ticket, 'synthetic-one-time-mfa-ticket');
+  companyMfaVerificationFailuresRemaining = 1;
+  await loginPage.locator('#companyMfaEnrollmentForm [name="code"]').fill('000000');
+  await loginPage.locator('#verifyCompanyMfaEnrollment').click();
+  await loginPage.locator('#companyMfaEnrollmentFeedback').getByText('Authenticator kodu geçersiz. Yeniden deneyin.').waitFor({ state: 'visible' });
+  assert.equal(await companyMfaDialog.isVisible(), true, 'An invalid enrollment code must keep the MFA challenge visible for retry.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentForm').isVisible(), true, 'The code form must remain available after a rejected code.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentQr').isVisible(), true, 'The QR code must remain available after a rejected code.');
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP', 'The manual setup secret must remain available for retry.');
+  assert.equal(await loginPage.locator('#verifyCompanyMfaEnrollment').isDisabled(), false, 'The verify button must be re-enabled after an invalid code.');
+  assert.equal(apiRequests.filter(item => item.path === '/api/session/company-mfa/verify').length, 1);
   await loginPage.locator('#companyMfaEnrollmentForm [name="code"]').fill('123456');
   await loginPage.locator('#verifyCompanyMfaEnrollment').click();
   await loginPage.locator('#companyMfaRecoveryPanel').waitFor({ state: 'visible' });
   assert.equal((await loginPage.locator('#companyMfaRecoveryCodes').innerText()).split('\n').length, 10);
   assert.equal(await loginPage.locator('#closeCompanyMfaEnrollment').isDisabled(), true,
     'Recovery codes must remain visible until the user explicitly acknowledges saving them.');
-  assert.deepEqual(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.body,
-    { ticket: 'synthetic-one-time-mfa-ticket', code: '123456' });
-  assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.csrf, 'synthetic-viewer-csrf');
+  const companyMfaVerifyRequests = apiRequests.filter(item => item.path === '/api/session/company-mfa/verify');
+  assert.deepEqual(companyMfaVerifyRequests.map(item => item.body), [
+    { ticket: 'synthetic-one-time-mfa-ticket', code: '000000' },
+    { ticket: 'synthetic-one-time-mfa-ticket', code: '123456' }
+  ]);
+  assert.ok(companyMfaVerifyRequests.every(item => item.csrf === 'synthetic-viewer-csrf'));
   assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
+  assert.deepEqual(missingPageResources, [], `All linked local page resources must be served: ${missingPageResources.join(', ')}`);
   await loginPage.close();
-  console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, tests first-time company MFA QR/secret/verification/recovery codes, and never silently retries credentials.');
+  console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, and preserves the company MFA QR/secret/form/button after a rejected code so a retry can complete recovery-code enrollment; never silently retries credentials.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

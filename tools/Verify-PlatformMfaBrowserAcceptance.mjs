@@ -36,7 +36,7 @@ assert.match(script, /externalRequests\.length, 0/);
 assert.match(script, /manual-key fallback/i);
 assert.match(script, /totp\(secret\)/);
 assert.match(script, /ten one-time recovery codes/);
-assert.match(script, /recovery-code replay/);
+assert.match(script, /A recovery code works once, and replaying the same code is rejected/);
 assert.match(script, /page\.reload\(\)/);
 assert.match(script, /browserErrors\.length, 0/);
 assert.match(script, /serverErrors\.length, 0/);

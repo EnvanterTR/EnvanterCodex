@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<CompanyMfaEnrollmentChallenge> CompanyMfaEnrollmentChallenges => Set<CompanyMfaEnrollmentChallenge>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
+    public DbSet<CompanyWebhook> CompanyWebhooks => Set<CompanyWebhook>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
     public DbSet<AssetContract> AssetContracts => Set<AssetContract>();
     public DbSet<AssetContractAsset> AssetContractAssets => Set<AssetContractAsset>();
@@ -114,6 +115,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().HasIndex(x => new { x.CustomerLifecycleStage, x.PlatformNextFollowUpAt });
         modelBuilder.Entity<Company>().HasIndex(x => x.PlatformOwnerUserId);
         modelBuilder.Entity<Company>().HasIndex(x => x.Slug).IsUnique().HasFilter("\"Slug\" IS NOT NULL");
+        modelBuilder.Entity<CompanyWebhook>().HasKey(x => x.Id);
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.Name).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.Kind).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.ProtectedUrl).HasMaxLength(4000).IsRequired();
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.UrlHint).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.ProtectedSigningSecret).HasMaxLength(1000);
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.EventsJson).HasMaxLength(500).IsRequired();
+        modelBuilder.Entity<CompanyWebhook>().Property(x => x.LastError).HasMaxLength(300);
+        modelBuilder.Entity<CompanyWebhook>().HasIndex(x => new { x.CompanyId, x.CreatedAt });
+        modelBuilder.Entity<CompanyWebhook>().HasIndex(x => x.IsActive);
+        modelBuilder.Entity<CompanyWebhook>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyWebhook>().ToTable("CompanyWebhooks", table =>
+            table.HasCheckConstraint("CK_CompanyWebhooks_Kind", "\"Kind\" IN ('slack', 'teams', 'generic')"));
         modelBuilder.Entity<CompanyApiToken>().HasKey(x => x.Id);
         modelBuilder.Entity<CompanyApiToken>().Property(x => x.Name).HasMaxLength(100).IsRequired();
         modelBuilder.Entity<CompanyApiToken>().Property(x => x.TokenPrefix).HasMaxLength(24).IsRequired();
@@ -349,13 +364,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().Property(x => x.LogoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.ModelNumber).HasMaxLength(120);
+        modelBuilder.Entity<AssetModel>().Property(x => x.EndOfLifeOn);
         modelBuilder.Entity<AssetModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
+        modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationAnnualRatePercent).HasPrecision(5, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMethod).HasMaxLength(16).IsRequired();
         modelBuilder.Entity<AssetModel>().ToTable("AssetModels", table =>
         {
             table.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationAnnualRatePercent", "\"DepreciationAnnualRatePercent\" IS NULL OR \"DepreciationAnnualRatePercent\" BETWEEN 0.34 AND 100.00");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationPolicyExclusive", "\"DepreciationMonths\" IS NULL OR \"DepreciationAnnualRatePercent\" IS NULL");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
             table.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");
@@ -835,6 +854,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.ProductVersion).HasMaxLength(120);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseReference).HasMaxLength(160);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.ProtectedLicenseKey).HasMaxLength(12000);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Supplier).HasMaxLength(200);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.PurchaseOrderReference).HasMaxLength(120);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
@@ -1431,6 +1451,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<AssetEvent>().HasIndex(x => new { x.CompanyId, x.AssetId, x.OccurredAt });
+        modelBuilder.Entity<AssetEvent>().HasIndex(x => new { x.CompanyId, x.OccurredAt, x.Id });
         modelBuilder.Entity<AssetEvent>().HasAlternateKey(x => new { x.CompanyId, x.AssetId, x.Id });
         modelBuilder.Entity<AssetEvent>().Property(x => x.EventType).HasMaxLength(60).IsRequired();
         modelBuilder.Entity<AssetEvent>().Property(x => x.Details).HasMaxLength(2000);

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,7 +35,7 @@ public static class SoftwareLicenseEndpoints
             var total = await query.CountAsync(ct);
             var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
             {
-                x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.PurchaseOrderReference, x.Seats,
+                x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, hasLicenseKey = x.ProtectedLicenseKey != null, x.Supplier, x.PurchaseOrderReference, x.Seats,
                 x.UnitCost, x.Currency, x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.IsArchived, x.UpdatedAt,
                 assigned = scopedAssignments.Count(a => a.LicenseId == x.Id && a.RevokedAt == null)
             }).ToListAsync(ct);
@@ -188,7 +189,7 @@ public static class SoftwareLicenseEndpoints
             var license = await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id &&
                 (!allowedLocations.IsRestricted || scopedAssignments.Any(a => a.LicenseId == x.Id))).Select(x => new
             {
-                x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.SupplierId, x.PurchaseOrderReference, x.Seats, x.UnitCost, x.Currency,
+                x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, hasLicenseKey = x.ProtectedLicenseKey != null, x.Supplier, x.SupplierId, x.PurchaseOrderReference, x.Seats, x.UnitCost, x.Currency,
                 x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.IsArchived, x.Notes, x.UpdatedAt,
                 assigned = scopedAssignments.Count(a => a.LicenseId == x.Id && a.RevokedAt == null)
             }).SingleOrDefaultAsync(ct);
@@ -220,6 +221,76 @@ public static class SoftwareLicenseEndpoints
             var currentEula = attachments.Where(x => x.IsCurrentEula).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.EulaVersion }).SingleOrDefault();
             return Results.Ok(new { license, assignments, events, attachments, purchaseOrders, currentEula, maxAttachmentCount = 30, maxAttachmentSizeBytes = LicenseAttachmentMaxBytes });
         }).RequireAuthorization("asset.read");
+
+        api.MapPut("/software-licenses/{id:guid}/key", async (Guid id, LicenseKeyRequest request, ClaimsPrincipal user,
+            AppDbContext db, IAntiforgery antiforgery, HttpContext context, SoftwareLicenseKeyProtection protection, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var allowedLocations = await GetAllowedLocationsAsync(db, companyId, user, ct);
+            if (allowedLocations.IsRestricted) return Results.Forbid();
+            var license = await db.SoftwareLicenses.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (license is null) return Results.NotFound();
+            if (license.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansın anahtarı değiştirilemez." });
+            if (string.IsNullOrWhiteSpace(request.Key) || request.Key.Length > 2048)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["key"] = ["Lisans anahtarı 1 ile 2.048 karakter arasında olmalıdır."] });
+
+            license.ProtectedLicenseKey = protection.Protect(companyId, id, request.Key);
+            license.UpdatedAt = DateTimeOffset.UtcNow;
+            db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = id, ActorUserId = actorId,
+                EventType = "KeyUpdated", Details = "Lisans anahtarı güncellendi; içerik kaydedilmedi." });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "LicenseKeyUpdated", Details = "Lisans anahtarı güncellendi; içerik kaydedilmedi." });
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/software-licenses/{id:guid}/key/reveal", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            SoftwareLicenseKeyProtection protection, IAntiforgery antiforgery, HttpContext context, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var allowedLocations = await GetAllowedLocationsAsync(db, companyId, user, ct);
+            var license = await db.SoftwareLicenses.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (license is null || !await CanAccessLicenseAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
+            if (string.IsNullOrEmpty(license.ProtectedLicenseKey)) return Results.NotFound();
+
+            context.Response.Headers["Cache-Control"] = "no-store, no-cache, max-age=0";
+            context.Response.Headers["Pragma"] = "no-cache";
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            string key;
+            try { key = protection.Unprotect(companyId, id, license.ProtectedLicenseKey); }
+            catch (CryptographicException) { return Results.Problem("Kayıtlı lisans anahtarı güvenli biçimde açılamadı.", statusCode: StatusCodes.Status500InternalServerError); }
+
+            db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = id, ActorUserId = actorId,
+                EventType = "KeyViewed", Details = "Lisans anahtarı yetkili kullanıcı tarafından görüntülendi." });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "LicenseKeyViewed", Details = "Lisans anahtarı görüntülendi; değer kaydedilmedi." });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { key });
+        }).RequireAuthorization("asset.write");
+
+        api.MapDelete("/software-licenses/{id:guid}/key", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            IAntiforgery antiforgery, HttpContext context, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var allowedLocations = await GetAllowedLocationsAsync(db, companyId, user, ct);
+            if (allowedLocations.IsRestricted) return Results.Forbid();
+            var license = await db.SoftwareLicenses.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            if (license is null) return Results.NotFound();
+            if (license.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansın anahtarı değiştirilemez." });
+            if (license.ProtectedLicenseKey is null) return Results.NoContent();
+
+            license.ProtectedLicenseKey = null;
+            license.UpdatedAt = DateTimeOffset.UtcNow;
+            db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = id, ActorUserId = actorId,
+                EventType = "KeyCleared", Details = "Lisans anahtarı kaldırıldı; anahtar içeriği kaydedilmedi." });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "LicenseKeyCleared", Details = "Lisans anahtarı kaldırıldı; değer kaydedilmedi." });
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
 
         api.MapPost("/software-licenses/{id:guid}/purchase-orders", async (Guid id, SoftwareLicensePurchaseOrderRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -780,6 +851,11 @@ public static class SoftwareLicenseEndpoints
         return null;
     }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+    private static async Task<bool> HasValidCsrfAsync(HttpContext context, IAntiforgery antiforgery)
+    {
+        try { await antiforgery.ValidateRequestAsync(context); return true; }
+        catch (AntiforgeryValidationException) { return false; }
+    }
     private static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
     private static string CsvCell(string? value)
     {
@@ -816,6 +892,7 @@ public static class SoftwareLicenseEndpoints
     public sealed record LicenseRequest(string Name, string? Publisher, string? ProductVersion, string LicenseType, string? LicenseReference,
         string? Supplier, int Seats, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, DateOnly? ExpirationDate, bool AutoRenew, string? Notes,
         bool RequiresEulaAcceptance = false, string? PurchaseOrderReference = null);
+    public sealed record LicenseKeyRequest(string? Key);
     public sealed record SoftwareLicensePurchaseOrderRequest(Guid SupplierId, string OrderNumber, DateOnly? OrderDate,
         int SeatsPurchased, decimal? UnitCost, string Currency, string? Notes);
     public sealed record AssignmentRequest(Guid? EmployeeId, Guid? AssetId, string? Notes, bool EulaAccepted = false);

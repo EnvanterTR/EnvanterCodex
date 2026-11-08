@@ -8,6 +8,15 @@ The SIL Open Font License 1.1 text is retained beside each deployed font as
 `Inter-OFL.txt` under both `src/EnvanterTR.Web/wwwroot/assets/fonts/` and
 `src/EnvanterTR.PublicSite/assets/fonts/`.
 
+## Poppins typeface
+
+The web application bundles Poppins 400/500/600/700 (latin and latin-ext WOFF2
+subsets) for the optional "Stüdyo" design, taken from the `@fontsource/poppins`
+5.1.0 package of the Poppins Project (<https://github.com/itfoundry/Poppins>).
+It is loaded from the same origin only when that design is selected. The SIL
+Open Font License 1.1 text is kept beside the font as `Poppins-OFL.txt` under
+`src/EnvanterTR.Web/wwwroot/assets/fonts/`.
+
 ## QR Code generator library
 
 The files `src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.ts` and

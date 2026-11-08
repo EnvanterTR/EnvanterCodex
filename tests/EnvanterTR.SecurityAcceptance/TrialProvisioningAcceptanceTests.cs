@@ -93,5 +93,24 @@ public sealed partial class TenantSessionAcceptanceTests
         using var verifiedBody = JsonDocument.Parse(await verified.Content.ReadAsStringAsync());
         Assert.True(verifiedBody.RootElement.GetProperty("authenticated").GetBoolean());
         Assert.Equal(company.Id, verifiedBody.RootElement.GetProperty("companyId").GetGuid());
+
+        Assert.Contains(verified.Headers.GetValues("Set-Cookie"),
+            value => value.StartsWith("EnvanterTR.Session=", StringComparison.Ordinal));
+        var ownerId = await verifyDb.CompanyMemberships.Where(member => member.CompanyId == company.Id)
+            .Select(member => member.UserId).SingleAsync();
+        using var onboarding = await SendAsUserAsync(HttpMethod.Get, "/api/onboarding/status", ownerId, company.Id,
+            role: "owner");
+        Assert.Equal(HttpStatusCode.OK, onboarding.StatusCode);
+        using var onboardingBody = JsonDocument.Parse(await onboarding.Content.ReadAsStringAsync());
+        Assert.Equal(5, onboardingBody.RootElement.GetProperty("totalSteps").GetInt32());
+        Assert.Equal(1, onboardingBody.RootElement.GetProperty("completedSteps").GetInt32());
+        var steps = onboardingBody.RootElement.GetProperty("steps").EnumerateArray().ToArray();
+        Assert.Equal(new[] { "company", "branding", "import", "members", "firstAsset" },
+            steps.Select(step => step.GetProperty("key").GetString()).ToArray());
+        Assert.True(steps[0].GetProperty("complete").GetBoolean());
+        Assert.False(steps[1].GetProperty("complete").GetBoolean());
+        Assert.False(steps[2].GetProperty("complete").GetBoolean());
+        Assert.False(steps[3].GetProperty("complete").GetBoolean());
+        Assert.False(steps[4].GetProperty("complete").GetBoolean());
     }
 }

@@ -347,6 +347,7 @@ public sealed class Employee
     public string? PrivateNotes { get; set; }
     public Guid? ManagerEmployeeId { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTimeOffset? ArchivedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -378,8 +379,10 @@ public sealed class AssetModel
     public Guid? CategoryId { get; set; }
     public required string Name { get; set; }
     public string? ModelNumber { get; set; }
+    public DateOnly? EndOfLifeOn { get; set; }
     public string? PhotoFileName { get; set; }
     public int? DepreciationMonths { get; set; }
+    public decimal? DepreciationAnnualRatePercent { get; set; }
     public decimal? DepreciationMinimum { get; set; }
     public string DepreciationMinimumType { get; set; } = "amount";
     public string DepreciationMethod { get; set; } = "linear";
@@ -698,6 +701,7 @@ public sealed class Accessory
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
     public bool IsRequestable { get; set; }
+    public bool IsArchived { get; set; }
     public string? PhotoFileName { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -992,6 +996,7 @@ public sealed class Consumable
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
     public bool IsRequestable { get; set; }
+    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -1109,6 +1114,7 @@ public sealed class SoftwareLicense
     public string? ProductVersion { get; set; }
     public string LicenseType { get; set; } = "Subscription";
     public string? LicenseReference { get; set; }
+    public string? ProtectedLicenseKey { get; set; }
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string? PurchaseOrderReference { get; set; }
@@ -1241,6 +1247,7 @@ public sealed class InventoryComponent
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
+    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -1282,6 +1289,34 @@ public static class AssetStatuses
     public const string Unusable = "Unusable";
     public const string Archived = "Archived";
     public const string ReturnedToSupplier = "ReturnedToSupplier";
+}
+
+/// <summary>Şirket olaylarını Slack, Microsoft Teams veya imzalı genel bir HTTPS uç noktasına ileten bildirim webhook'u.</summary>
+public sealed class CompanyWebhook
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    /// <summary>slack | teams | generic</summary>
+    public required string Kind { get; set; }
+    /// <summary>Veri koruma anahtarıyla şifrelenmiş hedef adres; API yanıtlarında asla dönmez.</summary>
+    public required string ProtectedUrl { get; set; }
+    /// <summary>Kullanıcıya gösterilen kısaltılmış adres (ana makine ve son 4 karakter).</summary>
+    public required string UrlHint { get; set; }
+    /// <summary>Genel webhook'larda HMAC-SHA256 imza sırrı (şifreli). Slack/Teams için null.</summary>
+    public string? ProtectedSigningSecret { get; set; }
+    public string EventsJson { get; set; } = "[]";
+    public bool IsActive { get; set; } = true;
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <summary>Teslim imleci: bu andan sonraki olaylar gönderilir (oluşturulduğu an; geçmiş olaylar gönderilmez).</summary>
+    public DateTimeOffset CursorOccurredAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid CursorEventId { get; set; }
+    public DateTimeOffset? LastDeliveryAt { get; set; }
+    public int? LastStatusCode { get; set; }
+    public string? LastError { get; set; }
+    public int ConsecutiveFailures { get; set; }
 }
 
 public sealed class AuditEntry
